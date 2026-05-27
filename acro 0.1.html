@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acro — The Agora of Ideas</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#C9A84C;--gold-l:#E8D5A3;--gold-d:#8B6914;
+  --marble:#F5F2EC;--marble-d:#E0DBD0;
+  --stone:#2C2820;--stone-m:#5C5248;--stone-l:#9C9080;
+  --ink:#1A1510;--parch:#FAF7F0;
+  --red:#8B2E2E;--red-l:#C4504A;--green:#2D7D4F;--blue:#1E4F8C;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--parch);color:var(--ink);overflow:hidden}
+/* screens */
+.scr{position:fixed;inset:0;display:none;flex-direction:column}
+.scr.on{display:flex}
+/* shared */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.btn-g{background:var(--gold);color:var(--stone);font-weight:600}.btn-g:hover{background:var(--gold-d);color:#fff}
+.btn-o{background:transparent;color:var(--stone-m);border:1px solid var(--marble-d)}.btn-o:hover{background:var(--marble)}
+.btn-r{background:var(--red);color:#fff}.btn-r:hover{background:var(--red-l)}
+.btn-sm{padding:5px 11px;font-size:12px}.btn-xs{padding:3px 8px;font-size:11px}
+.btn-blk{width:100%;justify-content:center}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'DM Sans',sans-serif;flex-shrink:0}
+.av-g{background:var(--gold);color:var(--stone)}
+.av-s{background:var(--stone-m);color:var(--gold-l)}
+.av-r{background:var(--red);color:#fff}
+.av-gr{background:var(--green);color:#fff}
+.av-b{background:var(--blue);color:#a8c4e8}
+.av-xl{width:56px;height:56px;font-size:20px}
+.av-lg{width:42px;height:42px;font-size:15px}
+.av-md{width:34px;height:34px;font-size:12px}
+.av-sm{width:26px;height:26px;font-size:10px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes wave{from{transform:rotate(-10deg)}to{transform:rotate(10deg)}}
+
+/* ========== ONBOARDING ========== */
+#s-ob{background:linear-gradient(135deg,#1a1510,#2c2820,#1a1510);align-items:center;justify-content:center}
+.ob-box{background:rgba(250,247,240,.05);border:1px solid rgba(201,168,76,.25);border-radius:20px;padding:42px;width:410px;max-width:94vw;backdrop-filter:blur(12px)}
+.ob-logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:6px}
+.ob-ico{width:50px;height:50px;background:var(--gold);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--stone)}
+.ob-brand{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--gold);letter-spacing:3px}
+.ob-sub{text-align:center;font-size:11px;color:var(--stone-l);letter-spacing:1.2px;margin-bottom:28px}
+.ob-lbl{font-size:11px;font-weight:600;color:var(--stone-l);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.ob-in{width:100%;padding:11px 15px;border:1px solid rgba(201,168,76,.2);border-radius:9px;font-size:14px;font-family:'DM Sans',sans-serif;background:rgba(255,255,255,.06);color:#fff;outline:none;margin-bottom:14px;transition:all .2s}
+.ob-in:focus{border-color:var(--gold);background:rgba(255,255,255,.1)}
+.ob-in::placeholder{color:var(--stone-l)}
+.ob-div{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--stone-l);font-size:12px}
+.ob-div::before,.ob-div::after{content:'';flex:1;height:1px;background:rgba(201,168,76,.15)}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.role-btn{padding:14px;border:1px solid rgba(201,168,76,.2);border-radius:11px;background:transparent;color:var(--stone-l);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;transition:all .2s}
+.role-btn:hover{border-color:var(--gold);color:var(--gold-l)}
+.role-btn.sel{border-color:var(--gold);background:rgba(201,168,76,.12);color:var(--gold)}
+.role-ico{font-size:24px;display:block;margin-bottom:5px}
+.role-lbl{font-size:13px;font-weight:600}
+.role-hint{font-size:10px;opacity:.65;margin-top:2px}
+
+/* ========== LOBBY ========== */
+#s-lobby{background:#0f0e17}
+.lob-top{padding:13px 22px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(201,168,76,.12);flex-shrink:0}
+.lob-brand{font-family:'Playfair Display',serif;color:var(--gold);font-size:19px;font-weight:700;letter-spacing:2px}
+.lob-body{flex:1;display:flex;overflow:hidden}
+/* host config */
+.host-cfg{width:360px;min-width:360px;border-right:1px solid rgba(201,168,76,.12);padding:22px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.host-cfg::-webkit-scrollbar{width:4px}
+.host-cfg::-webkit-scrollbar-thumb{background:rgba(201,168,76,.2);border-radius:4px}
+.cfg-h{font-family:'Playfair Display',serif;font-size:17px;color:#fff;font-weight:700;margin-bottom:4px}
+.cfg-s{font-size:12px;color:rgba(255,255,255,.35);margin-bottom:20px}
+.lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.lin{width:100%;padding:10px 13px;border:1px solid rgba(201,168,76,.18);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:rgba(255,255,255,.05);color:#fff;outline:none;margin-bottom:14px;transition:all .2s}
+.lin:focus{border-color:var(--gold);background:rgba(255,255,255,.08)}
+.lin::placeholder{color:rgba(255,255,255,.22)}
+textarea.lin{resize:vertical;min-height:64px;line-height:1.5}
+.segs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.seg{padding:6px 13px;border:1px solid rgba(201,168,76,.18);border-radius:20px;font-size:11px;background:transparent;color:rgba(255,255,255,.45);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.seg:hover{border-color:var(--gold);color:var(--gold-l)}
+.seg.on{background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold)}
+.cap-big{font-family:'Playfair Display',serif;font-size:34px;color:var(--gold);font-weight:700;text-align:center;margin:6px 0 2px}
+.cap-lbl{text-align:center;font-size:11px;color:rgba(255,255,255,.35);margin-bottom:10px}
+input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:4px;background:rgba(201,168,76,.2);outline:none;margin-bottom:14px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--gold);cursor:pointer}
+.perm-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.perm-row:last-child{border:none}
+.perm-n{font-size:13px;color:rgba(255,255,255,.75);font-weight:500}
+.perm-d{font-size:11px;color:rgba(255,255,255,.3);margin-top:2px}
+.tog{position:relative;width:36px;height:20px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-tr{position:absolute;inset:0;background:rgba(255,255,255,.1);border-radius:20px;cursor:pointer;transition:all .2s}
+.tog input:checked+.tog-tr{background:var(--gold)}
+.tog-tr::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:all .2s}
+.tog input:checked+.tog-tr::after{left:19px}
+/* rooms */
+.rooms-side{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.rooms-top{padding:16px 22px;border-bottom:1px solid rgba(201,168,76,.1);flex-shrink:0}
+.rooms-h{font-family:'Playfair Display',serif;font-size:15px;color:#fff;margin-bottom:10px}
+.fbar{display:flex;gap:7px;flex-wrap:wrap}
+.fb{padding:5px 12px;border:1px solid rgba(201,168,76,.18);border-radius:20px;font-size:11px;background:transparent;color:rgba(255,255,255,.4);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.fb:hover,.fb.on{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.1)}
+.room-list{flex:1;overflow-y:auto;padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:13px;align-content:start}
+.room-list::-webkit-scrollbar{width:4px}
+.room-list::-webkit-scrollbar-thumb{background:rgba(201,168,76,.15);border-radius:4px}
+.rcard{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.12);border-radius:13px;padding:16px;cursor:pointer;transition:all .2s;position:relative}
+.rcard:hover{border-color:rgba(201,168,76,.4);background:rgba(201,168,76,.05);transform:translateY(-2px)}
+.rcard-host{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.rcard-av{width:28px;height:28px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--stone);flex-shrink:0}
+.rcard-hn{font-size:11px;color:rgba(255,255,255,.65);font-weight:500}
+.rcard-hs{font-size:10px;color:rgba(255,255,255,.3);margin-top:1px}
+.rcard-title{font-family:'Playfair Display',serif;font-size:13px;color:#fff;font-weight:700;margin-bottom:5px;line-height:1.3}
+.rcard-desc{font-size:11px;color:rgba(255,255,255,.4);line-height:1.45;margin-bottom:10px}
+.rcard-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.rcard-tag{padding:2px 7px;border-radius:10px;font-size:9px;background:rgba(201,168,76,.1);color:var(--gold-l);border:1px solid rgba(201,168,76,.18)}
+.rcard-foot{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
+.rcard-meta{display:flex;gap:9px;font-size:10px;color:rgba(255,255,255,.3)}
+.rcard-meta span{display:flex;align-items:center;gap:3px}
+.live-pill{display:flex;align-items:center;gap:4px;font-size:9px;color:#E53E3E;font-weight:700}
+.live-d{width:5px;height:5px;border-radius:50%;background:#E53E3E;animation:pulse 1.4s infinite}
+.empty-r{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px;gap:12px;color:rgba(255,255,255,.2);text-align:center}
+.empty-r i{font-size:44px;color:rgba(201,168,76,.18)}
+.empty-r p{font-size:12px;line-height:1.6;max-width:180px}
+
+/* ========== DEBATE ROOM ========== */
+#s-room{background:#09080f}
+.room-top{padding:10px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;background:#0f0e17}
+.room-ttl{font-family:'Playfair Display',serif;font-size:14px;color:#fff;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.timer{font-size:12px;color:var(--gold);font-weight:600;background:rgba(201,168,76,.1);padding:3px 11px;border-radius:16px;border:1px solid rgba(201,168,76,.2)}
+.room-body{flex:1;display:flex;overflow:hidden}
+.vid-area{flex:1;display:flex;flex-direction:column;padding:14px;gap:10px;overflow:hidden}
+.vid-grid{flex:1;display:grid;gap:10px;overflow:hidden}
+.vg1{grid-template-columns:1fr}
+.vg2{grid-template-columns:1fr 1fr}
+.vg3,.vg4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.vg5,.vg6{grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr}
+.vg7,.vg8{grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr}
+.vtile{background:linear-gradient(135deg,#1a1510,#2c2820);border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.06);min-height:0;transition:border-color .3s}
+.vtile.speaking{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.25)}
+.vtile.me{border-color:rgba(45,125,79,.45)}
+.vtile-name{font-size:11px;color:rgba(255,255,255,.65);font-weight:500}
+.vtile-role{position:absolute;bottom:7px;left:7px;font-size:9px;color:rgba(255,255,255,.4);background:rgba(0,0,0,.4);padding:2px 7px;border-radius:8px}
+.vtile-host{position:absolute;top:7px;right:7px;font-size:9px;color:var(--gold);background:rgba(201,168,76,.15);padding:2px 6px;border-radius:8px;border:1px solid rgba(201,168,76,.25);font-weight:700;letter-spacing:.5px}
+.vtile-mute{position:absolute;bottom:7px;right:7px;color:var(--red-l);font-size:12px}
+.vtile-hand{position:absolute;top:7px;left:7px;font-size:14px;animation:wave .5s infinite alternate}
+.arg-ticker{background:rgba(201,168,76,.07);border-top:1px solid rgba(201,168,76,.1);padding:7px 18px;display:flex;align-items:center;gap:9px;font-size:12px;color:var(--gold-l);flex-shrink:0}
+.arg-ticker i{color:var(--gold);font-size:13px;flex-shrink:0}
+.room-chat{width:280px;min-width:280px;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;background:#0f0e17}
+.room-chat.hide{display:none}
+.rchat-hd{padding:12px 15px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;font-weight:600;color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:space-between}
+.rchat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.rchat-msgs::-webkit-scrollbar{width:3px}
+.rchat-msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08)}
+.rmsg{display:flex;gap:7px;align-items:flex-end}
+.rmsg.me{flex-direction:row-reverse}
+.rbub{padding:7px 11px;border-radius:11px;font-size:12px;max-width:180px;line-height:1.5}
+.rbub.th{background:rgba(255,255,255,.07);color:rgba(255,255,255,.75);border-radius:11px 11px 11px 3px}
+.rbub.mi{background:rgba(201,168,76,.18);color:var(--gold-l);border-radius:11px 11px 3px 11px}
+.rname{font-size:10px;color:rgba(255,255,255,.28);margin-bottom:2px}
+.rmsg.me .rname{text-align:right}
+.rchat-inp{padding:10px 13px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:7px}
+.rchat-inp input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:7px 12px;font-size:12px;color:#fff;font-family:'DM Sans',sans-serif;outline:none;transition:all .2s}
+.rchat-inp input:focus{border-color:var(--gold)}
+.rchat-inp input::placeholder{color:rgba(255,255,255,.22)}
+.rsend{width:30px;height:30px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--stone);flex-shrink:0}
+.rsend:hover{background:var(--gold-d);color:#fff}
+.room-ctrl{padding:10px 18px;display:flex;align-items:center;justify-content:center;gap:9px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;background:#0f0e17;flex-wrap:wrap}
+.cb{width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;color:#fff;background:rgba(255,255,255,.1)}
+.cb:hover{background:rgba(255,255,255,.18)}
+.cb.off{background:var(--red)!important}
+.cb-raise{background:rgba(201,168,76,.15)!important;color:var(--gold)!important}
+.cb-raise:hover{background:rgba(201,168,76,.28)!important}
+.cb-chat{background:rgba(255,255,255,.1)!important}
+.cb-chat.on{background:rgba(201,168,76,.18)!important;color:var(--gold)!important}
+.cb-leave{width:auto;padding:0 18px;border-radius:20px;font-size:13px;gap:6px;background:rgba(139,46,46,.75)!important}
+.cb-leave:hover{background:var(--red)!important}
+
+/* ========== APP (feed etc.) ========== */
+#s-app{background:var(--parch)}
+.menu-ov{position:fixed;inset:0;background:rgba(26,21,16,0);z-index:300;pointer-events:none;transition:background .25s}
+.menu-ov.on{background:rgba(26,21,16,.55);pointer-events:all}
+.slide-menu{position:fixed;top:0;left:-255px;bottom:0;width:242px;background:var(--stone);display:flex;flex-direction:column;z-index:301;transition:left .25s cubic-bezier(.4,0,.2,1)}
+.slide-menu.on{left:0;box-shadow:6px 0 32px rgba(0,0,0,.4)}
+.sm-top{padding:20px 16px 16px;border-bottom:1px solid rgba(201,168,76,.18)}
+.sm-logo{display:flex;align-items:center;gap:10px}
+.sm-ico{width:36px;height:36px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--stone)}
+.sm-brand{font-family:'Playfair Display',serif;color:var(--gold);font-size:19px;font-weight:700;letter-spacing:2px}
+.sm-tag{font-size:10px;color:var(--stone-l);margin-top:1px;letter-spacing:.6px}
+.sm-nav{flex:1;padding:10px 0;overflow-y:auto}
+.sm-sec{padding:12px 16px 4px;font-size:10px;letter-spacing:2px;color:var(--stone-l);text-transform:uppercase}
+.sm-it{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:var(--stone-l);font-size:13px;transition:all .15s;border-left:2px solid transparent;user-select:none}
+.sm-it:hover{color:#fff;background:rgba(255,255,255,.05)}
+.sm-it.on{color:var(--gold);border-left-color:var(--gold);background:rgba(201,168,76,.09)}
+.sm-it i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700}
+.sm-lbtn{margin:8px 13px;padding:10px;border-radius:9px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.22);color:var(--gold);font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:7px;justify-content:center;transition:all .2s}
+.sm-lbtn:hover{background:rgba(201,168,76,.2)}
+.sm-user{padding:13px 16px;border-top:1px solid rgba(201,168,76,.12);display:flex;align-items:center;gap:9px;cursor:pointer}
+.sm-user:hover{background:rgba(255,255,255,.04)}
+.sm-uname{color:#fff;font-size:13px;font-weight:500}
+.sm-uf{font-size:11px;color:var(--stone-l);margin-top:1px}
+/* topbar */
+.app-top{background:var(--parch);border-bottom:1px solid var(--marble-d);padding:11px 18px;display:flex;align-items:center;gap:11px;flex-shrink:0}
+.hbg{width:36px;height:36px;border-radius:7px;border:1px solid var(--marble-d);background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:all .2s;flex-shrink:0}
+.hbg:hover{background:var(--marble);border-color:var(--gold)}
+.hbl{width:15px;height:1.5px;background:var(--stone-m);border-radius:2px}
+.app-brand{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--stone);letter-spacing:1px}
+.app-ptitle{font-family:'Playfair Display',serif;font-size:14px;color:var(--stone-l)}
+.srch{flex:1;max-width:340px;position:relative}
+.srch input{width:100%;padding:7px 13px 7px 34px;border:1px solid var(--marble-d);border-radius:20px;font-size:13px;background:var(--marble);color:var(--ink);font-family:'DM Sans',sans-serif;outline:none;transition:all .2s}
+.srch input:focus{border-color:var(--gold);background:#fff}
+.srch i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--stone-l);font-size:14px}
+.tr{margin-left:auto;display:flex;gap:7px;align-items:center}
+/* app content */
+.app-body{flex:1;display:flex;overflow:hidden}
+.panel{flex:1;overflow-y:auto;padding:20px}
+.panel::-webkit-scrollbar{width:5px}
+.panel::-webkit-scrollbar-thumb{background:var(--marble-d);border-radius:4px}
+/* feed */
+.tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.tab{padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--marble-d);color:var(--stone-m);background:transparent;font-family:'DM Sans',sans-serif;transition:all .15s}
+.tab:hover:not(.on){background:var(--marble)}
+.tab.on{background:var(--stone);color:var(--gold);border-color:var(--stone)}
+.cmp{background:linear-gradient(135deg,var(--stone),#3c3428);border-radius:13px;padding:16px 18px;margin-bottom:14px;display:flex;align-items:center;gap:13px;cursor:pointer;border:1px solid rgba(201,168,76,.2);transition:border-color .2s}
+.cmp:hover{border-color:rgba(201,168,76,.5)}
+.cmp-txt{color:var(--stone-l);font-size:13px;flex:1}
+.pcard{background:#fff;border:1px solid var(--marble-d);border-radius:13px;padding:18px;margin-bottom:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.pcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .2s}
+.pcard:hover{border-color:var(--gold);box-shadow:0 5px 20px rgba(201,168,76,.1)}
+.pcard:hover::before,.pcard.sel::before{background:var(--gold)}
+.pcard.sel{border-color:var(--gold)}
+.pcard.feat{background:linear-gradient(135deg,#fff,#fffdf7)}
+.hot{position:absolute;top:13px;right:13px;background:var(--red);color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.ph{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.pm{flex:1}
+.pa{font-weight:600;font-size:14px;color:var(--ink)}
+.pc{font-size:11px;color:var(--stone-l);margin-top:2px}
+.pt{font-size:11px;color:var(--stone-l);white-space:nowrap}
+.cpill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-bottom:8px}
+.cp-ph{background:#EDE9FE;color:#4C1D95}.cp-sc{background:#DCFCE7;color:#14532D}
+.cp-po{background:#FEE2E2;color:#7F1D1D}.cp-ec{background:#FEF3C7;color:#78350F}
+.cp-et{background:#E0F2FE;color:#0C4A6E}.cp-hi{background:#FDF2F8;color:#701A75}
+.cp-te{background:#F0FDF4;color:#052E16}.cp-xx{background:var(--marble);color:var(--stone-m)}
+.ptitle{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--ink);line-height:1.35;margin-bottom:6px}
+.pthesis{font-size:13px;color:var(--stone-m);line-height:1.65;margin-bottom:12px}
+.pft{display:flex;align-items:center;gap:16px}
+.pst{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--stone-l)}
+.pst i{font-size:13px}
+.live-b{display:flex;align-items:center;gap:4px;margin-left:auto}
+.live-d2{width:6px;height:6px;border-radius:50%;background:#E53E3E;animation:pulse 1.4s infinite}
+.live-t{color:#E53E3E;font-size:11px;font-weight:700}
+.act-t{color:var(--green);font-size:11px;font-weight:500;margin-left:auto}
+/* detail panel */
+.detail{width:400px;min-width:400px;border-left:1px solid var(--marble-d);background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.d-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;color:var(--stone-l);padding:40px;text-align:center}
+.d-empty i{font-size:44px;color:var(--marble-d)}
+.d-empty p{font-size:13px;line-height:1.6;max-width:170px}
+.d-hd{padding:14px 18px;border-bottom:1px solid var(--marble-d);display:flex;align-items:flex-start;gap:9px;flex-shrink:0}
+.d-ttl{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;flex:1;line-height:1.4;color:var(--ink)}
+.d-scr{flex:1;overflow-y:auto;padding:16px 18px}
+.d-scr::-webkit-scrollbar{width:3px}
+.d-scr::-webkit-scrollbar-thumb{background:var(--marble-d)}
+.thesis-b{background:var(--marble);border-radius:9px;padding:13px;margin-bottom:14px;border-left:3px solid var(--gold)}
+.thesis-b p{font-size:13px;color:var(--stone-m);line-height:1.7}
+.th-auth{display:flex;align-items:center;gap:7px;margin-top:9px}
+.th-auth span{font-size:11px;color:var(--stone-l)}
+.args-h{font-size:11px;font-weight:600;color:var(--stone-m);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
+.ablock{border-radius:8px;padding:12px;margin-bottom:8px}
+.ab-co{background:#fff5f5;border-left:3px solid var(--red)}
+.ab-su{background:#f0fdf4;border-left:3px solid var(--green)}
+.ab-qu{background:#fffbeb;border-left:3px solid var(--gold)}
+.astance{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
+.as-co{color:var(--red)}.as-su{color:var(--green)}.as-qu{color:var(--gold-d)}
+.arow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.aname{font-size:13px;font-weight:500}
+.atext{font-size:13px;color:var(--stone-m);line-height:1.6}
+.add-arg{width:100%;padding:8px;border:1.5px dashed var(--marble-d);border-radius:7px;background:transparent;color:var(--stone-l);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;margin-top:4px}
+.add-arg:hover{border-color:var(--gold);color:var(--gold-d);background:#fffdf5}
+.arg-cmp{margin-top:9px;padding:13px;background:var(--marble);border-radius:9px}
+.arg-cmp textarea{width:100%;padding:9px;border:1px solid var(--marble-d);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:76px;background:#fff;outline:none;color:var(--ink);margin-bottom:8px;line-height:1.5}
+.arg-cmp textarea:focus{border-color:var(--gold)}
+.sbts{display:flex;gap:6px}
+.chat-a{border-top:1px solid var(--marble-d);padding:13px 18px;flex-shrink:0}
+.chat-lbl{font-size:11px;font-weight:600;color:var(--stone-m);text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.chat-ms{max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-bottom:9px}
+.chat-ms::-webkit-scrollbar{width:3px}
+.chat-ms::-webkit-scrollbar-thumb{background:var(--marble-d)}
+.msg{display:flex;gap:7px;align-items:flex-end}
+.msg.me{flex-direction:row-reverse}
+.bub{padding:7px 11px;border-radius:11px;font-size:12px;max-width:200px;line-height:1.5}
+.bub.th{background:var(--marble);color:var(--ink);border-radius:11px 11px 11px 3px}
+.bub.mi{background:var(--stone);color:var(--gold-l);border-radius:11px 11px 3px 11px}
+.chat-ir{display:flex;gap:7px;align-items:center}
+.chat-ir input{flex:1;padding:8px 13px;border:1px solid var(--marble-d);border-radius:20px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;background:var(--marble);color:var(--ink);transition:all .15s}
+.chat-ir input:focus{border-color:var(--gold);background:#fff}
+.snd{width:32px;height:32px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--stone);flex-shrink:0}
+.snd:hover{background:var(--gold-d);color:#fff}
+.con-bar{padding:10px 18px;border-top:1px solid var(--marble-d);display:flex;gap:7px;background:var(--parch);flex-shrink:0;flex-wrap:wrap}
+/* meetups */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-ttl{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--ink)}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mcard{background:#fff;border:1px solid var(--marble-d);border-radius:13px;overflow:hidden;cursor:pointer;transition:all .2s}
+.mcard:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 7px 24px rgba(201,168,76,.1)}
+.mb{height:80px;display:flex;align-items:center;justify-content:center;position:relative}
+.mb-on{background:linear-gradient(135deg,#0f0e17,#1a1a3e)}
+.mb-ip{background:linear-gradient(135deg,#1c0a00,#3a1f00)}
+.mb-ic{font-size:36px}
+.mt{position:absolute;top:8px;right:8px;padding:2px 8px;border-radius:9px;font-size:10px;font-weight:700}
+.mt-on{background:rgba(45,125,79,.85);color:#fff}
+.mt-ip{background:rgba(139,46,46,.85);color:#fff}
+.mbody{padding:13px}
+.m-ttl{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;margin-bottom:4px;line-height:1.35;color:var(--ink)}
+.m-desc{font-size:12px;color:var(--stone-m);margin-bottom:9px;line-height:1.45}
+.m-meta{display:flex;gap:10px;font-size:11px;color:var(--stone-l);margin-bottom:9px}
+.m-meta span{display:flex;align-items:center;gap:3px}
+/* connections */
+.ccrd{background:#fff;border:1px solid var(--marble-d);border-radius:10px;padding:13px;display:flex;align-items:center;gap:11px;margin-bottom:9px;transition:all .15s}
+.ccrd:hover{border-color:var(--gold-l)}
+.ci{flex:1;min-width:0}
+.cn{font-weight:600;font-size:14px;color:var(--ink)}
+.cf{font-size:12px;color:var(--stone-l);margin-top:2px}
+.ctags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.ctag{padding:2px 8px;border-radius:10px;font-size:10px;background:var(--marble);color:var(--stone-m);border:1px solid var(--marble-d)}
+.odot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+/* groups */
+.gcrd{background:#fff;border:1px solid var(--marble-d);border-radius:10px;padding:13px;display:flex;align-items:center;gap:12px;margin-bottom:9px;cursor:pointer;transition:all .15s}
+.gcrd:hover{border-color:var(--gold)}
+.gico{width:44px;height:44px;border-radius:10px;background:var(--stone);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+.gi{flex:1}
+.gn{font-weight:600;font-size:14px;color:var(--ink)}
+.gm{font-size:12px;color:var(--stone-l);margin-top:2px}
+.gd{font-size:12px;color:var(--stone-m);margin-top:3px}
+/* profile */
+.pcrd{background:#fff;border:1px solid var(--marble-d);border-radius:13px;padding:22px;margin-bottom:14px}
+.prof-name{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--ink)}
+.prof-loc{color:var(--stone-m);font-size:13px;margin-top:3px}
+.prof-q{color:var(--stone-l);font-size:12px;margin-top:3px;font-style:italic}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px}
+.sbox{background:var(--marble);border-radius:9px;padding:12px;text-align:center}
+.snum{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--ink)}
+.slbl{font-size:11px;color:var(--stone-l);margin-top:2px}
+.itags{display:flex;flex-wrap:wrap;gap:7px}
+.itag{padding:4px 12px;border-radius:20px;font-size:12px;background:var(--stone);color:var(--gold);font-weight:500}
+.rarg{padding:10px 0;border-bottom:1px solid var(--marble-d);font-size:13px;color:var(--stone-m);line-height:1.5;display:flex;gap:9px;align-items:baseline}
+.rarg:last-child{border-bottom:none}
+.flbl{font-size:11px;font-weight:600;color:var(--stone-m);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
+.fin{width:100%;padding:10px 13px;border:1px solid var(--marble-d);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink);outline:none;margin-bottom:14px;background:var(--marble);transition:all .15s}
+.fin:focus{border-color:var(--gold);background:#fff}
+textarea.fin{resize:vertical;min-height:80px;line-height:1.5}
+/* notifs */
+.nit{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--marble-d)}
+.nico{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* modals */
+.ov{position:fixed;inset:0;background:rgba(26,21,16,.65);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(2px)}
+.modal{background:#fff;border-radius:17px;padding:28px;width:500px;max-width:94vw;max-height:90vh;overflow-y:auto}
+.modal-ttl{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;margin-bottom:20px;color:var(--ink)}
+.ma{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.csel{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.copt{padding:5px 13px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--marble-d);background:transparent;font-family:'DM Sans',sans-serif;color:var(--stone-m);transition:all .15s}
+.copt:hover{background:var(--marble)}
+.copt.on{background:var(--stone);color:var(--gold);border-color:var(--stone)}
+.divider{height:1px;background:var(--marble-d);margin:18px 0}
+/* firebase status */
+.fbs{position:fixed;bottom:18px;right:18px;display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:18px;font-size:11px;font-weight:600;z-index:500;backdrop-filter:blur(8px)}
+.fbs.conn{background:rgba(45,125,79,.15);border:1px solid rgba(45,125,79,.3);color:var(--green)}
+.fbs.ing{background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.25);color:var(--gold)}
+.fbs.err{background:rgba(139,46,46,.12);border:1px solid rgba(139,46,46,.25);color:var(--red-l)}
+.fbd{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.fbs.conn .fbd{background:var(--green)}
+.fbs.ing .fbd{background:var(--gold);animation:pulse 1s infinite}
+.fbs.err .fbd{background:var(--red-l)}
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--stone);color:var(--gold-l);padding:9px 20px;border-radius:22px;font-size:13px;opacity:0;transition:all .3s;z-index:999;pointer-events:none;border:1px solid rgba(201,168,76,.2)}
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING -->
+<div id="s-ob" class="scr on">
+  <div class="ob-box">
+    <div class="ob-logo"><div class="ob-ico">Α</div><div class="ob-brand">ACRO</div></div>
+    <div class="ob-sub">THE AGORA OF IDEAS</div>
+    <div class="ob-lbl">Your Name</div>
+    <input class="ob-in" id="ob-name" type="text" placeholder="Enter your full name…" maxlength="40" onkeydown="if(event.key==='Enter')enterLobby()">
+    <div class="ob-lbl">Your Field / Expertise</div>
+    <input class="ob-in" id="ob-field" type="text" placeholder="e.g. Political Philosophy, Economics…" maxlength="50" onkeydown="if(event.key==='Enter')enterLobby()">
+    <div class="ob-div">Choose your role</div>
+    <div class="role-grid">
+      <button class="role-btn sel" id="rb-host" onclick="pickRole('host')"><span class="role-ico">🏛️</span><div class="role-lbl">Host</div><div class="role-hint">Open a debate room</div></button>
+      <button class="role-btn" id="rb-guest" onclick="pickRole('guest')"><span class="role-ico">🎓</span><div class="role-lbl">Guest</div><div class="role-hint">Join a debate room</div></button>
+    </div>
+    <button class="btn btn-g btn-blk" style="font-size:15px;padding:13px" onclick="enterLobby()">Enter the Agora →</button>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="s-lobby" class="scr">
+  <div class="lob-top">
+    <div class="lob-brand">ACRO</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.3);flex:1">The Agora of Ideas</div>
+    <button class="btn btn-sm" style="background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.2)" onclick="goApp()"><i class="ti ti-layout-dashboard"></i> Feed</button>
+    <div class="av av-g av-sm" id="lob-av" style="font-size:11px">?</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.55)" id="lob-name">—</div>
+  </div>
+  <div class="lob-body">
+    <div class="host-cfg" id="host-cfg">
+      <div class="cfg-h">Open a Debate Room</div>
+      <div class="cfg-s">Configure your intellectual arena</div>
+      <div class="lbl">Debate Topic / Thesis</div>
+      <input class="lin" id="r-title" placeholder="e.g. 'Free will is incompatible with determinism'">
+      <div class="lbl">Brief Description</div>
+      <textarea class="lin" id="r-desc" placeholder="Context, opening position, or ground rules…"></textarea>
+      <div class="lbl">Category</div>
+      <div class="segs" id="r-cat">
+        <button class="seg on" onclick="pickSeg(this)">Philosophy</button>
+        <button class="seg" onclick="pickSeg(this)">Science</button>
+        <button class="seg" onclick="pickSeg(this)">Politics</button>
+        <button class="seg" onclick="pickSeg(this)">Ethics</button>
+        <button class="seg" onclick="pickSeg(this)">Economics</button>
+        <button class="seg" onclick="pickSeg(this)">History</button>
+      </div>
+      <div class="lbl">Room Capacity</div>
+      <div class="cap-big" id="cap-n">2</div>
+      <div class="cap-lbl" id="cap-lbl">One-on-One Debate</div>
+      <input type="range" min="2" max="12" value="2" id="cap-sl" oninput="updCap(this.value)">
+      <div class="lbl">Debate Duration</div>
+      <div class="segs" id="r-dur">
+        <button class="seg on" onclick="pickSeg(this)">1 min</button>
+        <button class="seg" onclick="pickSeg(this)">5 min</button>
+        <button class="seg" onclick="pickSeg(this)">15 min</button>
+        <button class="seg" onclick="pickSeg(this)">30 min</button>
+        <button class="seg" onclick="pickSeg(this)">1 hour</button>
+        <button class="seg" onclick="pickSeg(this)">Open</button>
+      </div>
+      <div class="lbl">Host Permissions</div>
+      <div style="margin-bottom:16px">
+        <div class="perm-row"><div><div class="perm-n">Mute guests</div><div class="perm-d">Host can silence any participant</div></div><label class="tog"><input type="checkbox" id="p-mute" checked><div class="tog-tr"></div></label></div>
+        <div class="perm-row"><div><div class="perm-n">Approve to speak</div><div class="perm-d">Guests must raise hand first</div></div><label class="tog"><input type="checkbox" id="p-hand"><div class="tog-tr"></div></label></div>
+        <div class="perm-row"><div><div class="perm-n">Remove participants</div><div class="perm-d">Host can kick disruptive guests</div></div><label class="tog"><input type="checkbox" id="p-kick" checked><div class="tog-tr"></div></label></div>
+        <div class="perm-row"><div><div class="perm-n">Record session</div><div class="perm-d">Save debate transcript</div></div><label class="tog"><input type="checkbox" id="p-rec"><div class="tog-tr"></div></label></div>
+      </div>
+      <button class="btn btn-g btn-blk" style="font-size:14px;padding:12px" onclick="createRoom()"><i class="ti ti-door-enter"></i> Open Debate Room</button>
+    </div>
+    <div class="rooms-side">
+      <div class="rooms-top">
+        <div class="rooms-h" id="rooms-h">Browse Open Rooms</div>
+        <div class="fbar">
+          <button class="fb on" onclick="setFilter(this,'all')">All</button>
+          <button class="fb" onclick="setFilter(this,'1v1')">1-on-1</button>
+          <button class="fb" onclick="setFilter(this,'small')">Small (≤4)</button>
+          <button class="fb" onclick="setFilter(this,'group')">Group (5+)</button>
+          <button class="fb" onclick="setFilter(this,'live')">🔴 Live</button>
+          <button class="fb" onclick="setFilter(this,'open')">⏾ Open-ended</button>
+          <button class="fb" onclick="setFilter(this,'short')">⚡ Short</button>
+        </div>
+      </div>
+      <div class="room-list" id="room-list">
+        <div class="empty-r"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i><p>Loading rooms…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DEBATE ROOM -->
+<div id="s-room" class="scr">
+  <div class="room-top">
+    <button class="btn btn-sm" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1)" onclick="leaveRoom()"><i class="ti ti-chevron-left"></i> Lobby</button>
+    <div class="room-ttl" id="room-ttl">Debate Room</div>
+    <div class="timer" id="timer">⏱ —</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.35)" id="room-cap"></div>
+    <button class="cb cb-chat on" id="cb-chat" onclick="togChat()" title="Toggle chat"><i class="ti ti-message-2"></i></button>
+  </div>
+  <div class="room-body">
+    <div class="vid-area">
+      <div class="vid-grid vg2" id="vid-grid"></div>
+      <div class="arg-ticker" id="arg-ticker" style="display:none"><i class="ti ti-bulb"></i><span id="ticker-txt"></span></div>
+    </div>
+    <div class="room-chat" id="room-chat">
+      <div class="rchat-hd"><span><i class="ti ti-message-dots" style="margin-right:5px"></i>Debate Chat</span><button class="btn btn-xs btn-o" onclick="togChat()"><i class="ti ti-x"></i></button></div>
+      <div class="rchat-msgs" id="rchat-msgs"></div>
+      <div class="rchat-inp"><input type="text" id="rchat-in" placeholder="Argue your point…" onkeydown="if(event.key==='Enter')sendRChat()"><button class="rsend" onclick="sendRChat()"><i class="ti ti-send" style="font-size:12px"></i></button></div>
+    </div>
+  </div>
+  <div class="room-ctrl">
+    <button class="cb" id="cb-mic" onclick="togMic()" title="Mute/Unmute"><i class="ti ti-microphone"></i></button>
+    <button class="cb" id="cb-cam" onclick="togCam()" title="Camera"><i class="ti ti-video"></i></button>
+    <button class="cb cb-raise" onclick="raiseHand()" title="Raise hand"><i class="ti ti-hand-stop"></i></button>
+    <button class="cb cb-leave" onclick="leaveRoom()"><i class="ti ti-phone-off"></i> Leave</button>
+  </div>
+</div>
+
+<!-- APP (feed, meetups, etc.) -->
+<div id="s-app" class="scr">
+  <div class="menu-ov" id="menu-ov" onclick="closeMenu()"></div>
+  <div class="slide-menu" id="slide-menu">
+    <div class="sm-top">
+      <div class="sm-logo"><div class="sm-ico">Α</div><div><div class="sm-brand">ACRO</div><div class="sm-tag">The Agora of Ideas</div></div></div>
+    </div>
+    <div class="sm-nav">
+      <button class="sm-lbtn" onclick="closeMenu();showScr('lobby')"><i class="ti ti-door-enter"></i> Debate Lobby</button>
+      <div class="sm-sec">Discover</div>
+      <div class="sm-it on" onclick="navApp('feed',this)"><i class="ti ti-message-circle-2"></i> Debate Feed</div>
+      <div class="sm-it" onclick="navApp('meetups',this)"><i class="ti ti-calendar-event"></i> Meetups <span class="nb">3</span></div>
+      <div class="sm-sec">Community</div>
+      <div class="sm-it" onclick="navApp('connections',this)"><i class="ti ti-users"></i> Connections</div>
+      <div class="sm-it" onclick="navApp('groups',this)"><i class="ti ti-building-community"></i> Clubs &amp; Groups</div>
+      <div class="sm-sec">You</div>
+      <div class="sm-it" onclick="navApp('profile',this)"><i class="ti ti-user-circle"></i> My Profile</div>
+      <div class="sm-it" onclick="navApp('notifs',this)"><i class="ti ti-bell"></i> Alerts <span class="nb">5</span></div>
+    </div>
+    <div class="sm-user" onclick="navApp('profile',null);closeMenu()">
+      <div class="av av-g av-md" id="sm-av">?</div>
+      <div><div class="sm-uname" id="sm-name">—</div><div class="sm-uf" id="sm-field">—</div></div>
+      <i class="ti ti-pencil" style="font-size:12px;color:var(--stone-l);margin-left:auto"></i>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+    <div class="app-top">
+      <button class="hbg" onclick="openMenu()"><div class="hbl"></div><div class="hbl"></div><div class="hbl"></div></button>
+      <div class="app-brand">ACRO</div>
+      <div class="app-ptitle" id="app-ptitle">/ Debate Feed</div>
+      <div class="srch"><i class="ti ti-search"></i><input type="text" placeholder="Search debates, thinkers, topics…"></div>
+      <div class="tr">
+        <button class="btn btn-sm btn-o" onclick="showScr('lobby')"><i class="ti ti-door-enter"></i> Lobby</button>
+        <button class="btn btn-g btn-sm" id="cmp-btn" onclick="openCmp()"><i class="ti ti-plus"></i> New Argument</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div id="v-feed" class="panel">
+        <div class="cmp" onclick="openCmp()">
+          <div class="av av-g av-md cmp-av">?</div>
+          <div class="cmp-txt">What's your thesis today? Share an argument worth debating…</div>
+          <button class="btn btn-g btn-sm"><i class="ti ti-feather"></i> Write</button>
+        </div>
+        <div class="tabs">
+          <button class="tab on" onclick="filterPosts(this,'all')">All</button>
+          <button class="tab" onclick="filterPosts(this,'live')">🔴 Live</button>
+          <button class="tab" onclick="filterPosts(this,'ph')">Philosophy</button>
+          <button class="tab" onclick="filterPosts(this,'sc')">Science</button>
+          <button class="tab" onclick="filterPosts(this,'po')">Politics</button>
+          <button class="tab" onclick="filterPosts(this,'et')">Ethics</button>
+          <button class="tab" onclick="filterPosts(this,'ec')">Economics</button>
+          <button class="tab" onclick="filterPosts(this,'hi')">History</button>
+        </div>
+        <div id="post-list"></div>
+      </div>
+      <div id="v-meetups" class="panel" style="display:none">
+        <div class="sec-hd"><div class="sec-ttl">Upcoming Gatherings</div><button class="btn btn-g btn-sm" onclick="openMCmp()"><i class="ti ti-plus"></i> Host Event</button></div>
+        <div class="mgrid" id="mgrid"></div>
+      </div>
+      <div id="v-connections" class="panel" style="display:none">
+        <div class="sec-hd"><div class="sec-ttl">Your Network</div></div>
+        <div id="conn-list"></div>
+        <div class="divider"></div>
+        <div class="sec-hd"><div class="sec-ttl">Suggested Minds</div></div>
+        <div id="sug-list"></div>
+      </div>
+      <div id="v-groups" class="panel" style="display:none">
+        <div class="sec-hd"><div class="sec-ttl">Clubs &amp; Groups</div><button class="btn btn-g btn-sm"><i class="ti ti-plus"></i> Found a Club</button></div>
+        <div id="grp-list"></div>
+      </div>
+      <div id="v-profile" class="panel" style="display:none">
+        <div id="prof-view">
+          <div class="pcrd">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+              <div class="av av-g av-xl" id="pv-av">?</div>
+              <div style="flex:1">
+                <div class="prof-name" id="pv-name">—</div>
+                <div class="prof-loc"><i class="ti ti-map-pin" style="font-size:11px"></i> <span id="pv-loc">—</span> · <span id="pv-field">—</span></div>
+                <div class="prof-q" id="pv-quote"></div>
+              </div>
+              <button class="btn btn-o btn-sm" onclick="openEditProf()" style="align-self:flex-start"><i class="ti ti-pencil"></i> Edit</button>
+            </div>
+            <div class="sgrid">
+              <div class="sbox"><div class="snum">47</div><div class="slbl">Arguments</div></div>
+              <div class="sbox"><div class="snum">128</div><div class="slbl">Connections</div></div>
+              <div class="sbox"><div class="snum">12</div><div class="slbl">Debates Won</div></div>
+              <div class="sbox"><div class="snum">6</div><div class="slbl">Clubs</div></div>
+            </div>
+            <div style="font-size:11px;font-weight:600;color:var(--stone-m);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Intellectual Interests</div>
+            <div class="itags" id="pv-ints"></div>
+          </div>
+          <div class="pcrd">
+            <div class="sec-ttl" style="margin-bottom:13px">Recent Arguments</div>
+            <div class="rarg"><span>📜</span>"Deliberative democracy is superior to direct democracy in complex societies"</div>
+            <div class="rarg"><span>📜</span>"Rawls' veil of ignorance remains the most compelling theory of justice"</div>
+            <div class="rarg"><span>📜</span>"Stoic Memento Mori is pragmatically superior to existentialist anxiety"</div>
+          </div>
+        </div>
+        <div id="prof-edit" style="display:none">
+          <div class="pcrd">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+              <div class="av av-g av-xl" id="pe-av">?</div>
+              <div><div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700">Edit Profile</div><div style="font-size:12px;color:var(--stone-l);margin-top:2px">Initials update from your name</div></div>
+            </div>
+            <div class="flbl">Full Name</div><input class="fin" id="e-name" type="text">
+            <div class="flbl">Field / Title</div><input class="fin" id="e-field" type="text">
+            <div class="flbl">Location</div><input class="fin" id="e-loc" type="text">
+            <div class="flbl">Personal Quote</div><input class="fin" id="e-quote" type="text">
+            <div class="flbl">Interests <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--stone-l)">(comma-separated)</span></div>
+            <input class="fin" id="e-ints" type="text">
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-o" onclick="cancelEditProf()">Cancel</button>
+              <button class="btn btn-g" onclick="saveProf()"><i class="ti ti-check"></i> Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="v-notifs" class="panel" style="display:none">
+        <div class="sec-ttl" style="margin-bottom:14px">Alerts</div>
+        <div id="notif-list"></div>
+      </div>
+      <!-- detail panel -->
+      <div class="detail" id="detail">
+        <div class="d-empty" id="d-empty"><i class="ti ti-message-dots"></i><p>Select a debate post to join the conversation</p></div>
+        <div id="d-content" style="display:none;flex-direction:column;height:100%">
+          <div class="d-hd"><div class="d-ttl" id="d-ttl"></div><button class="btn btn-o btn-sm" onclick="closeDetail()"><i class="ti ti-x"></i></button></div>
+          <div class="d-scr" id="d-body"></div>
+          <div class="chat-a">
+            <div class="chat-lbl"><div class="live-d2"></div> Live Conference</div>
+            <div class="chat-ms" id="chat-ms"></div>
+            <div class="chat-ir"><input type="text" id="chat-in" placeholder="Share your argument…" onkeydown="if(event.key==='Enter')sendChat()"><button class="snd" onclick="sendChat()"><i class="ti ti-send" style="font-size:13px"></i></button></div>
+          </div>
+          <div class="con-bar">
+            <button class="btn btn-o btn-sm" onclick="toast('Connection request sent!')"><i class="ti ti-user-plus"></i> Connect</button>
+            <button class="btn btn-o btn-sm" onclick="toast('Starting group…')"><i class="ti ti-users-group"></i> Start Group</button>
+            <button class="btn btn-r btn-sm" style="margin-left:auto" onclick="showScr('lobby')"><i class="ti ti-video"></i> Open Room</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPOSE MODAL -->
+<div class="ov" id="cmp-modal" style="display:none" onclick="if(event.target===this)closeCmp()">
+  <div class="modal">
+    <div class="modal-ttl">Propose a Debate</div>
+    <div class="flbl">Your Thesis</div><input type="text" class="fin" id="c-ttl" placeholder="State your argument clearly and boldly…">
+    <div class="flbl">Elaboration</div><textarea class="fin" id="c-body" placeholder="Expand on your position…"></textarea>
+    <div class="flbl">Category</div>
+    <div class="csel">
+      <button class="copt" onclick="pickCat(this,'ph','Philosophy')">Philosophy</button>
+      <button class="copt" onclick="pickCat(this,'sc','Science')">Science</button>
+      <button class="copt" onclick="pickCat(this,'po','Politics')">Politics</button>
+      <button class="copt" onclick="pickCat(this,'et','Ethics')">Ethics</button>
+      <button class="copt" onclick="pickCat(this,'ec','Economics')">Economics</button>
+      <button class="copt" onclick="pickCat(this,'hi','History')">History</button>
+    </div>
+    <div class="ma"><button class="btn btn-o" onclick="closeCmp()">Cancel</button><button class="btn btn-g" onclick="pubPost()"><i class="ti ti-send"></i> Publish</button></div>
+  </div>
+</div>
+
+<!-- MEETUP MODAL -->
+<div class="ov" id="m-modal" style="display:none" onclick="if(event.target===this)closeMCmp()">
+  <div class="modal">
+    <div class="modal-ttl">Host an Intellectual Meetup</div>
+    <div class="flbl">Event Title</div><input type="text" class="fin" id="m-ttl" placeholder="e.g. 'On Free Will: A Socratic Evening'">
+    <div class="flbl">Description</div><textarea class="fin" id="m-desc" placeholder="What will be discussed?"></textarea>
+    <div class="flbl">Format</div>
+    <div class="csel"><button class="copt on" onclick="pickMType(this,'online')">🌐 Online</button><button class="copt" onclick="pickMType(this,'inperson')">📍 In Person</button></div>
+    <div class="flbl">Date &amp; Location / Link</div><input type="text" class="fin" id="m-date" placeholder="e.g. June 15, 7pm · Athens, Greece">
+    <div class="ma"><button class="btn btn-o" onclick="closeMCmp()">Cancel</button><button class="btn btn-g" onclick="pubMeetup()"><i class="ti ti-calendar-plus"></i> Create Event</button></div>
+  </div>
+</div>
+
+<div class="fbs ing" id="fbs"><div class="fbd"></div><span id="fbs-lbl">Connecting…</span></div>
+<div id="toast"></div>
+
+<script>
+/* ── profile ── */
+const P={name:'',field:'',loc:'',quote:'',ints:[],
+  ini(){return this.name.trim().split(/\s+/).map(w=>w[0].toUpperCase()).slice(0,2).join('')||'?'},
+  first(){return this.name.trim().split(/\s+/)[0]||'You'}};
+let userRole='host', curRoom=null, timerIv=null, micOn=true, camOn=true, chatVis=true;
+let curPost=null, selCat={id:'ph',label:'Philosophy'}, mType='online';
+let posts=[], meetups=[], rFilter='all';
+// roomsDB on window so the module script can write to it
+window.roomsDB = {};
+
+const CAT={ph:'cp-ph',sc:'cp-sc',po:'cp-po',ec:'cp-ec',et:'cp-et',hi:'cp-hi',te:'cp-te'};
+const REPLIES=['Interesting — can you elaborate on your second premise?','I\'d push back on that. The evidence suggests otherwise.','Fascinating. Have you read the relevant literature?','Let me steelman your position before responding.','Can you clarify what you mean by your third premise?','This is precisely where Kantian ethics offers more traction.'];
+const DEMO_ROOMS=[
+  {id:'dr1',title:'Free Will is an Illusion',desc:'Determinism leaves no room for genuine agency. Neuroscience confirms this.',host:'Marcus A.',hIni:'MA',cat:'Philosophy',cap:2,dur:'15 min',durS:900,live:true,guests:1,perms:{mute:true,hand:false,kick:true,rec:false}},
+  {id:'dr2',title:'Democracy is Self-Defeating',desc:'Uninformed mass voting undermines the outcomes democracy is meant to produce.',host:'Dr. Yuki T.',hIni:'YT',cat:'Politics',cap:6,dur:'30 min',durS:1800,live:false,guests:3,perms:{mute:true,hand:true,kick:true,rec:true}},
+  {id:'dr3',title:'AGI surpasses human moral reasoning',desc:'An open-ended exploration of machine ethics and emergent values.',host:'Ravi S.',hIni:'RS',cat:'Technology',cap:8,dur:'Open',durS:0,live:true,guests:5,perms:{mute:false,hand:true,kick:false,rec:true}},
+  {id:'dr4',title:'Stoicism is superior philosophy for modern life',desc:'1-on-1 structured argument. Host argues PRO, guest argues CON.',host:'Elena R.',hIni:'ER',cat:'Philosophy',cap:2,dur:'5 min',durS:300,live:false,guests:0,perms:{mute:true,hand:false,kick:true,rec:false}},
+];
+window._DEMO_ROOMS = DEMO_ROOMS;
+const SAMPLE_POSTS=[
+  {id:'p1',author:'Marcus A.',ini:'MA',ac:'av-s',creds:'Philosopher · Rome',cat:'ph',catLbl:'Philosophy',title:'Consciousness cannot be reduced to physical processes',thesis:'The hard problem of consciousness — why there is subjective experience at all — is fundamentally unsolvable by neuroscience alone. Qualia resist physicalist reduction.',time:'2m ago',replies:24,views:336,live:true,feat:true,args:[{name:'Elena R.',ini:'ER',ac:'av-b',st:'counter',txt:'Integrated Information Theory offers a rigorous mathematical framework. Tononi\'s phi values are physical and measurable.'},{name:'James K.',ini:'JK',ac:'av-s',st:'support',txt:'Nagel\'s bat argument remains unanswered. No third-person account can capture first-person phenomenology.'},{name:'Lena B.',ini:'LB',ac:'av-gr',st:'question',txt:'Isn\'t this an argument from ignorance? Why assume unsolvable rather than merely unsolved?'}],chats:[]},
+  {id:'p2',author:'Dr. Yuki T.',ini:'YT',ac:'av-s',creds:'Economist · Tokyo',cat:'ec',catLbl:'Economics',title:'Universal Basic Income will accelerate inequality, not reduce it',thesis:'By removing means-testing, UBI paradoxically transfers welfare resources toward wealthier recipients who need them least.',time:'14m ago',replies:41,views:574,live:true,feat:false,args:[{name:'Priya M.',ini:'PM',ac:'av-r',st:'counter',txt:'Finland\'s pilot showed no disincentive to work and significant wellbeing gains.'},{name:'Dr. Yuki T.',ini:'YT',ac:'av-s',st:'support',txt:'Finland\'s pilot was small-scale. Macroeconomic effects at national implementation are categorically different.'}],chats:[]},
+  {id:'p3',author:'Fatima Al-R.',ini:'FA',ac:'av-gr',creds:'Bioethicist · Cairo',cat:'et',catLbl:'Ethics',title:'Gene editing for enhancement is ethically obligatory',thesis:'A consequentialist framework demands we reduce preventable suffering where we can. Refusal is not neutrality — it is a choice to allow harm.',time:'1h ago',replies:67,views:938,live:false,feat:true,args:[{name:'Thomas B.',ini:'TB',ac:'av-b',st:'counter',txt:'Only those with resources can access enhancement, permanently stratifying humanity into genetic castes.'},{name:'Fatima Al-R.',ini:'FA',ac:'av-gr',st:'support',txt:'Which is an argument for equitable access, not prohibition. We don\'t ban medicine because it\'s unequally distributed.'}],chats:[]},
+];
+const MEETUP_DATA=[
+  {id:'m1',title:'Socratic Seminar: On Justice',desc:'Structured dialogue on Plato\'s Republic and modern political philosophy.',type:'online',ico:'🏛️',date:'Jun 12 · 7pm UTC',att:24,host:'Sophia V.'},
+  {id:'m2',title:'The Ethics of AI: Open Forum',desc:'Interdisciplinary gathering of philosophers, engineers, and policymakers.',type:'inperson',ico:'🤖',date:'Jun 15 · 6pm · Berlin',att:38,host:'Dr. Lena B.'},
+  {id:'m3',title:'Debate Night: Free Will vs Determinism',desc:'Oxford-style debate. Two teams. Audience votes decide.',type:'online',ico:'⚡',date:'Jun 18 · 8pm EST',att:112,host:'Marcus A.'},
+  {id:'m4',title:'The Vienna Circle Resurrected',desc:'Monthly reading group on logical positivism.',type:'inperson',ico:'📚',date:'Jun 22 · 5pm · Vienna',att:17,host:'Prof. Ernst K.'},
+];
+const CONNS=[{name:'Marcus A.',ini:'MA',ac:'',field:'Philosophy · Rome',tags:['Phenomenology','Stoicism'],on:true},{name:'Dr. Yuki T.',ini:'YT',ac:'av-s',field:'Economics · Tokyo',tags:['Macroeconomics','Game Theory'],on:false},{name:'Fatima Al-R.',ini:'FA',ac:'av-gr',field:'Bioethics · Cairo',tags:['Bioethics','Consequentialism'],on:true}];
+const SUGG=[{name:'Ravi S.',ini:'RS',ac:'av-r',field:'AI Research · Bangalore',tags:['AI Safety','Phil. of Mind'],on:true},{name:'Elena R.',ini:'ER',ac:'av-b',field:'Neuroscience · Berlin',tags:['Consciousness','IIT'],on:true}];
+const GROUPS=[{name:'Neo-Stoic Society',ico:'🌿',mem:84,tag:'Philosophy',desc:'Applying ancient Stoic practice to modern dilemmas'},{name:'Effective Altruism Debate Club',ico:'⚖️',mem:156,tag:'Ethics',desc:'Rigorous debate on EA, longtermism, and moral philosophy'},{name:'Political Economy Forum',ico:'🏦',mem:211,tag:'Economics',desc:'Where political philosophy meets macroeconomics'},{name:'Philosophy of Mind Collective',ico:'🧠',mem:97,tag:'Cognitive Science',desc:'Consciousness, free will, personal identity'}];
+const NOTIFS=[{ico:'ti-message-circle-2',txt:'Marcus A. replied to your argument on consciousness',time:'2 min ago',bg:'#FEF3C7',ic:'#78350F'},{ico:'ti-user-plus',txt:'Dr. Yuki T. wants to connect with you',time:'15 min ago',bg:'#DCFCE7',ic:'#14532D'},{ico:'ti-heart',txt:'47 people endorsed your argument on democracy',time:'1 hour ago',bg:'#FEE2E2',ic:'#7F1D1D'},{ico:'ti-calendar-event',txt:'Reminder: Socratic Seminar starts in 2 hours',time:'2 hours ago',bg:'#E0F2FE',ic:'#0C4A6E'},{ico:'ti-users-group',txt:'Invited to join The Vienna Reading Circle',time:'3 hours ago',bg:'#EDE9FE',ic:'#4C1D95'}];
+
+/* ── screens ── */
+function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById('s-'+id).classList.add('on');if(id==='lobby')updLobby();if(id==='room'){}};
+/* ── onboard ── */
+function pickRole(r){userRole=r;document.getElementById('rb-host').classList.toggle('sel',r==='host');document.getElementById('rb-guest').classList.toggle('sel',r==='guest')}
+function enterLobby(){const n=document.getElementById('ob-name').value.trim();if(!n){toast('Please enter your name first.');return;}P.name=n;P.field=document.getElementById('ob-field').value.trim()||'Intellectual';P.loc='';P.quote='';P.ints=[];applyProf();showScr('lobby');loadRooms();}
+/* ── lobby ── */
+function updLobby(){document.getElementById('lob-av').textContent=P.ini();document.getElementById('lob-name').textContent=P.first();document.getElementById('host-cfg').style.display=userRole==='host'?'':'none';document.getElementById('rooms-h').textContent=userRole==='guest'?'Browse & Join Open Rooms':'Open Rooms';}
+function updCap(v){v=parseInt(v);document.getElementById('cap-n').textContent=v;document.getElementById('cap-lbl').textContent=v===2?'One-on-One Debate':v<=4?'Small Group':v<=8?'Open Forum':'Large Auditorium';}
+function pickSeg(el){el.closest('.segs').querySelectorAll('.seg').forEach(b=>b.classList.remove('on'));el.classList.add('on');}
+function setFilter(el,f){document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));el.classList.add('on');rFilter=f;renderRooms();}
+function createRoom(){
+  const title=document.getElementById('r-title').value.trim();
+  if(!title){toast('Please enter a debate topic.');return;}
+  const dur=document.querySelector('#r-dur .seg.on')?.textContent||'Open';
+  const cat=document.querySelector('#r-cat .seg.on')?.textContent||'Philosophy';
+  const cap=parseInt(document.getElementById('cap-sl').value);
+  const dmap={'1 min':60,'5 min':300,'15 min':900,'30 min':1800,'1 hour':3600,'Open':0};
+  curRoom={id:'r'+Date.now(),title,desc:document.getElementById('r-desc').value.trim(),host:P.name,hIni:P.ini(),cat,cap,dur,durS:dmap[dur]||0,live:true,guests:0,perms:{mute:document.getElementById('p-mute').checked,hand:document.getElementById('p-hand').checked,kick:document.getElementById('p-kick').checked,rec:document.getElementById('p-rec').checked},isHost:true,members:[{name:P.name,ini:P.ini(),isHost:true,muted:false,hand:false}]};
+  if(window._createRoomFB) window._createRoomFB(curRoom).catch(()=>{});
+  enterRoom(curRoom);
+}
+function loadRooms(){DEMO_ROOMS.forEach(r=>window.roomsDB[r.id]=r);renderRooms();setFbs('err','Offline — demo rooms');}
+window.renderRooms=renderRooms;
+function renderRooms(){
+  let rs=Object.values(window.roomsDB);
+  if(rFilter==='1v1')rs=rs.filter(r=>r.cap===2);
+  else if(rFilter==='small')rs=rs.filter(r=>r.cap<=4);
+  else if(rFilter==='group')rs=rs.filter(r=>r.cap>=5);
+  else if(rFilter==='live')rs=rs.filter(r=>r.live);
+  else if(rFilter==='open')rs=rs.filter(r=>r.durS===0||r.dur==='Open');
+  else if(rFilter==='short')rs=rs.filter(r=>r.durS>0&&r.durS<=300);
+  const el=document.getElementById('room-list');
+  if(!rs.length){el.innerHTML='<div class="empty-r"><i class="ti ti-search-off"></i><p>No rooms match this filter.<br>Be the first to open one!</p></div>';return;}
+  el.innerHTML=rs.map(r=>{
+    const full=(r.guests||0)>=(r.cap-1);
+    return`<div class="rcard" onclick="joinRoom('${r.id}')">
+      <div class="rcard-host"><div class="rcard-av">${r.hIni||'?'}</div><div><div class="rcard-hn">${r.host||'Host'}</div><div class="rcard-hs">Host</div></div>${r.live?'<div class="live-pill" style="margin-left:auto"><div class="live-d"></div>LIVE</div>':'<div style="margin-left:auto;font-size:10px;color:rgba(255,255,255,.28)">Waiting</div>'}</div>
+      <div class="rcard-title">${r.title}</div>
+      ${r.desc?`<div class="rcard-desc">${r.desc.substring(0,80)}${r.desc.length>80?'…':''}</div>`:''}
+      <div class="rcard-tags"><span class="rcard-tag">${r.cat}</span><span class="rcard-tag">${r.cap===2?'1-on-1':r.cap<=4?'Small Group':'Forum'}</span><span class="rcard-tag">⏱ ${r.dur}</span>${r.perms?.hand?'<span class="rcard-tag">✋ Hand req.</span>':''}${r.perms?.rec?'<span class="rcard-tag">⏺ Recorded</span>':''}</div>
+      <div class="rcard-foot"><div class="rcard-meta"><span><i class="ti ti-users"></i>${r.guests||0}/${r.cap}</span><span><i class="ti ti-clock"></i>${r.dur}</span></div><button class="btn btn-g btn-sm"${full?' disabled style="opacity:.4;cursor:not-allowed"':''}  onclick="event.stopPropagation();joinRoom('${r.id}')">${full?'Full':'Join Room'}</button></div>
+    </div>`;}).join('');
+}
+function joinRoom(id){
+  const r=window.roomsDB[id]||DEMO_ROOMS.find(x=>x.id===id);if(!r)return;
+  const extras=[{name:'Elena R.',ini:'ER'},{name:'Thomas B.',ini:'TB'},{name:'Priya M.',ini:'PM'},{name:'James K.',ini:'JK'},{name:'Ravi S.',ini:'RS'}];
+  const mems=[{name:r.host,ini:r.hIni||'?',isHost:true,muted:false,hand:false},{name:P.name,ini:P.ini(),isHost:false,muted:false,hand:false}];
+  for(let i=0;i<Math.min((r.guests||0)-1,extras.length);i++)mems.push({...extras[i],isHost:false,muted:Math.random()>.5,hand:false});
+  curRoom={...r,isHost:false,members:mems};
+  if(window._joinRoomFB) window._joinRoomFB(r.id);
+  enterRoom(curRoom);
+}
+/* ── room ── */
+function enterRoom(r){showScr('room');document.getElementById('room-ttl').textContent=r.title;document.getElementById('room-cap').textContent=(r.members?.length||1)+'/'+r.cap;renderVids();startTimer(r);loadRChat();if(r.desc){document.getElementById('arg-ticker').style.display='flex';document.getElementById('ticker-txt').textContent=r.desc;}}
+function renderVids(){
+  if(!curRoom)return;
+  const mems=curRoom.members||[{name:curRoom.host,ini:curRoom.hIni||'?',isHost:true}];
+  const g=document.getElementById('vid-grid');
+  const n=mems.length;
+  g.className='vid-grid '+(n<=1?'vg1':n===2?'vg2':n<=4?'vg4':n<=6?'vg6':'vg8');
+  const speak=Math.floor(Math.random()*n);
+  const sz=n<=2?60:n<=4?48:38;
+  const avCls=['av-g','av-s','av-r','av-gr','av-b'];
+  g.innerHTML=mems.map((m,i)=>{
+    const me=m.name===P.name;
+    return`<div class="vtile${i===speak?' speaking':''}${me?' me':''}">
+      ${m.isHost?'<div class="vtile-host">HOST</div>':''}
+      ${m.muted?'<i class="ti ti-microphone-off vtile-mute"></i>':''}
+      ${m.hand?'<div class="vtile-hand">✋</div>':''}
+      <div class="av ${avCls[i%avCls.length]}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.38)}px">${m.ini}</div>
+      <div class="vtile-name">${me?'You ('+m.ini+')':m.name}</div>
+      <div class="vtile-role">${m.isHost?'Host':me?'Guest':'Debater'}</div>
+    </div>`;}).join('');
+  document.getElementById('room-cap').textContent=mems.length+'/'+curRoom.cap;
+}
+function startTimer(r){clearInterval(timerIv);if(!r.durS){document.getElementById('timer').textContent='⏱ Open';return;}let t=r.durS;const tick=()=>{if(t<=0){clearInterval(timerIv);toast('Time is up! Debate concluded.');document.getElementById('timer').textContent='⏱ 0:00';return;}const m=Math.floor(t/60),s=t%60;document.getElementById('timer').textContent='⏱ '+m+':'+(s<10?'0':'')+s;t--;};tick();timerIv=setInterval(tick,1000);}
+function leaveRoom(){clearInterval(timerIv);if(curRoom&&!curRoom.isHost&&window._leaveRoomFB) window._leaveRoomFB(curRoom.id);curRoom=null;showScr('lobby');toast('You have left the debate room.');}
+function togMic(){micOn=!micOn;const b=document.getElementById('cb-mic');b.classList.toggle('off',!micOn);b.innerHTML='<i class="ti ti-microphone'+(micOn?'':'-off')+'"></i>';toast(micOn?'Microphone on':'Muted');}
+function togCam(){camOn=!camOn;const b=document.getElementById('cb-cam');b.classList.toggle('off',!camOn);b.innerHTML='<i class="ti ti-video'+(camOn?'':'-off')+'"></i>';toast(camOn?'Camera on':'Camera off');}
+function raiseHand(){toast('✋ Hand raised — host notified');const b=document.querySelector('.cb-raise');b.style.background='var(--gold)';b.style.color='var(--stone)';setTimeout(()=>{b.style.background='';b.style.color='';},3000);}
+function togChat(){chatVis=!chatVis;document.getElementById('room-chat').classList.toggle('hide',!chatVis);document.getElementById('cb-chat').classList.toggle('on',chatVis);}
+const rMsgs=[];
+function loadRChat(){
+  rMsgs.length=0;
+  if(curRoom) rMsgs.push({name:curRoom.host,ini:curRoom.hIni||'H',msg:'Welcome to the debate. Let us reason together.',me:false});
+  renderRChat();
+  if(window._listenRChatFB && curRoom){
+    window._listenRChatFB(curRoom.id,msgs=>{
+      // rebuild from Firebase, keeping welcome msg
+      rMsgs.length=1;
+      msgs.forEach(m=>rMsgs.push({name:m.name,ini:m.ini,msg:m.msg,me:m.name===P.name}));
+      renderRChat();
+    });
+  }
+}
+function renderRChat(){const el=document.getElementById('rchat-msgs');el.innerHTML=rMsgs.map(m=>`<div class="rmsg${m.me?' me':''}"><div class="av av-s av-sm" style="display:${m.me?'none':'flex'}">${m.ini}</div><div><div class="rname">${m.me?'You':m.name}</div><div class="rbub ${m.me?'mi':'th'}">${m.msg}</div></div></div>`).join('');el.scrollTop=el.scrollHeight;}
+function sendRChat(){
+  const inp=document.getElementById('rchat-in');
+  const txt=inp.value.trim();
+  if(!txt||!curRoom)return;
+  // optimistic local add
+  rMsgs.push({name:P.name,ini:P.ini(),msg:txt,me:true});
+  inp.value='';renderRChat();
+  // push to Firebase (syncs to cousin instantly)
+  if(window._sendRChatFB){
+    window._sendRChatFB(curRoom.id,P.name,P.ini(),txt);
+  } else {
+    // offline fallback: simulate reply
+    setTimeout(()=>{rMsgs.push({name:curRoom.host,ini:curRoom.hIni||'H',msg:REPLIES[Math.floor(Math.random()*REPLIES.length)],me:false});renderRChat();},900+Math.random()*700);
+  }
+}
+/* ── app ── */
+function goApp(){posts=[...SAMPLE_POSTS];meetups=[...MEETUP_DATA];showScr('app');renderPosts('all');renderMeetups();renderConns();renderGroups();renderNotifs();applyProf();}
+function navApp(v,el){document.querySelectorAll('.sm-it').forEach(i=>i.classList.remove('on'));if(el)el.classList.add('on');['feed','meetups','connections','groups','profile','notifs'].forEach(id=>document.getElementById('v-'+id).style.display='none');document.getElementById('detail').style.display=v==='feed'?'':'none';document.getElementById('v-'+v).style.display='block';document.getElementById('cmp-btn').style.display=v==='feed'?'':'none';const T={feed:'Debate Feed',meetups:'Meetups',connections:'Connections',groups:'Clubs & Groups',profile:'My Profile',notifs:'Alerts'};document.getElementById('app-ptitle').textContent='/ '+T[v];closeMenu();}
+function openMenu(){document.getElementById('slide-menu').classList.add('on');document.getElementById('menu-ov').classList.add('on');}
+function closeMenu(){document.getElementById('slide-menu').classList.remove('on');document.getElementById('menu-ov').classList.remove('on');}
+/* ── feed ── */
+function filterPosts(el,cat){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderPosts(cat);}
+function renderPosts(f){
+  let list=posts;
+  if(f==='live')list=list.filter(p=>p.live);
+  else if(f!=='all')list=list.filter(p=>p.cat===f);
+  document.getElementById('post-list').innerHTML=list.map(p=>`
+    <div class="pcard${p.feat?' feat':''}${curPost&&curPost.id===p.id?' sel':''}" onclick="openPost('${p.id}')">
+      ${p.id==='p1'?'<div class="hot">🔥 HOT</div>':''}
+      <div class="ph"><div class="av av-g av-md">${p.ini}</div><div class="pm"><div class="pa">${p.author}</div><div class="pc">${p.creds}</div></div><div class="pt">${p.time}</div></div>
+      <div class="cpill ${CAT[p.cat]||'cp-xx'}">${p.catLbl}</div>
+      <div class="ptitle">${p.title}</div>
+      <div class="pthesis">${p.thesis.substring(0,120)}…</div>
+      <div class="pft"><div class="pst"><i class="ti ti-message-dots"></i>${p.replies}</div><div class="pst"><i class="ti ti-eye"></i>${p.views.toLocaleString()}</div>${p.live?'<div class="live-b"><div class="live-d2"></div><span class="live-t">LIVE</span></div>':'<div class="act-t">'+p.args.length+' arguments</div>'}</div>
+    </div>`).join('');
+}
+function openPost(id){curPost=posts.find(p=>p.id===id);if(!curPost)return;document.getElementById('d-empty').style.display='none';document.getElementById('d-content').style.display='flex';document.getElementById('d-ttl').textContent=curPost.title;renderDBod();renderFChat();}
+function renderDBod(){
+  document.getElementById('d-body').innerHTML=`
+    <div class="thesis-b"><div class="cpill ${CAT[curPost.cat]||'cp-xx'}" style="margin-bottom:8px">${curPost.catLbl}</div><p>${curPost.thesis}</p><div class="th-auth"><div class="av av-g av-sm">${curPost.ini}</div><span>${curPost.author} · ${curPost.creds}${curPost.live?'<strong style="color:#E53E3E;margin-left:7px">● LIVE</strong>':''}</span></div></div>
+    <div class="args-h">Arguments (${curPost.args.length})</div>
+    ${curPost.args.map(a=>`<div class="ablock ab-${a.st==='counter'?'co':a.st==='support'?'su':'qu'}"><div class="astance as-${a.st==='counter'?'co':a.st==='support'?'su':'qu'}">${a.st==='counter'?'↯ Counter':a.st==='support'?'✓ In Support':'? Challenging'}</div><div class="arow"><div class="av ${a.ac} av-sm">${a.ini}</div><div class="aname">${a.name}</div></div><div class="atext">${a.txt}</div></div>`).join('')}
+    <button class="add-arg" onclick="togArgCmp(this)"><i class="ti ti-plus"></i> Add your argument</button>
+    <div class="arg-cmp" id="arg-cmp" style="display:none"><textarea id="arg-txt" placeholder="State your position clearly…"></textarea><div class="sbts"><button class="btn btn-o btn-xs" onclick="subArg('counter')">↯ Counter</button><button class="btn btn-o btn-xs" onclick="subArg('support')">✓ Support</button><button class="btn btn-o btn-xs" onclick="subArg('question')">? Challenge</button></div></div>`;
+}
+function togArgCmp(b){const a=document.getElementById('arg-cmp');a.style.display=a.style.display==='none'?'block':'none';b.style.display=a.style.display==='block'?'none':'';}
+function subArg(st){const t=document.getElementById('arg-txt').value.trim();if(!t)return;curPost.args.push({name:P.name||'You',ini:P.ini(),ac:'av-g',st,txt:t});curPost.replies++;renderDBod();toast('Argument added.');}
+function closeDetail(){document.getElementById('d-empty').style.display='flex';document.getElementById('d-content').style.display='none';curPost=null;renderPosts('all');}
+function renderFChat(){const el=document.getElementById('chat-ms');if(!curPost)return;el.innerHTML=curPost.chats.map(c=>`<div class="msg${c.me?' me':''}"><div class="av av-g av-sm" style="display:${c.me?'none':'flex'}">${c.ini}</div><div class="bub ${c.me?'mi':'th'}">${c.msg}</div></div>`).join('');el.scrollTop=el.scrollHeight;}
+function sendChat(){const inp=document.getElementById('chat-in');const txt=inp.value.trim();if(!txt||!curPost)return;curPost.chats.push({from:'You',ini:P.ini(),msg:txt,me:true});inp.value='';renderFChat();setTimeout(()=>{curPost.chats.push({from:curPost.author,ini:curPost.ini,msg:REPLIES[Math.floor(Math.random()*REPLIES.length)],me:false});renderFChat();},1000+Math.random()*600);}
+/* ── meetups ── */
+function renderMeetups(){document.getElementById('mgrid').innerHTML=meetups.map(m=>`<div class="mcard"><div class="mb mb-${m.type==='online'?'on':'ip'}"><span class="mb-ic">${m.ico}</span><div class="mt mt-${m.type==='online'?'on':'ip'}">${m.type==='online'?'Online':'In Person'}</div></div><div class="mbody"><div class="m-ttl">${m.title}</div><div class="m-desc">${m.desc.substring(0,75)}…</div><div class="m-meta"><span><i class="ti ti-calendar"></i>${m.date}</span><span><i class="ti ti-users"></i>${m.att}</span></div><button class="btn btn-g btn-sm btn-blk" onclick="toast('RSVP confirmed!')">RSVP</button></div></div>`).join('');}
+function renderConns(){document.getElementById('conn-list').innerHTML=CONNS.map(c=>`<div class="ccrd"><div class="av av-g av-md ${c.ac}">${c.ini}</div><div class="ci"><div class="cn">${c.name}</div><div class="cf">${c.field}</div><div class="ctags">${c.tags.map(t=>`<span class="ctag">${t}</span>`).join('')}</div></div>${c.on?'<div class="odot"></div>':''}<button class="btn btn-o btn-sm" onclick="toast('Opening chat with ${c.name}')"><i class="ti ti-message-circle"></i></button></div>`).join('');document.getElementById('sug-list').innerHTML=SUGG.map(c=>`<div class="ccrd"><div class="av av-g av-md ${c.ac}">${c.ini}</div><div class="ci"><div class="cn">${c.name}</div><div class="cf">${c.field}</div><div class="ctags">${c.tags.map(t=>`<span class="ctag">${t}</span>`).join('')}</div></div>${c.on?'<div class="odot"></div>':''}<button class="btn btn-g btn-sm" onclick="toast('Request sent to ${c.name}!')"><i class="ti ti-user-plus"></i> Connect</button></div>`).join('');}
+function renderGroups(){document.getElementById('grp-list').innerHTML=GROUPS.map(g=>`<div class="gcrd"><div class="gico">${g.ico}</div><div class="gi"><div class="gn">${g.name}</div><div class="gm">${g.mem} members · ${g.tag}</div><div class="gd">${g.desc}</div></div><button class="btn btn-g btn-sm" onclick="toast('Joined: ${g.name}!')">Join</button></div>`).join('');}
+function renderNotifs(){document.getElementById('notif-list').innerHTML=NOTIFS.map(n=>`<div class="nit"><div class="nico" style="background:${n.bg}"><i class="ti ${n.ico}" style="font-size:16px;color:${n.ic}"></i></div><div><div style="font-size:13px;line-height:1.5;color:var(--ink)">${n.txt}</div><div style="font-size:11px;color:var(--stone-l);margin-top:3px">${n.time}</div></div></div>`).join('');}
+/* ── compose ── */
+function openCmp(){document.getElementById('cmp-modal').style.display='flex';}
+function closeCmp(){document.getElementById('cmp-modal').style.display='none';}
+function openMCmp(){document.getElementById('m-modal').style.display='flex';}
+function closeMCmp(){document.getElementById('m-modal').style.display='none';}
+function pickCat(el,id,label){el.closest('.csel').querySelectorAll('.copt').forEach(b=>b.classList.remove('on'));el.classList.add('on');selCat={id,label};}
+function pickMType(el,t){el.closest('.csel').querySelectorAll('.copt').forEach(b=>b.classList.remove('on'));el.classList.add('on');mType=t;}
+function pubPost(){const t=document.getElementById('c-ttl').value.trim();if(!t){toast('Please enter a thesis.');return;}posts.unshift({id:'p'+Date.now(),author:P.name||'You',ini:P.ini(),ac:'av-g',creds:P.field||'Intellectual',cat:selCat.id,catLbl:selCat.label,title:t,thesis:document.getElementById('c-body').value.trim()||t,time:'just now',replies:0,views:1,live:true,feat:false,args:[],chats:[]});closeCmp();document.getElementById('c-ttl').value='';document.getElementById('c-body').value='';renderPosts('all');toast('Argument published!');}
+function pubMeetup(){const t=document.getElementById('m-ttl').value.trim();if(!t){toast('Please enter an event title.');return;}meetups.unshift({id:'m'+Date.now(),title:t,desc:document.getElementById('m-desc').value.trim()||'A new intellectual gathering.',type:mType,ico:'🎯',date:document.getElementById('m-date').value.trim()||'TBD',att:1,host:P.name||'You'});closeMCmp();document.getElementById('m-ttl').value='';document.getElementById('m-desc').value='';document.getElementById('m-date').value='';renderMeetups();toast('Event created!');}
+/* ── profile ── */
+function applyProf(){const ini=P.ini(),first=P.first();const ids={['sm-av']:ini,['sm-name']:P.name||'—',['sm-field']:P.field||'—',['lob-av']:ini,['lob-name']:first,['pv-av']:ini,['pv-name']:P.name||'—',['pv-loc']:P.loc||'—',['pv-field']:P.field||'—',['pv-quote']:P.quote||''};Object.entries(ids).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});const pi=document.getElementById('pv-ints');if(pi)pi.innerHTML=P.ints.map(i=>`<span class="itag">${i}</span>`).join('');const ct=document.querySelector('.cmp-txt');if(ct)ct.textContent=`What's your thesis today, ${first}? Share an argument worth debating…`;document.querySelectorAll('.cmp-av').forEach(a=>a.textContent=ini);}
+function openEditProf(){document.getElementById('prof-view').style.display='none';document.getElementById('prof-edit').style.display='block';document.getElementById('e-name').value=P.name;document.getElementById('e-field').value=P.field;document.getElementById('e-loc').value=P.loc;document.getElementById('e-quote').value=P.quote.replace(/^"|"$/g,'');document.getElementById('e-ints').value=P.ints.join(', ');document.getElementById('pe-av').textContent=P.ini();document.getElementById('e-name').oninput=function(){const t=this.value.trim();document.getElementById('pe-av').textContent=t?t.split(/\s+/).map(w=>w[0].toUpperCase()).slice(0,2).join(''):'?';};}
+function cancelEditProf(){document.getElementById('prof-edit').style.display='none';document.getElementById('prof-view').style.display='block';}
+function saveProf(){const n=document.getElementById('e-name').value.trim();if(!n){toast('Please enter your name.');return;}P.name=n;P.field=document.getElementById('e-field').value.trim()||P.field;P.loc=document.getElementById('e-loc').value.trim()||P.loc;const q=document.getElementById('e-quote').value.trim();P.quote=q?(q.startsWith('"')?q:'"'+q+'"'):P.quote;const ints=document.getElementById('e-ints').value.split(',').map(s=>s.trim()).filter(Boolean);if(ints.length)P.ints=ints;applyProf();cancelEditProf();toast('Profile updated!');}
+/* ── firebase status ── */
+function setFbs(cls,txt){const el=document.getElementById('fbs');if(el){el.className='fbs '+cls;document.getElementById('fbs-lbl').textContent=txt;}}
+setFbs('ing','Connecting…');
+/* ── toast ── */
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(20px)';},2800);}
+/* ── keyboard ── */
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCmp();closeMCmp();closeMenu();}});
+</script>
+
+<!-- Firebase must live in its own type="module" script so ES imports work -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getDatabase, ref, push, set, onValue } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCW7n3yCR5ep2I1cImredfeFtrF_-mCm9A",
+  authDomain: "acro-debate.firebaseapp.com",
+  databaseURL: "https://acro-debate-default-rtdb.firebaseio.com",
+  projectId: "acro-debate",
+  storageBucket: "acro-debate.firebasestorage.app",
+  messagingSenderId: "438378994669",
+  appId: "1:438378994669:web:563bc7f72999d1cffb65e4"
+};
+
+try {
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Signal success to the main script
+  window.setFbs('conn', 'Live — connected ✓');
+
+  // ── CREATE ROOM (host) ──────────────────────────────────────
+  window._createRoomFB = (room) =>
+    set(ref(db, 'rooms/' + room.id), {
+      title: room.title, desc: room.desc || '',
+      host: room.host, hIni: room.hIni,
+      cat: room.cat, cap: room.cap,
+      dur: room.dur, durS: room.durS,
+      live: true, guests: 0,
+      perms: room.perms, createdAt: Date.now()
+    });
+
+  // ── LISTEN TO ALL ROOMS (lobby live feed) ──────────────────
+  onValue(ref(db, 'rooms'), snap => {
+    window.roomsDB = {};
+    snap.forEach(child => {
+      window.roomsDB[child.key] = { ...child.val(), id: child.key };
+    });
+    if (document.getElementById('s-lobby').classList.contains('on')) {
+      window.renderRooms();
+    }
+    window.setFbs('conn', 'Live — connected ✓');
+  }, err => {
+    console.warn('DB rooms error:', err);
+    window.setFbs('err', 'Sync error');
+  });
+
+  // ── SEND ROOM CHAT ─────────────────────────────────────────
+  window._sendRChatFB = (roomId, name, ini, msg) =>
+    push(ref(db, 'rchats/' + roomId), { name, ini, msg, ts: Date.now() });
+
+  // ── LISTEN TO ROOM CHAT ────────────────────────────────────
+  window._listenRChatFB = (roomId, cb) =>
+    onValue(ref(db, 'rchats/' + roomId), snap => {
+      const msgs = [];
+      snap.forEach(c => msgs.push(c.val()));
+      cb(msgs);
+    });
+
+  // ── GUEST COUNT ────────────────────────────────────────────
+  window._joinRoomFB = (roomId) => {
+    const r = window.roomsDB[roomId];
+    if (r) set(ref(db, 'rooms/' + roomId + '/guests'), (r.guests || 0) + 1);
+  };
+  window._leaveRoomFB = (roomId) => {
+    const r = window.roomsDB[roomId];
+    if (r) set(ref(db, 'rooms/' + roomId + '/guests'), Math.max(0, (r.guests || 1) - 1));
+  };
+
+} catch(e) {
+  console.warn('Firebase init failed:', e);
+  window.setFbs('err', 'Offline — demo mode');
+  // fall back to demo rooms
+  const DEMO = window._DEMO_ROOMS || [];
+  DEMO.forEach(r => { window.roomsDB[r.id] = r; });
+  window.renderRooms();
+}
+</script>
+</body>
+</html>
