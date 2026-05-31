@@ -41,6 +41,9 @@ dependencies:
   # State management
   provider: ^6.1.2
 
+  # WebRTC
+  flutter_webrtc: ^1.4.0
+
   # UI & utilities
   google_fonts: ^6.2.1
   timeago: ^3.7.0

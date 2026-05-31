@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/app_state.dart';
+import '../services/webrtc_service.dart';
 import '../models/debate_room.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
@@ -26,9 +28,20 @@ class _RoomScreenState extends State<RoomScreen> {
   int _timeLeft = 0;
   StreamSubscription? _chatSub;
 
+  WebRTCService? _webrtc;
+  final _localRenderer = RTCVideoRenderer();
+  final _remoteRenderer = RTCVideoRenderer();
+  bool _localReady = false;
+  bool _remoteReady = false;
+  StreamSubscription? _localStreamSub;
+  StreamSubscription? _remoteStreamSub;
+
   @override
   void initState() {
     super.initState();
+    Future.wait([_localRenderer.initialize(), _remoteRenderer.initialize()])
+        .then((_) => _startWebRTC());
+
     final state = context.read<AppState>();
     final room = state.currentRoom;
     if (room != null) {
@@ -53,6 +66,28 @@ class _RoomScreenState extends State<RoomScreen> {
           }
         });
       });
+    }
+  }
+
+  Future<void> _startWebRTC() async {
+    final room = context.read<AppState>().currentRoom;
+    if (room == null) return;
+    _webrtc = WebRTCService(roomId: room.id, isHost: room.isHost);
+
+    _localStreamSub = _webrtc!.onLocalStream.listen((stream) {
+      if (!mounted) return;
+      setState(() { _localRenderer.srcObject = stream; _localReady = true; });
+    });
+
+    _remoteStreamSub = _webrtc!.onRemoteStream.listen((stream) {
+      if (!mounted) return;
+      setState(() { _remoteRenderer.srcObject = stream; _remoteReady = true; });
+    });
+
+    try {
+      await _webrtc!.start();
+    } catch (_) {
+      // Camera permission denied or unavailable — avatars shown as fallback
     }
   }
 
@@ -106,6 +141,11 @@ class _RoomScreenState extends State<RoomScreen> {
   void dispose() {
     _timer?.cancel();
     _chatSub?.cancel();
+    _localStreamSub?.cancel();
+    _remoteStreamSub?.cancel();
+    _webrtc?.dispose();
+    _localRenderer.dispose();
+    _remoteRenderer.dispose();
     _chatCtrl.dispose();
     _chatScroll.dispose();
     super.dispose();
@@ -285,6 +325,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 active: _micOn,
                 onTap: () {
                   setState(() => _micOn = !_micOn);
+                  _webrtc?.toggleMic(_micOn);
                   ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(_micOn ? 'Microphone on' : 'Muted')));
                 },
@@ -294,6 +335,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 active: _camOn,
                 onTap: () {
                   setState(() => _camOn = !_camOn);
+                  _webrtc?.toggleCamera(_camOn);
                   ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(_camOn ? 'Camera on' : 'Camera off')));
                 },
@@ -338,7 +380,7 @@ class _RoomScreenState extends State<RoomScreen> {
     final members = room.members;
     final n = members.length;
     final avColors = [AvatarStyle.gold, AvatarStyle.stone, AvatarStyle.red, AvatarStyle.green, AvatarStyle.blue];
-    final speakIdx = Random().nextInt(n);
+    final myName = context.read<AppState>().profile.name;
 
     return GridView.builder(
       padding: const EdgeInsets.all(14),
@@ -350,76 +392,81 @@ class _RoomScreenState extends State<RoomScreen> {
       itemCount: n,
       itemBuilder: (_, i) {
         final m = members[i];
-        final isMe = m.name == context.read<AppState>().profile.name;
-        final speaking = i == speakIdx;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1A1510), Color(0xFF2C2820)],
-            ),
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: speaking
-                  ? AcroColors.gold
-                  : isMe
-                      ? AcroColors.green.withOpacity(0.45)
-                      : Colors.white.withOpacity(0.06),
-              width: speaking ? 2 : 1,
-            ),
-            boxShadow: speaking
-                ? [BoxShadow(color: AcroColors.gold.withOpacity(0.25), blurRadius: 8)]
-                : [],
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AcroAvatar(
-                        initials: m.initials,
-                        size: n <= 2 ? 60 : n <= 4 ? 48 : 38,
-                        style: avColors[i % avColors.length]),
-                    const SizedBox(height: 8),
-                    Text(isMe ? 'You (${m.initials})' : m.name,
-                        style: const TextStyle(fontSize: 11, color: Colors.white60)),
-                  ],
-                ),
+        final isMe = m.name == myName;
+        final showVideo = isMe ? (_localReady && _camOn) : _remoteReady;
+        final renderer = isMe ? _localRenderer : _remoteRenderer;
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF1A1510), Color(0xFF2C2820)],
               ),
-              if (m.isHost)
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                color: isMe
+                    ? AcroColors.green.withOpacity(0.45)
+                    : Colors.white.withOpacity(0.06),
+              ),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (showVideo)
+                  RTCVideoView(renderer,
+                      mirror: isMe,
+                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
+                else
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AcroAvatar(
+                            initials: m.initials,
+                            size: n <= 2 ? 60 : n <= 4 ? 48 : 38,
+                            style: avColors[i % avColors.length]),
+                        const SizedBox(height: 8),
+                        Text(isMe ? 'You (${m.initials})' : m.name,
+                            style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                      ],
+                    ),
+                  ),
+                if (m.isHost)
+                  Positioned(
+                    top: 7, right: 7,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AcroColors.gold.withOpacity(0.15),
+                        border: Border.all(color: AcroColors.gold.withOpacity(0.25)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('HOST',
+                          style: TextStyle(fontSize: 9, color: AcroColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                    ),
+                  ),
                 Positioned(
-                  top: 7, right: 7,
+                  bottom: 7, left: 7,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AcroColors.gold.withOpacity(0.15),
-                      border: Border.all(color: AcroColors.gold.withOpacity(0.25)),
+                      color: Colors.black.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text('HOST',
-                        style: TextStyle(fontSize: 9, color: AcroColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                    child: Text(m.isHost ? 'Host' : isMe ? 'You' : 'Guest',
+                        style: const TextStyle(fontSize: 9, color: Colors.white38)),
                   ),
                 ),
-              Positioned(
-                bottom: 7, left: 7,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(8),
+                if (!_micOn && isMe)
+                  const Positioned(
+                    bottom: 7, right: 7,
+                    child: Icon(Icons.mic_off, size: 12, color: AcroColors.redLight),
                   ),
-                  child: Text(m.isHost ? 'Host' : isMe ? 'Guest' : 'Debater',
-                      style: const TextStyle(fontSize: 9, color: Colors.white38)),
-                ),
-              ),
-              if (m.muted)
-                const Positioned(
-                  bottom: 7, right: 7,
-                  child: Icon(Icons.mic_off, size: 12, color: AcroColors.redLight),
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },
