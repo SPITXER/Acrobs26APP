@@ -29,13 +29,26 @@ class WebRTCService {
   WebRTCService({required this.roomId, required this.isHost});
 
   Future<void> start() async {
-    _localStream = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': true});
-    _localStreamCtrl.add(_localStream);
+    // Gracefully degrade: video+audio → audio only → no media
+    // Peer connection is always created so the remote stream can still be received
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': true});
+    } catch (_) {
+      try {
+        _localStream = await navigator.mediaDevices.getUserMedia({'video': false, 'audio': true});
+      } catch (_) {
+        // No media devices at all — will still receive remote tracks
+      }
+    }
+
+    if (_localStream != null) _localStreamCtrl.add(_localStream);
 
     _pc = await createPeerConnection(_iceConfig);
 
-    for (final track in _localStream!.getTracks()) {
-      _pc!.addTrack(track, _localStream!);
+    if (_localStream != null) {
+      for (final track in _localStream!.getTracks()) {
+        _pc!.addTrack(track, _localStream!);
+      }
     }
 
     _pc!.onTrack = (event) {
