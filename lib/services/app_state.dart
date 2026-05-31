@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../models/user_profile.dart';
 import '../models/debate_room.dart';
 import '../models/post.dart';
@@ -9,6 +11,62 @@ class AppState extends ChangeNotifier {
   List<Post> posts = List.from(samplePosts);
   Map<String, DebateRoom> roomsDB = {};
   String roomFilter = 'all';
+  StreamSubscription? _roomsSub;
+
+  AppState() {
+    _listenToRooms();
+  }
+
+  void _listenToRooms() {
+    _roomsSub = FirebaseDatabase.instance.ref('rooms').onValue.listen(
+      (event) {
+        roomsDB = {};
+        if (event.snapshot.exists) {
+          final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+          data.forEach((key, value) {
+            roomsDB[key.toString()] =
+                DebateRoom.fromMap(key.toString(), Map<dynamic, dynamic>.from(value as Map));
+          });
+        }
+        notifyListeners();
+      },
+      onError: (_) => notifyListeners(),
+    );
+  }
+
+  Future<void> createRoomFB(DebateRoom room) async {
+    try {
+      await FirebaseDatabase.instance.ref('rooms/${room.id}').set(room.toMap());
+    } catch (_) {}
+  }
+
+  Future<void> joinRoomFB(String roomId) async {
+    try {
+      final r = roomsDB[roomId];
+      if (r != null) {
+        await FirebaseDatabase.instance
+            .ref('rooms/$roomId/guests')
+            .set(r.guestCount + 1);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> leaveRoomFB(String roomId) async {
+    try {
+      final r = roomsDB[roomId];
+      if (r != null) {
+        await FirebaseDatabase.instance
+            .ref('rooms/$roomId/guests')
+            .set((r.guestCount - 1).clamp(0, 999));
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _roomsSub?.cancel();
+    super.dispose();
+  }
 
   void setProfile({
     required String name,

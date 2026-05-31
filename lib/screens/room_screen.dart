@@ -100,7 +100,10 @@ class _RoomScreenState extends State<RoomScreen> {
 
   void _leave() {
     _timer?.cancel();
-    context.read<AppState>().leaveRoom();
+    final state = context.read<AppState>();
+    final room = state.currentRoom;
+    if (room != null && !room.isHost) state.leaveRoomFB(room.id);
+    state.leaveRoom();
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You have left the debate room.')));

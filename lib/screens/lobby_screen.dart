@@ -72,6 +72,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       ],
     );
     state.enterRoom(room);
+    state.createRoomFB(room);
     Navigator.push(context, MaterialPageRoute(builder: (_) => const RoomScreen()));
   }
 
@@ -270,15 +271,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     room: rooms[i],
                     onJoin: () {
                       final r = rooms[i];
-                      final extras = [
-                        RoomMember(name: 'Elena R.', initials: 'ER'),
-                        RoomMember(name: 'Thomas B.', initials: 'TB'),
-                        RoomMember(name: 'Priya M.', initials: 'PM'),
-                      ];
                       final mems = [
                         RoomMember(name: r.host, initials: r.hostInitials, isHost: true),
                         RoomMember(name: state.profile.name, initials: state.profile.initials),
-                        ...extras.take(r.guestCount > 1 ? r.guestCount - 1 : 0),
                       ];
                       state.enterRoom(DebateRoom(
                         id: r.id, title: r.title, desc: r.desc,
@@ -288,6 +283,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         isLive: r.isLive, guestCount: r.guestCount,
                         perms: r.perms, isHost: false, members: mems,
                       ));
+                      state.joinRoomFB(r.id);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const RoomScreen()));
                     },
                   ),
