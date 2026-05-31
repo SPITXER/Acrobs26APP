@@ -62,6 +62,32 @@ class AppState extends ChangeNotifier {
     } catch (_) {}
   }
 
+  StreamSubscription listenToRoomChat(String roomId, void Function(List<Map>) onMessages) {
+    return FirebaseDatabase.instance.ref('rchats/$roomId').onValue.listen((event) {
+      final msgs = <Map>[];
+      if (event.snapshot.exists) {
+        final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+        final entries = data.entries.toList()
+          ..sort((a, b) => ((a.value as Map)['ts'] ?? 0).compareTo((b.value as Map)['ts'] ?? 0));
+        for (final e in entries) {
+          msgs.add(Map<dynamic, dynamic>.from(e.value as Map));
+        }
+      }
+      onMessages(msgs);
+    });
+  }
+
+  Future<void> sendRoomChatFB(String roomId, String name, String ini, String text) async {
+    try {
+      await FirebaseDatabase.instance.ref('rchats/$roomId').push().set({
+        'name': name,
+        'ini': ini,
+        'msg': text,
+        'ts': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _roomsSub?.cancel();

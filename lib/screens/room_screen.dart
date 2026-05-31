@@ -24,24 +24,35 @@ class _RoomScreenState extends State<RoomScreen> {
   final List<_ChatMsg> _messages = [];
   Timer? _timer;
   int _timeLeft = 0;
-
-  final _replies = [
-    'Interesting — can you elaborate on your second premise?',
-    "I'd push back on that. The evidence suggests otherwise.",
-    'Fascinating. Have you read the relevant literature?',
-    'Let me steelman your position before responding.',
-    'Can you clarify what you mean by your third premise?',
-    'This is precisely where Kantian ethics offers more traction.',
-  ];
+  StreamSubscription? _chatSub;
 
   @override
   void initState() {
     super.initState();
-    final room = context.read<AppState>().currentRoom;
+    final state = context.read<AppState>();
+    final room = state.currentRoom;
     if (room != null) {
-      _messages.add(_ChatMsg(
-          name: room.host, ini: room.hostInitials, text: 'Welcome to the debate. Let us reason together.', isMe: false));
       _startTimer(room);
+      _chatSub = state.listenToRoomChat(room.id, (msgs) {
+        if (!mounted) return;
+        setState(() {
+          _messages.clear();
+          for (final m in msgs) {
+            _messages.add(_ChatMsg(
+              name: m['name'] ?? '',
+              ini: m['ini'] ?? '?',
+              text: m['msg'] ?? '',
+              isMe: m['name'] == state.profile.name,
+            ));
+          }
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_chatScroll.hasClients) {
+            _chatScroll.animateTo(_chatScroll.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+          }
+        });
+      });
     }
   }
 
@@ -73,29 +84,11 @@ class _RoomScreenState extends State<RoomScreen> {
   void _sendChat() {
     final text = _chatCtrl.text.trim();
     if (text.isEmpty) return;
-    final profile = context.read<AppState>().profile;
-    setState(() {
-      _messages.add(_ChatMsg(name: profile.name, ini: profile.initials, text: text, isMe: true));
-    });
+    final state = context.read<AppState>();
+    final room = state.currentRoom;
+    if (room == null) return;
     _chatCtrl.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        _chatScroll.animateTo(_chatScroll.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
-    final room = context.read<AppState>().currentRoom;
-    Future.delayed(Duration(milliseconds: 900 + Random().nextInt(700)), () {
-      if (mounted) {
-        setState(() {
-          _messages.add(_ChatMsg(
-              name: room?.host ?? 'Host',
-              ini: room?.hostInitials ?? 'H',
-              text: _replies[Random().nextInt(_replies.length)],
-              isMe: false));
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) =>
-            _chatScroll.animateTo(_chatScroll.position.maxScrollExtent,
-                duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
-      }
-    });
+    state.sendRoomChatFB(room.id, state.profile.name, state.profile.initials, text);
   }
 
   void _leave() {
@@ -112,6 +105,7 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _chatSub?.cancel();
     _chatCtrl.dispose();
     _chatScroll.dispose();
     super.dispose();
