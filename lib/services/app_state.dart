@@ -337,6 +337,100 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
+  // Symposium matchmaking
+  // ---------------------------------------------------------------------------
+
+  Future<void> publishToSymposiumPool() async {
+    await _db.ref('symposium_pool/${profile.uid}').set({
+      'uid': profile.uid,
+      'name': profile.name,
+      'field': profile.field,
+      'interests': profile.interests,
+      'quote': profile.quote,
+      'ts': ServerValue.timestamp,
+    });
+  }
+
+  Future<void> removeFromSymposiumPool() async {
+    await _db.ref('symposium_pool/${profile.uid}').remove();
+  }
+
+  Stream<List<Map<String, dynamic>>> symposiumPoolStream() {
+    return _db.ref('symposium_pool').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      final data = Map<String, dynamic>.from(raw);
+      data.remove(profile.uid);
+      return data.values
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList()
+        ..sort((a, b) =>
+            ((a['ts'] ?? 0) as int).compareTo((b['ts'] ?? 0) as int));
+    });
+  }
+
+  Future<void> sendSymposiumRequest(String toUid) async {
+    final reqId = _uuid.v4();
+    await _db.ref('requests/$toUid/$reqId').set({
+      'reqId': reqId,
+      'fromUid': profile.uid,
+      'fromName': profile.name,
+      'fromField': profile.field,
+      'fromInterests': profile.interests,
+      'fromQuote': profile.quote,
+      'ts': ServerValue.timestamp,
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> requestsStream() {
+    return _db.ref('requests/${profile.uid}').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      final data = Map<String, dynamic>.from(raw);
+      return data.entries
+          .map((e) => Map<String, dynamic>.from(e.value as Map))
+          .toList()
+        ..sort((a, b) =>
+            ((a['ts'] ?? 0) as int).compareTo((b['ts'] ?? 0) as int));
+    });
+  }
+
+  Future<void> acceptSymposiumRequest(Map<String, dynamic> req) async {
+    final fromUid = req['fromUid'] as String;
+    final fromName = req['fromName'] as String? ?? 'Anonymous';
+    final fromIni = _initials(fromName);
+    final reqId = req['reqId'] as String;
+    final roomId = 'r${DateTime.now().millisecondsSinceEpoch}';
+
+    await _db.ref().update({
+      'requests/${profile.uid}/$reqId': null,
+      'symposium_pool/${profile.uid}': null,
+      'symposium_pool/$fromUid': null,
+      'matches/${profile.uid}': {
+        'roomId': roomId,
+        'partnerId': fromUid,
+        'partnerName': fromName,
+        'partnerIni': fromIni,
+        'isHost': true,
+      },
+      'matches/$fromUid': {
+        'roomId': roomId,
+        'partnerId': profile.uid,
+        'partnerName': profile.name,
+        'partnerIni': profile.initials,
+        'isHost': false,
+      },
+      'rooms/$roomId': _buildRoomMap(roomId, 'Symposium'),
+    });
+  }
+
+  Future<void> declineSymposiumRequest(String reqId) async {
+    await _db.ref('requests/${profile.uid}/$reqId').remove();
+  }
+
+  // ---------------------------------------------------------------------------
   // Legacy stubs — kept so LobbyScreen (used by AppScreen feed) compiles.
   // LobbyScreen is mothballed; these are no-ops.
   // ---------------------------------------------------------------------------

@@ -191,3 +191,4 @@ and take it to the
 Ranking system
 - Socartes participant badges (built on a voting system? or Merit - Number of hours on the app) system combo
 Agora - Sohpisticated ideas generally for fun things
+Bcla
