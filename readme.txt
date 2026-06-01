@@ -177,3 +177,17 @@ Go to Live Share panel → Shared Terminals → Share Terminal
 Both participants open the same file
 Type prompts there, then paste them into Claude — clunky but works if terminal sharing isn't available
 The terminal approach is the most seamless. The VS Code extension's chat panel itself cannot be shared through Live Share since it's a UI panel, not a file or terminal.
+
+
+Side room\Open Table addition Our feed version
+subfunctions - thumbs up or down 
+Comments
+Termintate option
+Nominate - take the idea to the Symposium - Premium feature
+- Limited supply of tables
+expration date (40 days) in stoa, if you like your debate/argument/chat, and want to keep it for as much as you like , then nominate
+and take it to the
+ symposium
+Ranking system
+- Socartes participant badges (built on a voting system? or Merit - Number of hours on the app) system combo
+Agora - Sohpisticated ideas generally for fun things

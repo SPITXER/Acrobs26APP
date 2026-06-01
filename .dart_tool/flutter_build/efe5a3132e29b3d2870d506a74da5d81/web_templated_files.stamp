@@ -1,0 +1,1 @@
+{"inputs":["/workspaces/Acrobs26APP/web/*/index.html","/workspaces/Acrobs26APP/web/flutter_bootstrap.js","/home/codespace/flutter/bin/cache/engine.stamp"],"outputs":["/workspaces/Acrobs26APP/build/web/*/index.html","/workspaces/Acrobs26APP/build/web/flutter_bootstrap.js"],"buildKey":"[{\"compileTarget\":\"dart2js\",\"renderer\":\"canvaskit\",\"mainJsPath\":\"main.dart.js\"}]"}
