@@ -153,7 +153,7 @@ class AppState extends ChangeNotifier {
       if (!event.snapshot.exists) return 0;
       final raw = event.snapshot.value;
       if (raw is! Map) return 0;
-      return (raw as Map).length;
+      return raw.length;
     });
   }
 
@@ -166,7 +166,7 @@ class AppState extends ChangeNotifier {
       if (!event.snapshot.exists) return;
       final raw = event.snapshot.value;
       if (raw is! Map) return;
-      final data = Map<String, dynamic>.from(raw as Map);
+      final data = Map<String, dynamic>.from(raw);
       data.remove(uid);
       if (data.isEmpty) return;
 
@@ -238,7 +238,7 @@ class AppState extends ChangeNotifier {
       if (!event.snapshot.exists) return <Map<String, dynamic>>[];
       final raw = event.snapshot.value;
       if (raw is! Map) return <Map<String, dynamic>>[];
-      final data = Map<String, dynamic>.from(raw as Map);
+      final data = Map<String, dynamic>.from(raw);
       data.remove(profile.uid);
       return data.values
           .map((v) => Map<String, dynamic>.from(v as Map))

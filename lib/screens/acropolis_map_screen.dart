@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/acro_theme.dart';
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 
@@ -56,7 +55,6 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
 
               return GestureDetector(
                 onTapDown: (d) => _handleTap(d.localPosition, agoraRect, stoaRect, sympRect),
-                onHover: (d) => _handleHover(d.localPosition, agoraRect, stoaRect, sympRect),
                 child: MouseRegion(
                   onHover: (e) => _handleHover(e.localPosition, agoraRect, stoaRect, sympRect),
                   onExit: (_) => setState(() => _hovered = null),
@@ -131,7 +129,6 @@ class _AcropolisPainter extends CustomPainter {
   static const _gold    = Color(0xFFC9A84C);
   static const _goldLt  = Color(0xFFE8D5A3);
   static const _red     = Color(0xFF8B2E2E);
-  static const _blue    = Color(0xFF1E4F8C);
   static const _maroon  = Color(0xFF6B1A1A);
 
   @override
