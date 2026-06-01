@@ -27,7 +27,7 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release
+        run: flutter build web --release --base-href /Acrobs26APP/
 
       - name: Update docs/ and push
         run: |
