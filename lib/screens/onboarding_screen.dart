@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
 import 'lobby_screen.dart';
+import 'acropolis_map_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -31,7 +32,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           role: _role,
         );
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LobbyScreen()),
+      MaterialPageRoute(
+        builder: (_) => AcropolisMapScreen(
+          onZoneTap: (zone) {
+            // TODO: navigate to each mode screen
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${zone.name.toUpperCase()} — coming soon')),
+            );
+          },
+        ),
+      ),
     );
   }
 

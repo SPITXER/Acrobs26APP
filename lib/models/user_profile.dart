@@ -1,18 +1,22 @@
+import 'acro_mode.dart';
+
 class UserProfile {
+  String uid;
   String name;
   String field;
   String location;
   String quote;
   List<String> interests;
-  String role; // 'host' or 'guest'
+  AcroMode? mode;
 
   UserProfile({
+    this.uid = '',
     this.name = '',
     this.field = '',
     this.location = '',
     this.quote = '',
     this.interests = const [],
-    this.role = 'host',
+    this.mode,
   });
 
   String get initials {

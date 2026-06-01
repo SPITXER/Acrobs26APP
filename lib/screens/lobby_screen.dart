@@ -79,7 +79,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final isHost = state.profile.role == 'host';
+    const isHost = true;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F0E17),
@@ -213,7 +213,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                state.profile.role == 'guest' ? 'Browse & Join Open Rooms' : 'Open Rooms',
+                'Open Rooms',
                 style: GoogleFonts.playfairDisplay(fontSize: 15, color: Colors.white),
               ),
               const SizedBox(height: 10),

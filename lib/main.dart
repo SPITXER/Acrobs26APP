@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/app_state.dart';
 import 'theme/acro_theme.dart';
-import 'screens/onboarding_screen.dart';
+import 'screens/acropolis_map_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class AcroApp extends StatelessWidget {
       title: 'Acro — The Agora of Ideas',
       theme: AcroTheme.theme,
       debugShowCheckedModeBanner: false,
-      home: const OnboardingScreen(),
+      home: const AcropolisMapScreen(),
     );
   }
 }
