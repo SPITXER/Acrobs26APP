@@ -3,588 +3,380 @@ import 'dart:math' as math;
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 
-const double _px = 5.0;
+const double _px = 2.0;
 
 enum AcropolisZone { agora, stoa, acropolis }
 
+const _copper   = Color(0xFFB87333);
+const _copperLt = Color(0xFFD4956A);
+const _copperDk = Color(0xFF7A4520);
+const _orange   = Color(0xFFFF8C42);
+const _wallFill = Color(0xFF0F0500);
+
 class AcropolisMapScreen extends StatefulWidget {
   const AcropolisMapScreen({super.key});
-
   @override
   State<AcropolisMapScreen> createState() => _AcropolisMapScreenState();
 }
 
 class _AcropolisMapScreenState extends State<AcropolisMapScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   AcropolisZone? _hovered;
   bool _menuOpen = false;
   late AnimationController _pulse;
+  late AnimationController _flicker;
 
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+    _pulse   = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
+    _flicker = AnimationController(vsync: this, duration: const Duration(milliseconds: 280))..repeat(reverse: true);
   }
 
   @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
+  void dispose() { _pulse.dispose(); _flicker.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E0C0A),
+      backgroundColor: Colors.black,
       body: AnimatedBuilder(
-        animation: _pulse,
+        animation: Listenable.merge([_pulse, _flicker]),
         builder: (context, _) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final h = constraints.maxHeight;
-
-              final acropolisRect = Rect.fromLTWH(w * 0.20, h * 0.04, w * 0.60, h * 0.23);
-              final stoaRect      = Rect.fromLTWH(w * 0.05, h * 0.30, w * 0.90, h * 0.35);
-              final agoraRect     = Rect.fromLTWH(w * 0.14, h * 0.69, w * 0.72, h * 0.23);
-
-              return Stack(
-                children: [
-                  GestureDetector(
-                    onTapDown: (d) {
-                      if (_menuOpen) {
-                        setState(() => _menuOpen = false);
-                        return;
-                      }
-                      _handleTap(d.localPosition, acropolisRect, stoaRect, agoraRect);
-                    },
-                    child: MouseRegion(
-                      onHover: (e) => _handleHover(
-                          e.localPosition, acropolisRect, stoaRect, agoraRect),
-                      onExit: (_) => setState(() => _hovered = null),
-                      child: CustomPaint(
-                        size: Size(w, h),
-                        painter: _MapPainter(
-                          pulseT: _pulse.value,
-                          hovered: _hovered,
-                          acropolisRect: acropolisRect,
-                          stoaRect: stoaRect,
-                          agoraRect: agoraRect,
-                        ),
-                      ),
+          return LayoutBuilder(builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final h = constraints.maxHeight;
+            final agoraRect     = Rect.fromLTWH(w * 0.38, h * 0.80, w * 0.24, h * 0.10);
+            final stoaRect      = Rect.fromLTWH(w * 0.28, h * 0.49, w * 0.44, h * 0.20);
+            final acropolisRect = Rect.fromLTWH(w * 0.32, h * 0.13, w * 0.36, h * 0.24);
+            return Stack(children: [
+              GestureDetector(
+                onTapDown: (d) {
+                  if (_menuOpen) { setState(() => _menuOpen = false); return; }
+                  _handleTap(d.localPosition, agoraRect, stoaRect, acropolisRect);
+                },
+                child: MouseRegion(
+                  onHover: (e) => _handleHover(e.localPosition, agoraRect, stoaRect, acropolisRect),
+                  onExit: (_) => setState(() => _hovered = null),
+                  child: CustomPaint(
+                    size: Size(w, h),
+                    painter: _CityMapPainter(
+                      pulseT: _pulse.value, flickerT: _flicker.value,
+                      hovered: _hovered, agoraRect: agoraRect,
+                      stoaRect: stoaRect, acropolisRect: acropolisRect,
                     ),
                   ),
-                  Positioned(
-                    top: 14,
-                    right: 16,
-                    child: _buildDropdown(),
-                  ),
-                ],
-              );
-            },
-          );
+                ),
+              ),
+              Positioned(top: 14, right: 16, child: _buildDropdown()),
+            ]);
+          });
         },
       ),
     );
   }
 
   Widget _buildDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        GestureDetector(
-          onTap: () => setState(() => _menuOpen = !_menuOpen),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1614),
-              border: Border.all(color: const Color(0xFFB87333), width: 1.5),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'MENU',
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    color: Color(0xFFB87333),
-                    letterSpacing: 2.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  _menuOpen ? '▲' : '▼',
-                  style: const TextStyle(color: Color(0xFFB87333), fontSize: 9),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_menuOpen) ...[
-          const SizedBox(height: 2),
-          Container(
-            width: 140,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1614),
-              border: Border.all(color: const Color(0xFFB87333), width: 1.5),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _menuItem('◈  PROFILE'),
-                _menuDivider(),
-                _menuItem('📜  RULES'),
-                _menuDivider(),
-                _menuItem('⚙  SETTINGS'),
-                _menuDivider(),
-                _menuItem('⬡  EXIT'),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _menuItem(String label) {
-    return InkWell(
-      onTap: () => setState(() => _menuOpen = false),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 11,
-            color: Color(0xFFD0D1D5),
-            letterSpacing: 1.5,
-          ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      GestureDetector(
+        onTap: () => setState(() => _menuOpen = !_menuOpen),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(color: Colors.black, border: Border.all(color: _copper, width: 1.5)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Text('MENU', style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: _copper, letterSpacing: 2.5, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 7),
+            Text(_menuOpen ? '▲' : '▼', style: const TextStyle(color: _copper, fontSize: 9)),
+          ]),
         ),
       ),
-    );
+      if (_menuOpen) ...[
+        const SizedBox(height: 2),
+        Container(
+          width: 140,
+          decoration: BoxDecoration(color: Colors.black, border: Border.all(color: _copper, width: 1.5)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _menuItem('◈  PROFILE'), _menuDivider(),
+            _menuItem('📜  RULES'),  _menuDivider(),
+            _menuItem('⚙  SETTINGS'), _menuDivider(),
+            _menuItem('⬡  EXIT'),
+          ]),
+        ),
+      ],
+    ]);
   }
 
-  Widget _menuDivider() =>
-      Container(height: 1, color: const Color(0xFFB87333).withOpacity(0.25));
+  Widget _menuItem(String label) => InkWell(
+    onTap: () => setState(() => _menuOpen = false),
+    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(label, style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: _copperLt, letterSpacing: 1.5))),
+  );
 
-  void _handleTap(Offset pos, Rect acropolis, Rect stoa, Rect agora) {
-    if (acropolis.contains(pos)) {
+  Widget _menuDivider() => Container(height: 1, color: const Color(0x40B87333));
+
+  void _handleTap(Offset pos, Rect agora, Rect stoa, Rect acropolis) {
+    if (agora.contains(pos)) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
+    } else if (stoa.contains(pos)) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StoaScreen()));
+    } else if (acropolis.contains(pos)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('🏛  Acropolis Court — Symposium coming soon'),
-        backgroundColor: Color(0xFF1A1614),
-        duration: Duration(seconds: 2),
-      ));
-    } else if (stoa.contains(pos)) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const StoaScreen()));
-    } else if (agora.contains(pos)) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
+        content: Text('Symposium — coming soon'), backgroundColor: _wallFill, duration: Duration(seconds: 2)));
     }
   }
 
-  void _handleHover(Offset pos, Rect acropolis, Rect stoa, Rect agora) {
+  void _handleHover(Offset pos, Rect agora, Rect stoa, Rect acropolis) {
     AcropolisZone? zone;
-    if (acropolis.contains(pos)) {
-      zone = AcropolisZone.acropolis;
-    } else if (stoa.contains(pos)) {
-      zone = AcropolisZone.stoa;
-    } else if (agora.contains(pos)) {
-      zone = AcropolisZone.agora;
-    }
+    if (agora.contains(pos)) zone = AcropolisZone.agora;
+    else if (stoa.contains(pos)) zone = AcropolisZone.stoa;
+    else if (acropolis.contains(pos)) zone = AcropolisZone.acropolis;
     if (zone != _hovered) setState(() => _hovered = zone);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Painter
-// ---------------------------------------------------------------------------
-
-class _MapPainter extends CustomPainter {
-  final double pulseT;
+class _CityMapPainter extends CustomPainter {
+  final double pulseT, flickerT;
   final AcropolisZone? hovered;
-  final Rect acropolisRect, stoaRect, agoraRect;
+  final Rect agoraRect, stoaRect, acropolisRect;
 
-  const _MapPainter({
-    required this.pulseT,
-    required this.hovered,
-    required this.acropolisRect,
-    required this.stoaRect,
-    required this.agoraRect,
-  });
-
-  // Palette
-  static const _bg       = Color(0xFF0E0C0A);
-  static const _bgMid    = Color(0xFF1C1815);
-  static const _bgLight  = Color(0xFF2A2420);
-  static const _copper   = Color(0xFFB87333);
-  static const _copperLt = Color(0xFFD4956A);
-  static const _copperDk = Color(0xFF7A4520);
-  static const _silver   = Color(0xFFA8A9AD);
-  static const _silverLt = Color(0xFFD0D1D5);
-  static const _silverDk = Color(0xFF6B6C70);
-  static const _gold     = Color(0xFFC9A84C);
-  static const _goldLt   = Color(0xFFE8D5A3);
-  static const _orange   = Color(0xFFFF8C42);
+  const _CityMapPainter({required this.pulseT, required this.flickerT,
+      required this.hovered, required this.agoraRect,
+      required this.stoaRect, required this.acropolisRect});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    _drawBackground(canvas, size);
-    _drawGrid(canvas, size);
-    _drawDottedPath(canvas, w, h);
-    _drawAcropolis(canvas, w, h);
-    _drawStoa(canvas, w, h);
-    _drawAgora(canvas, w, h);
-    _drawHoverGlow(canvas, w, h);
-    _drawTitle(canvas, w, h);
+    final w = size.width; final h = size.height;
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = Colors.black);
+    _stars(canvas, w, h);
+    _moon(canvas, w, h);
+    final wall = _wallPath(w, h);
+    canvas.drawPath(wall, Paint()..color = _wallFill);
+    canvas.drawPath(wall, Paint()..color = _copperDk..style = PaintingStyle.stroke..strokeWidth = _px * 9..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(wall, Paint()..color = _copper..style = PaintingStyle.stroke..strokeWidth = _px * 5..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(wall, Paint()..color = _copperLt..style = PaintingStyle.stroke..strokeWidth = _px * 1.5..strokeJoin = StrokeJoin.round);
+    _battlements(canvas, w, h);
+    _route(canvas, w, h);
+    _gate(canvas, w, h);
+    _market(canvas, w, h);
+    _temple(canvas, w, h);
+    _hoverGlow(canvas, w, h);
+    _labels(canvas, w, h);
   }
 
-  void _drawBackground(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = _bg,
-    );
-    final vignette = Paint()
-      ..shader = RadialGradient(
-        center: Alignment.center,
-        radius: 0.85,
-        colors: [_bg.withOpacity(0), Colors.black.withOpacity(0.65)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), vignette);
+  Path _wallPath(double w, double h) {
+    final p = Path();
+    p.moveTo(w * 0.44, h * 0.91);
+    p.quadraticBezierTo(w * 0.37, h * 0.905, w * 0.30, h * 0.875);
+    p.quadraticBezierTo(w * 0.22, h * 0.845, w * 0.20, h * 0.775);
+    p.quadraticBezierTo(w * 0.175, h * 0.700, w * 0.195, h * 0.625);
+    p.quadraticBezierTo(w * 0.215, h * 0.545, w * 0.185, h * 0.465);
+    p.quadraticBezierTo(w * 0.170, h * 0.385, w * 0.200, h * 0.305);
+    p.quadraticBezierTo(w * 0.225, h * 0.225, w * 0.295, h * 0.155);
+    p.quadraticBezierTo(w * 0.375, h * 0.085, w * 0.500, h * 0.075);
+    p.quadraticBezierTo(w * 0.625, h * 0.085, w * 0.705, h * 0.155);
+    p.quadraticBezierTo(w * 0.775, h * 0.225, w * 0.800, h * 0.305);
+    p.quadraticBezierTo(w * 0.830, h * 0.385, w * 0.815, h * 0.465);
+    p.quadraticBezierTo(w * 0.785, h * 0.545, w * 0.805, h * 0.625);
+    p.quadraticBezierTo(w * 0.825, h * 0.700, w * 0.800, h * 0.775);
+    p.quadraticBezierTo(w * 0.780, h * 0.845, w * 0.700, h * 0.875);
+    p.quadraticBezierTo(w * 0.630, h * 0.905, w * 0.560, h * 0.910);
+    p.lineTo(w * 0.56, h * 0.965); p.lineTo(w * 0.44, h * 0.965); p.lineTo(w * 0.44, h * 0.910);
+    p.close();
+    return p;
   }
 
-  void _drawGrid(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = _bgLight.withOpacity(0.25)
-      ..strokeWidth = 0.5;
-    final gs = _px * 8;
-    for (double x = 0; x < size.width; x += gs) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
+  void _stars(Canvas canvas, double w, double h) {
+    final rng = math.Random(42);
+    for (int i = 0; i < 90; i++) {
+      final x = rng.nextDouble() * w; final y = rng.nextDouble() * h;
+      final phase = rng.nextDouble(); final sz = 0.8 + rng.nextDouble() * 1.6;
+      final flick = math.sin(flickerT * math.pi * 4 + phase * math.pi * 2);
+      final alpha = (0.35 + 0.55 * ((flick + 1) / 2)).clamp(0.0, 1.0);
+      canvas.drawRect(Rect.fromLTWH(x - sz/2, y - sz/2, sz, sz), Paint()..color = _copper.withValues(alpha: alpha));
     }
-    for (double y = 0; y < size.height; y += gs) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
-    }
   }
 
-  // Dotted copper trail: Agora → Stoa → Acropolis
-  void _drawDottedPath(Canvas canvas, double w, double h) {
-    final dot = Paint()..color = _copper.withOpacity(0.65);
-    final waypoints = [
-      Offset(w * 0.50, h * 0.91),
-      Offset(w * 0.50, h * 0.76),
-      Offset(w * 0.42, h * 0.69),
-      Offset(w * 0.36, h * 0.62),
-      Offset(w * 0.50, h * 0.56),
-      Offset(w * 0.62, h * 0.49),
-      Offset(w * 0.56, h * 0.42),
-      Offset(w * 0.50, h * 0.35),
-      Offset(w * 0.50, h * 0.28),
-      Offset(w * 0.50, h * 0.18),
+  void _moon(Canvas canvas, double w, double h) {
+    final cx = w * 0.13; final cy = h * 0.13; final r = w * 0.048;
+    canvas.drawCircle(Offset(cx, cy), r * 2.0,
+        Paint()..color = _orange.withValues(alpha: 0.06 + 0.04 * pulseT)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14));
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = _copperLt);
+    canvas.drawCircle(Offset(cx + r * 0.48, cy - r * 0.08), r * 0.84, Paint()..color = Colors.black);
+  }
+
+  void _battlements(Canvas canvas, double w, double h) {
+    final p = Paint()..color = _copper;
+    void m(double fx, double fy) => _r(canvas, p, fx*w-_px*2, fy*h-_px*4, _px*4, _px*4);
+    for (final pt in [[0.38,0.095],[0.44,0.082],[0.50,0.079],[0.56,0.082],[0.62,0.095]]) { m(pt[0],pt[1]); }
+    for (final pt in [[0.200,0.250],[0.188,0.380],[0.185,0.505],[0.193,0.630],[0.205,0.755]]) { m(pt[0],pt[1]); }
+    for (final pt in [[0.800,0.250],[0.812,0.380],[0.815,0.505],[0.807,0.630],[0.795,0.755]]) { m(pt[0],pt[1]); }
+  }
+
+  void _route(Canvas canvas, double w, double h) {
+    final dot = Paint()..color = _copper.withValues(alpha: 0.55);
+    final pts = [
+      Offset(w*.500,h*.875), Offset(w*.500,h*.800), Offset(w*.470,h*.730),
+      Offset(w*.485,h*.660), Offset(w*.500,h*.590), Offset(w*.515,h*.510),
+      Offset(w*.500,h*.440), Offset(w*.500,h*.370), Offset(w*.500,h*.300), Offset(w*.500,h*.240),
     ];
-    for (int i = 0; i < waypoints.length - 1; i++) {
-      final p0 = waypoints[i];
-      final p1 = waypoints[i + 1];
-      final steps = ((p1 - p0).distance / (_px * 3.5)).floor();
+    for (int i = 0; i < pts.length-1; i++) {
+      final p0 = pts[i]; final p1 = pts[i+1];
+      final steps = ((p1-p0).distance / (_px*5.5)).floor();
       for (int j = 0; j <= steps; j++) {
-        final t = steps == 0 ? 0.0 : j / steps;
-        final x = p0.dx + (p1.dx - p0.dx) * t;
-        final y = p0.dy + (p1.dy - p0.dy) * t;
-        _fillRect(canvas, dot, x - _px * 0.7, y - _px * 0.7, _px * 1.4, _px * 1.4);
+        final t = steps==0?0.0:j/steps;
+        _r(canvas,dot, p0.dx+(p1.dx-p0.dx)*t-_px, p0.dy+(p1.dy-p0.dy)*t-_px, _px*2,_px*2);
       }
     }
   }
 
-  // ── Acropolis ─────────────────────────────────────────────────────────────
-
-  void _drawAcropolis(Canvas canvas, double w, double h) {
-    final hot = hovered == AcropolisZone.acropolis;
-    final wallC   = hot ? _goldLt : _gold;
-    final accentC = hot ? _gold   : _silver;
-    final fillC   = hot ? _gold.withOpacity(0.12) : _bgMid;
-
-    final r = acropolisRect;
-
-    _fillRect(canvas, Paint()..color = fillC, r.left, r.top, r.width, r.height);
-    _pixelBorder(canvas, r.left, r.top, r.width, r.height, wallC, _px);
-
-    // Inner court
-    final cx = r.left + r.width * 0.15;
-    final cy = r.top  + r.height * 0.22;
-    final cw = r.width  * 0.70;
-    final ch = r.height * 0.55;
-    _fillRect(canvas, Paint()..color = _bgLight, cx, cy, cw, ch);
-    _pixelBorder(canvas, cx, cy, cw, ch, accentC, _px * 0.8);
-
-    // Pixel columns across top of court
-    final cols = 9;
-    final colSpacing = cw / (cols + 1);
-    for (int i = 1; i <= cols; i++) {
-      final colX = cx + colSpacing * i;
-      _fillRect(canvas, Paint()..color = accentC, colX - _px * 0.7, cy, _px * 1.4, _px * 2);
-      _fillRect(canvas, Paint()..color = accentC.withOpacity(0.45),
-          colX - _px * 0.5, cy + _px * 2, _px, ch - _px * 2);
+  void _gate(Canvas canvas, double w, double h) {
+    final hot = hovered==AcropolisZone.agora;
+    final c=hot?_orange:_copper; final cLt=hot?const Color(0xFFFFD090):_copperLt; final cDk=hot?_copper:_copperDk;
+    final cx=w*.500; final cy=h*.870;
+    _twr(canvas,cx-_px*20,cy-_px*18,_px*13,_px*18,c,cLt,cDk);
+    _twr(canvas,cx+_px*7, cy-_px*18,_px*13,_px*18,c,cLt,cDk);
+    final aX=cx-_px*7; final aW=_px*14; final aH=_px*12;
+    _r(canvas,Paint()..color=Colors.black,aX,cy-aH,aW,aH);
+    for (int i=0;i<=7;i++) {
+      final t=i/7.0;
+      final ax=aX+aW/2+math.cos(math.pi-math.pi*t)*(aW/2-_px);
+      final ay=cy-aH+(1-math.sin(math.pi*t))*_px*5;
+      _r(canvas,Paint()..color=cDk,ax-_px,ay-_px,_px*2.5,_px*2.5);
     }
-
-    // Pulsing gold/orange star
-    _drawPixelStar(canvas,
-      cx: r.left + r.width  * 0.50,
-      cy: r.top  + r.height * 0.52,
-      size: _px * 3.4,
-      color: hot
-        ? Color.lerp(_gold, _orange, pulseT)!
-        : Color.lerp(_gold, _goldLt, pulseT)!,
-    );
-
-    _drawLabel(canvas, 'ACROPOLIS  COURT',
-        r.left + r.width * 0.5, r.top + r.height * 0.87,
-        hot ? _goldLt : _gold, _px * 2.1);
+    for (int i=1;i<=2;i++) { _r(canvas,Paint()..color=cDk.withValues(alpha:.5),aX+aW*i/3-_px*.5,cy-aH+_px*4,_px,aH-_px*4); }
+    _r(canvas,Paint()..color=cLt,aX-_px*3,cy-aH-_px*2.5,aW+_px*6,_px*2.5);
+    _r(canvas,Paint()..color=cDk,cx-_px*11,cy,_px*22,_px*2);
+    _r(canvas,Paint()..color=c,  cx-_px*9, cy+_px*2,_px*18,_px*2);
   }
 
-  // ── Stoa ──────────────────────────────────────────────────────────────────
-
-  void _drawStoa(Canvas canvas, double w, double h) {
-    final hot     = hovered == AcropolisZone.stoa;
-    final wallC   = hot ? _silverLt : _silver;
-    final accentC = hot ? _silver   : _silverDk;
-    final fillC   = hot ? _silverDk.withOpacity(0.12) : _bgMid;
-
-    final r = stoaRect;
-    _fillRect(canvas, Paint()..color = fillC, r.left, r.top, r.width, r.height);
-    _pixelBorder(canvas, r.left, r.top, r.width, r.height, wallC, _px);
-
-    // Central walkway corridor
-    final walkY = r.top  + r.height * 0.42;
-    final walkH = r.height * 0.16;
-    _fillRect(canvas, Paint()..color = _bgLight, r.left, walkY, r.width, walkH);
-    _fillRect(canvas, Paint()..color = wallC.withOpacity(0.25),
-        r.left, walkY, r.width, _px * 0.5);
-    _fillRect(canvas, Paint()..color = wallC.withOpacity(0.25),
-        r.left, walkY + walkH - _px * 0.5, r.width, _px * 0.5);
-
-    // Side rooms — top row
-    final rw = r.width  * 0.11;
-    final rh = r.height * 0.30;
-    _drawRoom(canvas, r.left + _px * 2,                        r.top + r.height * 0.07, rw, rh, wallC, accentC);
-    _drawRoom(canvas, r.left + r.width - rw - _px * 2,        r.top + r.height * 0.07, rw, rh, wallC, accentC);
-
-    // Side rooms — bottom row
-    _drawRoom(canvas, r.left + _px * 2,                        r.top + r.height * 0.63, rw, rh, wallC, accentC);
-    _drawRoom(canvas, r.left + r.width - rw - _px * 2,        r.top + r.height * 0.63, rw, rh, wallC, accentC);
-
-    // Open debate tables — upper zone
-    _drawDebateTable(canvas, r.left + r.width * 0.28, r.top + r.height * 0.22, hot, wallC, accentC);
-    _drawDebateTable(canvas, r.left + r.width * 0.50, r.top + r.height * 0.22, hot, wallC, accentC);
-    _drawDebateTable(canvas, r.left + r.width * 0.72, r.top + r.height * 0.22, hot, wallC, accentC);
-
-    // Open debate tables — lower zone
-    _drawDebateTable(canvas, r.left + r.width * 0.28, r.top + r.height * 0.73, hot, wallC, accentC);
-    _drawDebateTable(canvas, r.left + r.width * 0.50, r.top + r.height * 0.73, hot, wallC, accentC);
-    _drawDebateTable(canvas, r.left + r.width * 0.72, r.top + r.height * 0.73, hot, wallC, accentC);
-
-    // Pulsing silver/orange star on walkway
-    _drawPixelStar(canvas,
-      cx: r.left + r.width  * 0.50,
-      cy: walkY  + walkH    * 0.50,
-      size: _px * 3.0,
-      color: hot
-        ? Color.lerp(_silver, _orange, pulseT)!
-        : Color.lerp(_silverDk, _silverLt, pulseT)!,
-    );
-
-    _drawLabel(canvas, 'STOA',
-        r.left + r.width * 0.5, r.top + r.height * 0.89,
-        hot ? _silverLt : _silver, _px * 2.1);
-  }
-
-  void _drawRoom(Canvas canvas, double x, double y, double rw, double rh,
-      Color wall, Color accent) {
-    _fillRect(canvas, Paint()..color = _bgLight, x, y, rw, rh);
-    _pixelBorder(canvas, x, y, rw, rh, wall, _px * 0.7);
-    // Mini table
-    _fillRect(canvas, Paint()..color = accent.withOpacity(0.5),
-        x + rw * 0.25, y + rh * 0.30, rw * 0.50, rh * 0.28);
-    // Two seats
-    _fillRect(canvas, Paint()..color = wall.withOpacity(0.45),
-        x + rw * 0.20, y + rh * 0.14, _px * 1.6, _px * 1.6);
-    _fillRect(canvas, Paint()..color = wall.withOpacity(0.45),
-        x + rw * 0.55, y + rh * 0.14, _px * 1.6, _px * 1.6);
-  }
-
-  void _drawDebateTable(Canvas canvas, double cx, double cy, bool hot,
-      Color wall, Color accent) {
-    final s = _px * 2.2;
-    // Pixel-art circle (cross + filled center)
-    _fillRect(canvas, Paint()..color = accent, cx - s, cy - s * 0.35, s * 2, s * 0.7);
-    _fillRect(canvas, Paint()..color = accent, cx - s * 0.35, cy - s, s * 0.7, s * 2);
-    _fillRect(canvas, Paint()..color = accent, cx - s * 0.65, cy - s * 0.65, s * 1.3, s * 1.3);
-    // 4 seats
-    for (final angle in [0.0, math.pi / 2, math.pi, math.pi * 1.5]) {
-      final dx = cx + math.cos(angle) * s * 1.7;
-      final dy = cy + math.sin(angle) * s * 1.7;
-      _fillRect(canvas, Paint()..color = wall.withOpacity(hot ? 0.8 : 0.5),
-          dx - _px * 0.7, dy - _px * 0.7, _px * 1.4, _px * 1.4);
+  void _twr(Canvas canvas,double x,double y,double tw,double th,Color c,Color cLt,Color cDk) {
+    _r(canvas,Paint()..color=c,  x,y,tw,th);
+    _r(canvas,Paint()..color=cDk,x+tw-_px*2.5,y,_px*2.5,th);
+    _r(canvas,Paint()..color=cLt,x,y,_px*1.5,th);
+    _r(canvas,Paint()..color=Colors.black,x+tw*.42,y+th*.30,_px*2,_px*5);
+    _r(canvas,Paint()..color=Colors.black,x+tw*.30,y+th*.40,_px*4,_px*2);
+    for (int i=0;i<3;i++) { _r(canvas,Paint()..color=cLt,x+i*(tw/3)+_px,y-_px*4,_px*3.5,_px*4); }
+    for (int row=1;row<(th/(_px*5)).floor();row++) {
+      _r(canvas,Paint()..color=cDk.withValues(alpha:.3),x,y+row*_px*5,tw,_px*.7);
     }
   }
 
-  // ── Agora ─────────────────────────────────────────────────────────────────
-
-  void _drawAgora(Canvas canvas, double w, double h) {
-    final hot     = hovered == AcropolisZone.agora;
-    final wallC   = hot ? _copperLt : _copper;
-    final accentC = hot ? _copperLt : _copperDk;
-    final fillC   = hot ? _copperDk.withOpacity(0.12) : _bgMid;
-
-    final r = agoraRect;
-    _fillRect(canvas, Paint()..color = fillC, r.left, r.top, r.width, r.height);
-    _pixelBorder(canvas, r.left, r.top, r.width, r.height, wallC, _px);
-
-    // 5 market stalls
-    final stallW  = r.width  * 0.09;
-    final stallH  = r.height * 0.48;
-    final spacing = r.width  / 6.0;
-    for (int i = 0; i < 5; i++) {
-      final sx = r.left + spacing * (i + 0.5) - stallW / 2;
-      final sy = r.top  + r.height * 0.12;
-      _fillRect(canvas, Paint()..color = _bgLight, sx, sy, stallW, stallH);
-      _pixelBorder(canvas, sx, sy, stallW, stallH, accentC, _px * 0.5);
-      // Awning
-      _fillRect(canvas, Paint()..color = wallC, sx, sy - _px * 1.8, stallW, _px * 1.8);
-      // Goods pixel
-      _fillRect(canvas, Paint()..color = _gold,
-          sx + stallW * 0.3, sy + stallH * 0.5, _px * 1.5, _px * 1.5);
+  void _market(Canvas canvas, double w, double h) {
+    final hot=hovered==AcropolisZone.stoa;
+    final c=hot?_orange:_copper; final cLt=hot?const Color(0xFFFFD090):_copperLt; final cDk=hot?_copper:_copperDk;
+    final cx=w*.500; final cy=h*.590;
+    const sW=_px*15; const sH=_px*14; const gap=_px*4; const cnt=4;
+    const totW=cnt*sW+(cnt-1)*gap;
+    final sx0=cx-totW/2;
+    _r(canvas,Paint()..color=c,sx0-_px*2,cy-sH-_px*6,totW+_px*4,_px*2);
+    for (int i=0;i<cnt;i++) {
+      final sx=sx0+i*(sW+gap); final sy=cy-sH;
+      _r(canvas,Paint()..color=cDk,sx,sy,sW,sH);
+      _r(canvas,Paint()..color=Colors.black.withValues(alpha:.3),sx+sW-_px*2,sy,_px*2,sH);
+      _r(canvas,Paint()..color=_wallFill,sx+sW*.2,sy+sH*.15,sW*.6,sH*.42);
+      _r(canvas,Paint()..color=cLt,sx+sW*.25,sy+sH*.44,_px*3,_px*2.5);
+      _r(canvas,Paint()..color=c.withValues(alpha:.8),sx+sW*.55,sy+sH*.43,_px*2.5,_px*3);
+      _awning(canvas,sx-_px*2,sy-_px*6,sW+_px*4,_px*6,c,cLt);
+      _r(canvas,Paint()..color=c,  sx-_px,cy-_px*2.5,sW+_px*2,_px*3);
+      _r(canvas,Paint()..color=cLt,sx-_px,cy-_px*2.5,sW+_px*2,_px);
+      _r(canvas,Paint()..color=cDk,sx-_px,cy+_px*.5, sW+_px*2,_px);
     }
-
-    // Entrance arch (bottom center)
-    final ax = r.left + r.width * 0.5;
-    final ay = r.top  + r.height * 0.82;
-    _fillRect(canvas, Paint()..color = wallC, ax - _px * 6, ay, _px * 12, _px * 1.5);
-    _fillRect(canvas, Paint()..color = wallC, ax - _px * 6, ay - _px * 4.5, _px * 2.5, _px * 4.5);
-    _fillRect(canvas, Paint()..color = wallC, ax + _px * 3.5, ay - _px * 4.5, _px * 2.5, _px * 4.5);
-
-    // Pulsing copper/orange star
-    _drawPixelStar(canvas,
-      cx: r.left + r.width  * 0.50,
-      cy: r.top  + r.height * 0.45,
-      size: _px * 3.0,
-      color: hot
-        ? Color.lerp(_copper, _orange, pulseT)!
-        : Color.lerp(_copperDk, _copperLt, pulseT)!,
-    );
-
-    _drawLabel(canvas, 'AGORA  ·  ENTRANCE',
-        r.left + r.width * 0.5, r.top + r.height * 0.87,
-        hot ? _copperLt : _copper, _px * 2.1);
   }
 
-  // ── Pixel star (Claude-style) ──────────────────────────────────────────────
-
-  void _drawPixelStar(Canvas canvas,
-      {required double cx, required double cy,
-      required double size, required Color color}) {
-    final p = Paint()..color = color;
-    final s = size;
-    // Top spike
-    _fillRect(canvas, p, cx - s * 0.16, cy - s,       s * 0.32, s * 0.55);
-    // Left spike
-    _fillRect(canvas, p, cx - s,        cy - s * 0.16, s * 0.55, s * 0.32);
-    // Right spike
-    _fillRect(canvas, p, cx + s * 0.45, cy - s * 0.16, s * 0.55, s * 0.32);
-    // Bottom spike
-    _fillRect(canvas, p, cx - s * 0.16, cy + s * 0.45, s * 0.32, s * 0.55);
-    // Diagonal spikes (upper-left, upper-right, lower-left, lower-right)
-    _fillRect(canvas, p, cx - s * 0.72, cy - s * 0.72, s * 0.38, s * 0.38);
-    _fillRect(canvas, p, cx + s * 0.34, cy - s * 0.72, s * 0.38, s * 0.38);
-    _fillRect(canvas, p, cx - s * 0.72, cy + s * 0.34, s * 0.38, s * 0.38);
-    _fillRect(canvas, p, cx + s * 0.34, cy + s * 0.34, s * 0.38, s * 0.38);
-    // Center body
-    _fillRect(canvas, p, cx - s * 0.45, cy - s * 0.45, s * 0.90, s * 0.90);
-    // Glow ring pulse
-    final glowAlpha = (0.12 + 0.28 * pulseT).clamp(0.0, 1.0);
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(cx, cy), width: s * 3.2, height: s * 3.2),
-      Paint()
-        ..color = color.withOpacity(glowAlpha)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = _px * 0.9,
-    );
+  void _awning(Canvas canvas,double x,double y,double aw,double ah,Color c,Color cLt) {
+    double ry=y; int row=0;
+    while (ry<y+ah) {
+      final rowH=(y+ah-ry).clamp(0.0,_px*1.5);
+      _r(canvas,Paint()..color=row%2==0?c:cLt.withValues(alpha:.7),x,ry,aw,rowH);
+      ry+=_px*1.5; row++;
+    }
+    _r(canvas,Paint()..color=cLt,x,y,aw,_px);
+    final drops=(aw/(_px*5)).floor();
+    for (int d=0;d<drops;d++) { _r(canvas,Paint()..color=c,x+d*_px*5+_px,y+ah,_px*2.5,_px*3); }
   }
 
-  // ── Hover glow ────────────────────────────────────────────────────────────
-
-  void _drawHoverGlow(Canvas canvas, double w, double h) {
-    if (hovered == null) return;
-    final rect = switch (hovered!) {
-      AcropolisZone.acropolis => acropolisRect,
-      AcropolisZone.stoa      => stoaRect,
-      AcropolisZone.agora     => agoraRect,
-    };
-    final c = switch (hovered!) {
-      AcropolisZone.acropolis => _gold,
-      AcropolisZone.stoa      => _silver,
-      AcropolisZone.agora     => _copper,
-    };
-    final alpha = (0.18 + 0.22 * pulseT).clamp(0.0, 1.0);
-    canvas.drawRect(
-      rect.inflate(_px * 1.2),
-      Paint()
-        ..color = c.withOpacity(alpha)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = _px * 1.5,
-    );
+  void _temple(Canvas canvas, double w, double h) {
+    final hot=hovered==AcropolisZone.acropolis;
+    final c=hot?_orange:_copper; final cLt=hot?const Color(0xFFFFD090):_copperLt; final cDk=hot?_copper:_copperDk;
+    final cx=w*.500; final baseY=h*.365;
+    const tW=_px*52; const colH=_px*22.0;
+    for (int s=0;s<3;s++) {
+      final sw=tW+s*_px*7;
+      _r(canvas,Paint()..color=s==0?cLt:c,cx-sw/2,baseY-s*_px*2.5,sw,_px*2.5);
+      _r(canvas,Paint()..color=cDk,cx-sw/2,baseY-s*_px*2.5+_px*2,sw,_px*.5);
+    }
+    final platY=baseY-_px*7.5; final platW=tW-_px*4;
+    _r(canvas,Paint()..color=cLt,cx-platW/2,platY,platW,_px*2.5);
+    const nC=8; final colArea=platW-_px*4; final colSp=colArea/(nC-1); final colBase=platY-colH;
+    for (int i=0;i<nC;i++) {
+      final colX=cx-colArea/2+i*colSp;
+      _r(canvas,Paint()..color=cLt,colX-_px*2.5,colBase,_px*5,_px*2.5);
+      _r(canvas,Paint()..color=c,  colX-_px*1.5,colBase+_px*2.5,_px*3,colH-_px*5);
+      _r(canvas,Paint()..color=cDk,colX+_px*1,  colBase+_px*2.5,_px,  colH-_px*5);
+      _r(canvas,Paint()..color=cLt,colX-_px*2.5,platY-_px*2.5,_px*5,_px*2.5);
+    }
+    final entY=colBase-_px*4.5;
+    _r(canvas,Paint()..color=cLt,cx-tW/2,entY,tW,_px*2.5);
+    _r(canvas,Paint()..color=c,  cx-tW/2,entY+_px*2.5,tW,_px*2.5);
+    for (int t=0;t<7;t++) {
+      final tx=cx-tW/2+_px*5+t*(tW-_px*10)/6;
+      _r(canvas,Paint()..color=cDk,tx,entY+_px*2.5,_px*1.5,_px*2.5);
+      _r(canvas,Paint()..color=cDk,tx+_px*3,entY+_px*2.5,_px*1.5,_px*2.5);
+    }
+    final pedBase=entY-_px*.5;
+    const pedS=12;
+    for (int i=0;i<pedS;i++) {
+      final rowW=tW*(1-i/pedS)+_px*2;
+      _r(canvas,Paint()..color=i==0?cLt:c,cx-rowW/2,pedBase-i*_px*1.8,rowW,_px*2.1);
+    }
+    final peakY=pedBase-pedS*_px*1.8;
+    final ga=(0.25+0.45*pulseT).clamp(0.0,1.0);
+    canvas.drawCircle(Offset(cx,peakY-_px*7),_px*7,
+        Paint()..color=(hot?_orange:_copper).withValues(alpha:ga)..maskFilter=const MaskFilter.blur(BlurStyle.normal,10));
+    _star4(canvas,cx,peakY-_px*7,hot?_orange:cLt,_px*3);
   }
 
-  // ── Title ─────────────────────────────────────────────────────────────────
-
-  void _drawTitle(Canvas canvas, double w, double h) {
-    _drawLabel(canvas, 'A · C · R · O', w * 0.5, h * 0.966,
-        _gold, _px * 2.2, letterSpacing: 8.0);
+  void _star4(Canvas canvas,double cx,double cy,Color c,double s) {
+    final p=Paint()..color=c;
+    _r(canvas,p,cx-s*.22,cy-s,   s*.44,s*2  );
+    _r(canvas,p,cx-s,    cy-s*.22,s*2,  s*.44);
+    _r(canvas,p,cx-s*.6, cy-s*.6, s*.3, s*.3 );
+    _r(canvas,p,cx+s*.3, cy-s*.6, s*.3, s*.3 );
+    _r(canvas,p,cx-s*.6, cy+s*.3, s*.3, s*.3 );
+    _r(canvas,p,cx+s*.3, cy+s*.3, s*.3, s*.3 );
+    _r(canvas,p,cx-s*.35,cy-s*.35,s*.7, s*.7 );
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  void _drawLabel(Canvas canvas, String text, double cx, double cy, Color color,
-      double fontSize, {double letterSpacing = 2.0}) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-          color: color,
-          letterSpacing: letterSpacing,
-          shadows: [Shadow(color: Colors.black.withOpacity(0.9), blurRadius: 6)],
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
+  void _hoverGlow(Canvas canvas, double w, double h) {
+    if (hovered==null) return;
+    final rect=switch(hovered!){
+      AcropolisZone.agora=>agoraRect, AcropolisZone.stoa=>stoaRect, AcropolisZone.acropolis=>acropolisRect};
+    canvas.drawRect(rect.inflate(_px*2),Paint()
+      ..color=_orange.withValues(alpha:(0.15+0.20*pulseT).clamp(0.0,1.0))
+      ..style=PaintingStyle.stroke..strokeWidth=_px*2);
   }
 
-  void _pixelBorder(Canvas canvas, double x, double y, double w, double h,
-      Color color, double thickness) {
-    canvas.drawRect(
-      Rect.fromLTWH(x, y, w, h),
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = thickness,
-    );
+  void _labels(Canvas canvas, double w, double h) {
+    _lbl(canvas,'AGORA',         w*.50,h*.955,_copper,  _px*2.2);
+    _lbl(canvas,'STOA',          w*.50,h*.680,_copper,  _px*2.2);
+    _lbl(canvas,'SYMPOSIUM',     w*.50,h*.120,_copperLt,_px*2.0);
+    _lbl(canvas,'A · C · R · O',w*.50,h*.030,_copper,  _px*2.4,ls:7.0);
   }
 
-  void _fillRect(Canvas canvas, Paint paint, double x, double y, double w, double h) {
-    if (w <= 0 || h <= 0) return;
-    canvas.drawRect(Rect.fromLTWH(x, y, w, h), paint);
+  void _lbl(Canvas canvas,String text,double cx,double cy,Color color,double fs,{double ls=2.0}) {
+    final tp=TextPainter(text:TextSpan(text:text,style:TextStyle(
+        fontFamily:'monospace',fontSize:fs,fontWeight:FontWeight.bold,
+        color:color,letterSpacing:ls,shadows:const[Shadow(color:Colors.black,blurRadius:4)])),
+        textDirection:TextDirection.ltr)..layout();
+    tp.paint(canvas,Offset(cx-tp.width/2,cy-tp.height/2));
+  }
+
+  void _r(Canvas canvas,Paint paint,double x,double y,double w,double h) {
+    if (w<=0||h<=0) return;
+    canvas.drawRect(Rect.fromLTWH(x,y,w,h),paint);
   }
 
   @override
-  bool shouldRepaint(_MapPainter old) =>
-      old.pulseT != pulseT || old.hovered != hovered;
+  bool shouldRepaint(_CityMapPainter old) =>
+      old.pulseT!=pulseT||old.flickerT!=flickerT||old.hovered!=hovered;
 }
