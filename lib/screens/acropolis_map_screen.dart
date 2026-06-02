@@ -54,7 +54,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final agoraRect     = Rect.fromLTWH(w * 0.40, h * 0.84, w * 0.20, h * 0.09);
-            final stoaRect      = Rect.fromLTWH(w * 0.16, h * 0.46, w * 0.68, h * 0.22);
+            final stoaRect      = Rect.fromLTWH(w * 0.16, h * 0.44, w * 0.68, h * 0.28);
             final acropolisRect = Rect.fromLTWH(w * 0.30, h * 0.10, w * 0.40, h * 0.28);
             return Stack(children: [
               GestureDetector(
@@ -420,12 +420,12 @@ class _CityMapPainter extends CustomPainter {
       Offset(w*.500, h*.948),  // gate floor
       Offset(w*.500, h*.908),  // gate void top
       Offset(w*.500, h*.868),  // inside city, above gate
-      Offset(w*.230, h*.614),  // stoa temple 1
-      Offset(w*.355, h*.608),  // stoa temple 2
-      Offset(w*.500, h*.616),  // stoa temple 3
-      Offset(w*.645, h*.607),  // stoa temple 4
-      Offset(w*.770, h*.612),  // stoa temple 5
-      Offset(w*.500, h*.530),  // converge to centre after stoa
+      Offset(w*.238, h*.648),  // stoa temple 1 (low left)
+      Offset(w*.352, h*.538),  // stoa temple 2 (high)
+      Offset(w*.500, h*.612),  // stoa temple 3 (centre)
+      Offset(w*.650, h*.552),  // stoa temple 4 (high)
+      Offset(w*.775, h*.638),  // stoa temple 5 (low right)
+      Offset(w*.500, h*.520),  // converge to centre after stoa
       Offset(w*.500, h*.450),  // upper city
       Offset(w*.500, h*.372),  // temple base approach
       Offset(w*.500, h*.305),  // through temple steps
@@ -543,11 +543,11 @@ class _CityMapPainter extends CustomPainter {
     final cMd = hot ? _copperLt            : _sandMd;
 
     const positions = [
-      [0.230, 0.614],
-      [0.355, 0.608],
-      [0.500, 0.616],
-      [0.645, 0.607],
-      [0.770, 0.612],
+      [0.238, 0.648],  // far left — low
+      [0.352, 0.538],  // left-centre — high
+      [0.500, 0.612],  // centre — mid
+      [0.650, 0.552],  // right-centre — high
+      [0.775, 0.638],  // far right — low
     ];
     for (final p in positions) {
       _miniTemple(canvas, p[0] * w, p[1] * h, c, cLt, cDk, cMd);
