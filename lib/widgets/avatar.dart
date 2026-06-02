@@ -60,8 +60,7 @@ class AcroAvatar extends StatelessWidget {
           ghostAssetFor(s),
           width: size,
           height: size,
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter, // show the face, not the robes
+          fit: BoxFit.contain, // show full ghost: face + tentacles
         ),
       );
     }

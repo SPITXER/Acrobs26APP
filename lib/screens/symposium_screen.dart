@@ -6,6 +6,7 @@ import '../models/acro_mode.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
+import '../widgets/cloud_corner_box.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
 
@@ -352,19 +353,17 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final ini = _initials(name);
     final sent = _sentTo.contains(uid);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        border: Border.all(color: AcroColors.gold.withOpacity(0.20)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AcroAvatar(initials: ini, seed: uid, size: 54),
-          const SizedBox(width: 16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: CloudCornerBox(
+        backgroundColor: Colors.white.withOpacity(0.03),
+        borderColor: AcroColors.gold.withOpacity(0.20),
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AcroAvatar(initials: ini, seed: uid, size: 54),
+            const SizedBox(width: 16),
 
           // Info
           Expanded(
@@ -442,8 +441,8 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -482,17 +481,15 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final ini = _initials(name);
     final reqId = req['reqId'] as String? ?? '';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AcroColors.gold.withOpacity(0.04),
-        border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: CloudCornerBox(
+        backgroundColor: AcroColors.gold.withOpacity(0.04),
+        borderColor: AcroColors.gold.withOpacity(0.30),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             children: [
               AcroAvatar(initials: ini, seed: name, size: 44),
@@ -601,6 +598,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             ],
           ),
         ],
+        ),
       ),
     );
   }

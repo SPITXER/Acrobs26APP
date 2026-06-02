@@ -6,6 +6,7 @@ import '../models/acro_mode.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
+import '../widgets/cloud_corner_box.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
 
@@ -341,104 +342,71 @@ class _StoaScreenState extends State<StoaScreen>
     final category = room['category'] as String? ?? '';
     final ts       = room['ts']       as int?    ?? 0;
 
-    return Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [
-        // Pixel art clouds — left side
-        Positioned(
-          left: -48, top: 24,
-          child: CustomPaint(
-            painter: const _CloudPainter(isLeft: true),
-            size: const Size(48, 170),
-          ),
-        ),
-        // Pixel art clouds — right side
-        Positioned(
-          right: -48, top: 24,
-          child: CustomPaint(
-            painter: const _CloudPainter(isLeft: false),
-            size: const Size(48, 170),
-          ),
-        ),
-        // Card
-        Container(
+    return CloudCornerBox(
       width: 320,
       padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E1320),
-        border: Border.all(color: AcroColors.gold.withOpacity(0.22)),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.45),
-              blurRadius: 28,
-              offset: const Offset(0, 10)),
+      borderColor: AcroColors.gold.withOpacity(0.22),
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            if (category.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AcroColors.gold.withOpacity(0.28)),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text(category,
+                    style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 9,
+                        color: AcroColors.gold.withOpacity(0.70),
+                        letterSpacing: 1.5)),
+              ),
+            const Spacer(),
+            Text(_timeAgo(ts),
+                style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 9,
+                    color: Colors.white.withOpacity(0.22))),
+          ]),
+          const SizedBox(height: 18),
+          Text(title,
+              style: GoogleFonts.playfairDisplay(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.3)),
+          if (thesis.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text('"$thesis"',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.42),
+                    fontStyle: FontStyle.italic,
+                    height: 1.4)),
+          ],
+          const SizedBox(height: 22),
+          const Divider(color: Colors.white10),
+          const SizedBox(height: 12),
+          Row(children: [
+            AcroAvatar(
+              initials: hostName.isNotEmpty ? hostName[0].toUpperCase() : '?',
+              seed: room['hostUid'] as String? ?? hostName,
+              size: 36,
+            ),
+            const SizedBox(width: 10),
+            Text(hostName,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.60))),
+          ]),
         ],
       ),
-      child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-        Row(children: [
-          if (category.isNotEmpty)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: AcroColors.gold.withOpacity(0.28)),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(category,
-                  style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 9,
-                      color: AcroColors.gold.withOpacity(0.70),
-                      letterSpacing: 1.5)),
-            ),
-          const Spacer(),
-          Text(_timeAgo(ts),
-              style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 9,
-                  color: Colors.white.withOpacity(0.22))),
-        ]),
-        const SizedBox(height: 18),
-        Text(title,
-            style: GoogleFonts.playfairDisplay(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                height: 1.3)),
-        if (thesis.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text('"$thesis"',
-              style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withOpacity(0.42),
-                  fontStyle: FontStyle.italic,
-                  height: 1.4)),
-        ],
-        const SizedBox(height: 22),
-        const Divider(color: Colors.white10),
-        const SizedBox(height: 12),
-        Row(children: [
-          AcroAvatar(
-            initials: hostName.isNotEmpty ? hostName[0].toUpperCase() : '?',
-            seed: room['hostUid'] as String? ?? hostName,
-            size: 36,
-          ),
-          const SizedBox(width: 10),
-          Text(hostName,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withOpacity(0.60))),
-        ]),
-      ]),
-        ), // closes Container (card)
-      ], // closes Stack children
-    ); // closes Stack
+    );
   }
 
   Widget _badge(String label, Color color) => Container(
@@ -603,56 +571,6 @@ class _StoaScreenState extends State<StoaScreen>
     if (d.inHours < 24) return '${d.inHours}h ago';
     return '${d.inDays}d ago';
   }
-}
-
-// ── Pixel art cloud painter ────────────────────────────────────────────────
-
-class _CloudPainter extends CustomPainter {
-  final bool isLeft;
-  const _CloudPainter({required this.isLeft});
-
-  static const double u = 3.2; // pixel unit
-
-  // Colors: 0=white  1=light-blue  2=mid-blue  3=swirl-blue
-  static const _c = [
-    Color(0xFFFFFFFF),
-    Color(0xFFDCECF8),
-    Color(0xFFBDD2EC),
-    Color(0xFF7AAFC8),
-  ];
-
-  // Single cloud puff: [col, row, colorIdx] — 7 cols × 5 rows
-  static const _puff = [
-    [2, 0, 0], [3, 0, 0], [4, 0, 0],
-    [1, 1, 0], [2, 1, 0], [3, 1, 0], [4, 1, 1], [5, 1, 1],
-    [0, 2, 0], [1, 2, 0], [2, 2, 1], [3, 2, 3], [4, 2, 1], [5, 2, 2], [6, 2, 2],
-    [0, 3, 1], [1, 3, 1], [2, 3, 2], [3, 3, 1], [4, 3, 2], [5, 3, 2], [6, 3, 2],
-    [1, 4, 2], [2, 4, 2], [3, 4, 2], [4, 4, 2], [5, 4, 2],
-  ];
-
-  void _puffAt(Canvas canvas, double ox, double oy) {
-    for (final p in _puff) {
-      final col = isLeft ? p[0] : (6 - p[0]); // mirror for right side
-      canvas.drawRect(
-        Rect.fromLTWH(ox + col * u, oy + p[1] * u, u, u),
-        Paint()..color = _c[p[2] as int],
-      );
-    }
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Three staggered puffs
-    final x0 = isLeft ? u * 1.0 : size.width - u * 8.0;
-    final x1 = isLeft ? u * 0.0 : size.width - u * 7.0;
-    final x2 = isLeft ? u * 1.5 : size.width - u * 8.5;
-    _puffAt(canvas, x0, u * 0.0);   // top
-    _puffAt(canvas, x1, u * 6.5);  // middle (slightly offset)
-    _puffAt(canvas, x2, u * 13.0); // bottom
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 // ── Post argument bottom sheet ─────────────────────────────────────────────
