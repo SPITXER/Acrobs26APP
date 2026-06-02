@@ -19,6 +19,7 @@ const _copper   = Color(0xFFB87333);
 const _copperLt = Color(0xFFD4956A);
 const _copperDk = Color(0xFF7A4520);
 const _orange   = Color(0xFFFF8C42);
+const _gold     = Color(0xFFCA8A04);  // UI/UX Pro Max luxury gold — star highlights & moon rim
 const _wallFill = Color(0xFF0F0500);
 const _treeDk   = Color(0xFF3D1800);
 const _treeLt   = Color(0xFF7A4520);
@@ -119,6 +120,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       body: AnimatedBuilder(
         animation: Listenable.merge([_pulse, _flicker, _tapFlash, _templeFade, _stoaFade, _agoraFade, _shimmer, _entrance]),
         builder: (context, _) {
+          final reducedMotion = MediaQuery.of(context).disableAnimations;
           return LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
@@ -149,6 +151,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       templeAlpha: _templeFade.value, stoaAlpha: _stoaFade.value, agoraAlpha: _agoraFade.value,
                       tapFlashT: _tapFlash.value, tappedZone: _tappedZone,
                       shimmerT: _shimmer.value, entranceT: _entrance.value,
+                      reducedMotion: reducedMotion,
                     ),
                   ),
                 ),
@@ -237,6 +240,7 @@ class _CityMapPainter extends CustomPainter {
   final AcropolisZone? tappedZone;
   final double shimmerT;
   final double entranceT;
+  final bool reducedMotion;
 
   _CityMapPainter({required this.pulseT, required this.flickerT,
       required this.hovered, required this.agoraRect,
@@ -244,7 +248,8 @@ class _CityMapPainter extends CustomPainter {
       this.templeImg, this.stoaImg, this.agoraImg,
       this.templeAlpha = 1.0, this.stoaAlpha = 1.0, this.agoraAlpha = 1.0,
       this.tapFlashT = 0.0, this.tappedZone,
-      this.shimmerT = 0.0, this.entranceT = 1.0});
+      this.shimmerT = 0.0, this.entranceT = 1.0,
+      this.reducedMotion = false});
 
   // Eased alpha for staggered entrance — start 0→1 over a 0.22-wide window
   double _eAlpha(double start) =>
@@ -254,11 +259,13 @@ class _CityMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width; final h = size.height;
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = Colors.black);
+    _groundPlane(canvas, w, h);
     _sky(canvas, w, h);
 
     _stars(canvas, w, h);
     _moon(canvas, w, h);
     _terrain(canvas, w, h);
+    _atmosphericHaze(canvas, w, h);
 
     if (agoraImg != null) _drawAgoraImage(canvas, w, h, agoraImg!);
     if (stoaImg != null) {
@@ -332,6 +339,38 @@ class _CityMapPainter extends CustomPainter {
     for (final pt in [[0.802,0.244],[0.826,0.374],[0.816,0.500],[0.836,0.628],[0.812,0.752]]) { m(pt[0],pt[1]); }
   }
 
+  // ── Warm ground plane — separates city floor from pure-black void ─────────
+  void _groundPlane(Canvas canvas, double w, double h) {
+    canvas.drawRect(
+      Rect.fromLTWH(0, h * 0.72, w, h * 0.28),
+      Paint()..shader = ui.Gradient.linear(
+        Offset(0, h), Offset(0, h * 0.72),
+        const [Color(0xFF0A0500), Color(0x000A0500)],
+      ),
+    );
+  }
+
+  // ── Atmospheric perspective — cool haze recedes distant temple, ───────────
+  // ── warm closeness pulls the agora zone forward ───────────────────────────
+  void _atmosphericHaze(Canvas canvas, double w, double h) {
+    // Cool/dark haze over the upper city (temple is far away/high up)
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, w, h * 0.42),
+      Paint()..shader = ui.Gradient.linear(
+        Offset(w / 2, 0), Offset(w / 2, h * 0.42),
+        const [Color(0x1A04020E), Color(0x00000000)],
+      ),
+    );
+    // Faint warm bloom over lower city (agora feels closer/warmer)
+    canvas.drawRect(
+      Rect.fromLTWH(0, h * 0.62, w, h * 0.30),
+      Paint()..shader = ui.Gradient.linear(
+        Offset(w / 2, h * 0.92), Offset(w / 2, h * 0.62),
+        const [Color(0x0E120600), Color(0x00000000)],
+      ),
+    );
+  }
+
   // ── Sky gradient + curvy horizon just above treeline ─────────────────────
   void _sky(Canvas canvas, double w, double h) {
     // Horizon curve sits just above the tallest trees (~h*0.66).
@@ -378,20 +417,22 @@ class _CityMapPainter extends CustomPainter {
     final starEntrance = _eAlpha(0.14);
     if (starEntrance == 0) return;
     final rng = math.Random(42);
-    for (int i = 0; i < 68; i++) {
+    for (int i = 0; i < 45; i++) {  // 45 stars — OLED-optimised (was 68)
       final x     = rng.nextDouble() * w;
       final y     = rng.nextDouble() * h * 0.32;
       final phase = rng.nextDouble();
-      final speed = 2.0 + rng.nextDouble() * 4.0; // each star flickers at its own rate
+      final speed = 2.0 + rng.nextDouble() * 4.0;
       final sz    = 0.5 + rng.nextDouble() * 1.3;
-      final flick = math.sin(flickerT * math.pi * speed + phase * math.pi * 2);
-      final alpha = ((0.30 + 0.60 * ((flick + 1) / 2)) * starEntrance).clamp(0.0, 1.0);
+      // reducedMotion: static brightness, no flicker
+      final flick = reducedMotion ? 0.0 : math.sin(flickerT * math.pi * speed + phase * math.pi * 2);
+      final alpha = ((0.22 + 0.50 * ((flick + 1) / 2)) * starEntrance).clamp(0.0, 0.72);
 
       if (rng.nextDouble() > 0.58) {
         final ca = _copper.withValues(alpha: alpha * 0.82);
         _r(canvas, Paint()..color = ca, x - sz*0.28, y - sz*1.5, sz*0.56, sz*3.0);
         _r(canvas, Paint()..color = ca, x - sz*1.5,  y - sz*0.28, sz*3.0,  sz*0.56);
-        _r(canvas, Paint()..color = _copperLt.withValues(alpha: alpha),
+        // Gold centre pixel — richer than plain copperLt
+        _r(canvas, Paint()..color = _gold.withValues(alpha: alpha),
             x - sz*0.18, y - sz*0.18, sz*0.36, sz*0.36);
       } else {
         canvas.drawRect(Rect.fromLTWH(x - sz/2, y - sz/2, sz, sz),
@@ -410,10 +451,11 @@ class _CityMapPainter extends CustomPainter {
     canvas.saveLayer(Rect.fromCircle(center: Offset(cx, cy), radius: r * 3),
         Paint()..color = Color.fromRGBO(255, 255, 255, moonEntrance));
 
-    // Soft pulsing ambient glow
+    // Soft pulsing ambient glow — static when reducedMotion
+    final moonGlow = reducedMotion ? 0.028 : 0.022 + 0.014 * pulseT;
     canvas.drawCircle(Offset(cx, cy), r * 1.9,
       Paint()
-        ..color = _orange.withValues(alpha: 0.022 + 0.014 * pulseT)
+        ..color = _gold.withValues(alpha: moonGlow)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
 
     // Tilt counter-clockwise ~38° so the crescent leans to the left
@@ -431,7 +473,7 @@ class _CityMapPainter extends CustomPainter {
         Paint()..color = _copper.withValues(alpha: 0.92));
     canvas.drawPath(crescent,
         Paint()
-          ..color = _copperLt.withValues(alpha: 0.70)
+          ..color = _gold.withValues(alpha: 0.75)
           ..style = PaintingStyle.stroke
           ..strokeWidth = _px * 0.55
           ..strokeCap = StrokeCap.round);
@@ -884,8 +926,8 @@ class _CityMapPainter extends CustomPainter {
       AcropolisZone.stoa      => stoaRect,
       AcropolisZone.acropolis => acropolisRect,
     };
-    // Ease the pulse for a smooth breath-like feel
-    final eased = Curves.easeInOut.transform(pulseT);
+    // Ease the pulse — static when reducedMotion
+    final eased = reducedMotion ? 0.5 : Curves.easeInOut.transform(pulseT);
     canvas.drawCircle(rect.center, rect.shortestSide * 0.60,
       Paint()
         ..color = _orange.withValues(alpha: (0.05 + 0.15 * eased).clamp(0.0, 1.0))
@@ -938,5 +980,6 @@ class _CityMapPainter extends CustomPainter {
       old.tapFlashT != tapFlashT ||
       old.templeImg != templeImg || old.stoaImg != stoaImg || old.agoraImg != agoraImg ||
       old.templeAlpha != templeAlpha || old.stoaAlpha != stoaAlpha || old.agoraAlpha != agoraAlpha ||
-      old.shimmerT != shimmerT || old.entranceT != entranceT;
+      old.shimmerT != shimmerT || old.entranceT != entranceT ||
+      old.reducedMotion != reducedMotion;
 }
