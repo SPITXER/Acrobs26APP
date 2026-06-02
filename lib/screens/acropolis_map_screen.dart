@@ -273,47 +273,37 @@ class _CityMapPainter extends CustomPainter {
     }
   }
 
-  // ── Pixelated crescent moon — fine pixel grid, small ─────────────────────
+  // ── Smooth crescent moon ──────────────────────────────────────────────────
   void _moon(Canvas canvas, double w, double h) {
-    final ox = w * 0.086 - _px * 3.8;
-    final oy = h * 0.060 - _px * 3.8;
-    const u  = _px * 1.05;  // fine pixel unit
-    const g  = u * 1.28;    // grid step
+    final cx = w * 0.090;
+    final cy = h * 0.068;
+    const r  = _px * 5.5;   // 15% bigger than old 7×7 effective radius
 
-    // 7×7 left-facing crescent (lit on left, cutout on right)
-    const crescent = [
-      [0, 0, 1, 1, 1, 0, 0],
-      [0, 1, 1, 1, 1, 0, 0],
-      [1, 1, 1, 0, 0, 0, 0],
-      [1, 1, 0, 0, 0, 0, 0],
-      [1, 1, 1, 0, 0, 0, 0],
-      [0, 1, 1, 1, 1, 0, 0],
-      [0, 0, 1, 1, 1, 0, 0],
-    ];
-
-    // Soft glow behind
-    canvas.drawCircle(
-      Offset(ox + g * 1.5, oy + g * 3.0),
-      g * 4.2,
+    // Soft pulsing ambient glow
+    canvas.drawCircle(Offset(cx, cy), r * 1.9,
       Paint()
-        ..color = _orange.withValues(alpha: 0.030 + 0.018 * pulseT)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-    );
+        ..color = _orange.withValues(alpha: 0.022 + 0.014 * pulseT)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
 
-    for (int row = 0; row < 7; row++) {
-      for (int col = 0; col < 7; col++) {
-        if (crescent[row][col] == 1) {
-          // Outer-edge pixels get highlight, inner get base copper
-          final isEdge = row == 0 || row == 6 || col == 0 ||
-              (row == 1 && col <= 1) || (row == 5 && col <= 1);
-          _r(canvas,
-            Paint()..color = isEdge
-                ? _copperLt
-                : _copper.withValues(alpha: 0.88),
-            ox + col * g, oy + row * g, u, u);
-        }
-      }
-    }
+    // Crescent = outer circle minus inner offset circle
+    final outer = Path()
+      ..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+    final inner = Path()
+      ..addOval(Rect.fromCircle(
+          center: Offset(cx + r * 0.36, cy), radius: r * 0.80));
+    final crescent = Path.combine(PathOperation.difference, outer, inner);
+
+    // Fill
+    canvas.drawPath(crescent,
+        Paint()..color = _copper.withValues(alpha: 0.92));
+
+    // Sleek rim highlight — thin bright stroke around the edge
+    canvas.drawPath(crescent,
+        Paint()
+          ..color = _copperLt.withValues(alpha: 0.70)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _px * 0.55
+          ..strokeCap = StrokeCap.round);
   }
 
   // ── Terrain: artisanal trees + rocks outside wall, denser at bottom ───────
