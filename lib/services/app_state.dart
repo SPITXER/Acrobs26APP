@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show GlobalKey, NavigatorState, ScaffoldMessengerState, SnackBar, SnackBarAction, Text, TextStyle, Colors;
+import 'package:flutter/material.dart' show Color, Colors, GlobalKey, NavigatorState, ScaffoldMessengerState, SnackBar, SnackBarAction, Text, TextStyle;
 import 'package:firebase_database/firebase_database.dart';
 import 'package:uuid/uuid.dart';
 import '../models/acro_mode.dart';
