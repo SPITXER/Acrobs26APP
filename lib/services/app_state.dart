@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show GlobalKey, NavigatorState, ScaffoldMessengerState, SnackBar, SnackBarAction, Text, TextStyle, Colors;
 import 'package:firebase_database/firebase_database.dart';
 import 'package:uuid/uuid.dart';
 import '../models/acro_mode.dart';
@@ -11,11 +12,24 @@ class AppState extends ChangeNotifier {
   final _db = FirebaseDatabase.instance;
   final _uuid = const Uuid();
 
+  final GlobalKey<NavigatorState>        _navigatorKey;
+  final GlobalKey<ScaffoldMessengerState> _messengerKey;
+
   final UserProfile profile = UserProfile();
   DebateRoom? currentRoom;
   List<Post> posts = List.from(samplePosts);
 
-  AppState() {
+  // Active stoa argument room posted by this user
+  String? _myStoaRoomId;
+  StreamSubscription? _stoaJoinWatcher;
+
+  String? get myStoaRoomId => _myStoaRoomId;
+
+  AppState({
+    required GlobalKey<NavigatorState>        navigatorKey,
+    required GlobalKey<ScaffoldMessengerState> messengerKey,
+  })  : _navigatorKey = navigatorKey,
+        _messengerKey = messengerKey {
     profile.uid = _uuid.v4();
   }
 
@@ -428,6 +442,114 @@ class AppState extends ChangeNotifier {
 
   Future<void> declineSymposiumRequest(String reqId) async {
     await _db.ref('requests/${profile.uid}/$reqId').remove();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stoa argument rooms
+  // ---------------------------------------------------------------------------
+
+  Stream<List<Map<String, dynamic>>> stoaRoomsStream() {
+    return _db.ref('stoa_rooms').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      return Map<String, dynamic>.from(raw)
+          .values
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList()
+        ..sort((a, b) =>
+            ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int));
+    });
+  }
+
+  Future<void> createStoaRoom({
+    required String title,
+    required String thesis,
+    required String category,
+  }) async {
+    if (_myStoaRoomId != null) return; // already have one open
+    final roomId = 'stoa_${_uuid.v4()}';
+    _myStoaRoomId = roomId;
+    await _db.ref('stoa_rooms/$roomId').set({
+      'roomId':   roomId,
+      'hostUid':  profile.uid,
+      'hostName': profile.name,
+      'hostIni':  profile.initials,
+      'title':    title,
+      'thesis':   thesis,
+      'category': category,
+      'ts':       ServerValue.timestamp,
+    });
+    _startStoaJoinWatch(roomId);
+    notifyListeners();
+  }
+
+  Future<void> terminateStoaRoom() async {
+    if (_myStoaRoomId == null) return;
+    await _db.ref('stoa_rooms/$_myStoaRoomId').remove();
+    _stoaJoinWatcher?.cancel();
+    _stoaJoinWatcher = null;
+    _myStoaRoomId = null;
+    notifyListeners();
+  }
+
+  Future<void> joinStoaRoom(Map<String, dynamic> room) async {
+    final stoaRoomId = room['roomId'] as String;
+    final hostUid    = room['hostUid']  as String;
+    final hostName   = room['hostName'] as String? ?? 'Anonymous';
+    final hostIni    = room['hostIni']  as String? ?? '?';
+    final title      = room['title']    as String? ?? 'Argument';
+
+    final debateRoomId = 'r${DateTime.now().millisecondsSinceEpoch}';
+    await _db.ref().update({
+      'stoa_rooms/$stoaRoomId': null,
+      'matches/${profile.uid}': {
+        'roomId':      debateRoomId,
+        'partnerId':   hostUid,
+        'partnerName': hostName,
+        'partnerIni':  hostIni,
+        'isHost':      false,
+      },
+      'matches/$hostUid': {
+        'roomId':      debateRoomId,
+        'partnerId':   profile.uid,
+        'partnerName': profile.name,
+        'partnerIni':  profile.initials,
+        'isHost':      true,
+      },
+      'rooms/$debateRoomId': _buildRoomMap(debateRoomId, title),
+    });
+  }
+
+  void _startStoaJoinWatch(String roomId) {
+    _stoaJoinWatcher?.cancel();
+    // Watch matches/{uid} — fires when a challenger joins the stoa room
+    _stoaJoinWatcher = _db.ref('matches/${profile.uid}').onValue.listen((event) {
+      if (!event.snapshot.exists) return;
+      if (_myStoaRoomId == null) return;
+      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      final partnerName = data['partnerName'] as String? ?? 'Someone';
+      final room = buildRoomFromMatch(data);
+      enterRoom(room);
+      clearMatch();
+      _stoaJoinWatcher?.cancel();
+      _stoaJoinWatcher = null;
+      _myStoaRoomId = null;
+      notifyListeners();
+
+      _messengerKey.currentState?.showSnackBar(SnackBar(
+        content: Text(
+          '⚖  $partnerName challenged your argument!',
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+        ),
+        action: SnackBarAction(
+          label: 'ENTER DEBATE',
+          onPressed: () => _navigatorKey.currentState?.pushNamed('/room'),
+        ),
+        duration: const Duration(seconds: 20),
+        backgroundColor: const Color(0xFF1A1200),
+      ));
+    });
   }
 
   // ---------------------------------------------------------------------------
