@@ -212,6 +212,7 @@ class _CityMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width; final h = size.height;
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = Colors.black);
+    _sky(canvas, w, h);
 
     _stars(canvas, w, h);
     _moon(canvas, w, h);
@@ -288,6 +289,36 @@ class _CityMapPainter extends CustomPainter {
     for (final pt in [[0.40,0.054],[0.46,0.046],[0.51,0.044],[0.56,0.047],[0.62,0.058]]) { m(pt[0],pt[1]); }
     for (final pt in [[0.168,0.248],[0.140,0.372],[0.148,0.498],[0.148,0.622],[0.158,0.750]]) { m(pt[0],pt[1]); }
     for (final pt in [[0.802,0.244],[0.826,0.374],[0.816,0.500],[0.836,0.628],[0.812,0.752]]) { m(pt[0],pt[1]); }
+  }
+
+  // ── Sky gradient + curvy horizon just above treeline ─────────────────────
+  void _sky(Canvas canvas, double w, double h) {
+    // Horizon curve sits just above the tallest trees (~h*0.66).
+    // Wavy, organic — rises and dips gently left to right.
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(w, 0)
+      ..lineTo(w, h * 0.705);
+    // Horizon wave: right edge → sweeps left with gentle undulation
+    path.quadraticBezierTo(w * 0.82, h * 0.652, w * 0.62, h * 0.662);
+    path.quadraticBezierTo(w * 0.42, h * 0.672, w * 0.22, h * 0.648);
+    path.quadraticBezierTo(w * 0.08, h * 0.634, 0, h * 0.668);
+    path.close();
+
+    // Pitch black at top → deep twilight indigo near horizon. No sunlight.
+    canvas.drawPath(path, Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(w / 2, 0),
+        Offset(w / 2, h * 0.690),
+        const [
+          Color(0xFF000000),   // pitch black
+          Color(0xFF010010),   // near-black, hint of violet
+          Color(0xFF06042A),   // deep indigo
+          Color(0xFF0F073D),   // twilight indigo
+          Color(0xFF190B52),   // rich twilight purple-blue
+        ],
+        [0.0, 0.25, 0.55, 0.80, 1.0],
+      ));
   }
 
   // ── Stars — top 22% only, mix of dots and cross-shaped ───────────────────
