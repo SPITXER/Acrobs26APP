@@ -122,13 +122,16 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           return LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
-            final _agoraSide    = w * 0.144;
+            final isMobile = w < 600;
+            final iconMult = isMobile ? 1.3 : 1.0;
+            final _agoraSide    = w * 0.144 * iconMult;
             final agoraRect     = Rect.fromCenter(center: Offset(w * 0.44, h * 0.73), width: _agoraSide, height: _agoraSide);
-            final _stoaSide     = w * 0.221;
+            final _stoaSide     = w * 0.221 * iconMult;
             final stoaRect      = Rect.fromCenter(
               center: Offset(w * 0.63, h * 0.58),
               width: _stoaSide, height: _stoaSide);
-            final acropolisRect = Rect.fromLTWH(w * 0.28, h * 0.07, w * 0.44, h * 0.36);
+            final symTopFrac    = isMobile ? 0.12 : 0.07;
+            final acropolisRect = Rect.fromLTWH(w * 0.28, h * symTopFrac, w * 0.44, h * 0.36);
             return Stack(children: [
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -149,7 +152,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       templeAlpha: _templeFade.value, stoaAlpha: _stoaFade.value, agoraAlpha: _agoraFade.value,
                       tapFlashT: _tapFlash.value, tappedZone: _tappedZone,
                       shimmerT: _shimmer.value, entranceT: _entrance.value,
-                      reducedMotion: reducedMotion,
+                      reducedMotion: reducedMotion, isMobile: isMobile,
                     ),
                   ),
                 ),
@@ -239,6 +242,7 @@ class _CityMapPainter extends CustomPainter {
   final double shimmerT;
   final double entranceT;
   final bool reducedMotion;
+  final bool isMobile;
 
   _CityMapPainter({required this.pulseT, required this.flickerT,
       required this.hovered, required this.agoraRect,
@@ -247,7 +251,7 @@ class _CityMapPainter extends CustomPainter {
       this.templeAlpha = 1.0, this.stoaAlpha = 1.0, this.agoraAlpha = 1.0,
       this.tapFlashT = 0.0, this.tappedZone,
       this.shimmerT = 0.0, this.entranceT = 1.0,
-      this.reducedMotion = false});
+      this.reducedMotion = false, this.isMobile = false});
 
   // Scales with screen width so pixel art looks consistent on all phones
   double _px = 2.0;
@@ -608,7 +612,7 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Greek market compound image ───────────────────────────────────────────
   void _drawStoaImage(Canvas canvas, double w, double h, ui.Image img) {
-    final side = w * 0.221;
+    final side = w * 0.221 * (isMobile ? 1.3 : 1.0);
     final dest = Rect.fromCenter(
       center: Offset(w * 0.63, h * 0.58), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
@@ -627,7 +631,7 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Agora image icon ─────────────────────────────────────────────────────
   void _drawAgoraImage(Canvas canvas, double w, double h, ui.Image img) {
-    final side = w * 0.144;
+    final side = w * 0.144 * (isMobile ? 1.3 : 1.0);
     final dest = Rect.fromCenter(
       center: Offset(w * 0.44, h * 0.73), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
@@ -744,7 +748,7 @@ class _CityMapPainter extends CustomPainter {
   void _drawTempleImage(Canvas canvas, double w, double h, ui.Image img) {
     final side = math.min(w * 0.504, h * 0.432);
     final cx   = w * 0.500;
-    final topY = h * 0.07;
+    final topY = isMobile ? h * 0.12 : h * 0.07;
     final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
     if (templeAlpha < 1.0) {
@@ -943,10 +947,10 @@ class _CityMapPainter extends CustomPainter {
       AcropolisZone.stoa      => stoaRect.center,
       AcropolisZone.acropolis => acropolisRect.center,
     };
-    // Glow radius derived from actual rendered image size — proportional per building
+    final glowMult = isMobile ? 1.3 : 1.0;
     final glowR = switch (zone) {
-      AcropolisZone.agora     => w * 0.144 * 0.56,
-      AcropolisZone.stoa      => w * 0.221 * 0.56,
+      AcropolisZone.agora     => w * 0.144 * 0.56 * glowMult,
+      AcropolisZone.stoa      => w * 0.221 * 0.56 * glowMult,
       AcropolisZone.acropolis => math.min(w * 0.504, h * 0.432) * 0.44,
     };
     final eased = reducedMotion ? 0.5 : Curves.easeInOut.transform(pulseT);
@@ -975,8 +979,9 @@ class _CityMapPainter extends CustomPainter {
     final fsTitle = (w * 0.030).clamp(10.0, 16.0);
     _lbl(canvas, 'AGORA',          w*.440, h*.800, aHot ? _orange : _copperLt, fsZone,  op: labelEntrance);
     _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copperLt, fsZone,  op: labelEntrance);
-    // SYMPOSIUM sits below the temple image (temple bottom ≈ h*0.30 on mobile)
-    _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.330, tHot ? _orange : _copperLt, fsSub,   op: labelEntrance);
+    // SYMPOSIUM sits below the temple image (mobile: bottom ≈ h*0.36, desktop: bottom ≈ h*0.30)
+    final symLblY = isMobile ? h * 0.385 : h * 0.330;
+    _lbl(canvas, 'SYMPOSIUM',      w*.500, symLblY, tHot ? _orange : _copperLt, fsSub,   op: labelEntrance);
     _lbl(canvas, 'A · C · R · O', w*.500, h*.026, _copperLt,                   fsTitle, ls: 7.0, op: labelEntrance);
   }
 
