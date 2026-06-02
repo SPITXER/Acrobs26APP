@@ -125,12 +125,12 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final _agoraSide    = w * 0.144;
-            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.30, h * 0.73), width: _agoraSide, height: _agoraSide);
+            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.44, h * 0.73), width: _agoraSide, height: _agoraSide);
             final _stoaSide     = w * 0.221;
             final stoaRect      = Rect.fromCenter(
               center: Offset(w * 0.63, h * 0.58),
               width: _stoaSide, height: _stoaSide);
-            final acropolisRect = Rect.fromLTWH(w * 0.28, h * 0.04, w * 0.44, h * 0.36);
+            final acropolisRect = Rect.fromLTWH(w * 0.28, h * 0.07, w * 0.44, h * 0.36);
             return Stack(children: [
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -445,7 +445,7 @@ class _CityMapPainter extends CustomPainter {
   void _moon(Canvas canvas, double w, double h) {
     final moonEntrance = _eAlpha(0.28);
     if (moonEntrance == 0) return;
-    final cx = w * 0.50;
+    final cx = w * 0.82;
     final cy = h * 0.10;
     const r  = _px * 7.8;
     canvas.saveLayer(Rect.fromCircle(center: Offset(cx, cy), radius: r * 3),
@@ -622,7 +622,7 @@ class _CityMapPainter extends CustomPainter {
   void _drawAgoraImage(Canvas canvas, double w, double h, ui.Image img) {
     final side = w * 0.144;
     final dest = Rect.fromCenter(
-      center: Offset(w * 0.30, h * 0.73), width: side, height: side);
+      center: Offset(w * 0.44, h * 0.73), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
     if (agoraAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - agoraAlpha);
     canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, agoraAlpha));
@@ -732,7 +732,7 @@ class _CityMapPainter extends CustomPainter {
   void _drawTempleImage(Canvas canvas, double w, double h, ui.Image img) {
     final side = math.min(w * 0.504, h * 0.432);
     final cx   = w * 0.500;
-    final topY = h * 0.03;
+    final topY = h * 0.07;
     final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
     if (templeAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - templeAlpha);
@@ -921,21 +921,25 @@ class _CityMapPainter extends CustomPainter {
   void _hoverGlow(Canvas canvas, double w, double h) {
     final zone = tappedZone ?? hovered;
     if (zone == null) return;
-    final rect = switch (zone) {
-      AcropolisZone.agora     => agoraRect,
-      AcropolisZone.stoa      => stoaRect,
-      AcropolisZone.acropolis => acropolisRect,
+    final center = switch (zone) {
+      AcropolisZone.agora     => agoraRect.center,
+      AcropolisZone.stoa      => stoaRect.center,
+      AcropolisZone.acropolis => acropolisRect.center,
     };
-    // Ease the pulse — static when reducedMotion
+    // Glow radius derived from actual rendered image size — proportional per building
+    final glowR = switch (zone) {
+      AcropolisZone.agora     => w * 0.144 * 0.56,
+      AcropolisZone.stoa      => w * 0.221 * 0.56,
+      AcropolisZone.acropolis => math.min(w * 0.504, h * 0.432) * 0.44,
+    };
     final eased = reducedMotion ? 0.5 : Curves.easeInOut.transform(pulseT);
-    canvas.drawCircle(rect.center, rect.shortestSide * 0.60,
+    canvas.drawCircle(center, glowR,
       Paint()
         ..color = _orange.withValues(alpha: (0.05 + 0.15 * eased).clamp(0.0, 1.0))
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 34));
-    // Tap burst — sharp bright flash that fades quickly
     if (tapFlashT > 0) {
       final burst = (tapFlashT * (1 - tapFlashT) * 4.0 * 0.65).clamp(0.0, 1.0);
-      canvas.drawCircle(rect.center, rect.shortestSide * 0.80,
+      canvas.drawCircle(center, glowR * 1.35,
         Paint()
           ..color = _orange.withValues(alpha: burst)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 42));
@@ -949,7 +953,7 @@ class _CityMapPainter extends CustomPainter {
     final sHot = hovered == AcropolisZone.stoa      || tappedZone == AcropolisZone.stoa;
     final tHot = hovered == AcropolisZone.acropolis || tappedZone == AcropolisZone.acropolis;
     // Use _copperLt as default (8.7:1 contrast vs black — WCAG AA+)
-    _lbl(canvas, 'AGORA',          w*.300, h*.800, aHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
+    _lbl(canvas, 'AGORA',          w*.440, h*.800, aHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
     _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
     _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.118, tHot ? _orange : _copperLt, _px*1.9, op: labelEntrance);
     _lbl(canvas, 'A · C · R · O', w*.500, h*.022, _copperLt,                   _px*2.3, ls: 7.0, op: labelEntrance);
