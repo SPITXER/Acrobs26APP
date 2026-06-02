@@ -11,8 +11,6 @@ import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
 
-const double _px = 2.0;
-
 enum AcropolisZone { agora, stoa, acropolis }
 
 const _copper   = Color(0xFFB87333);
@@ -251,6 +249,9 @@ class _CityMapPainter extends CustomPainter {
       this.shimmerT = 0.0, this.entranceT = 1.0,
       this.reducedMotion = false});
 
+  // Scales with screen width so pixel art looks consistent on all phones
+  double _px = 2.0;
+
   // Eased alpha for staggered entrance — start 0→1 over a 0.22-wide window
   double _eAlpha(double start) =>
     Curves.easeOut.transform(((entranceT - start) / 0.22).clamp(0.0, 1.0));
@@ -258,6 +259,7 @@ class _CityMapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width; final h = size.height;
+    _px = w / 195.0; // ~2.0 on 390dp phones, scales up on tablets
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = Colors.black);
     _groundPlane(canvas, w, h);
     _sky(canvas, w, h);
@@ -447,7 +449,7 @@ class _CityMapPainter extends CustomPainter {
     if (moonEntrance == 0) return;
     final cx = w * 0.82;
     final cy = h * 0.10;
-    const r  = _px * 7.8;
+    final r  = _px * 7.8;
     canvas.saveLayer(Rect.fromCircle(center: Offset(cx, cy), radius: r * 3),
         Paint()..color = Color.fromRGBO(255, 255, 255, moonEntrance));
 
@@ -611,11 +613,16 @@ class _CityMapPainter extends CustomPainter {
       center: Offset(w * 0.63, h * 0.58), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
     // Shimmer placeholder while loading
-    if (stoaAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - stoaAlpha);
-    canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, stoaAlpha));
-    canvas.drawImageRect(img, src, dest,
-        Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-    canvas.restore();
+    if (stoaAlpha < 1.0) {
+      _shimmerPlaceholder(canvas, dest, 1 - stoaAlpha);
+      canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, stoaAlpha));
+      canvas.drawImageRect(img, src, dest,
+          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+      canvas.restore();
+    } else {
+      canvas.drawImageRect(img, src, dest,
+          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+    }
   }
 
   // ── Agora image icon ─────────────────────────────────────────────────────
@@ -624,11 +631,16 @@ class _CityMapPainter extends CustomPainter {
     final dest = Rect.fromCenter(
       center: Offset(w * 0.44, h * 0.73), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    if (agoraAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - agoraAlpha);
-    canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, agoraAlpha));
-    canvas.drawImageRect(img, src, dest,
-        Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-    canvas.restore();
+    if (agoraAlpha < 1.0) {
+      _shimmerPlaceholder(canvas, dest, 1 - agoraAlpha);
+      canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, agoraAlpha));
+      canvas.drawImageRect(img, src, dest,
+          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+      canvas.restore();
+    } else {
+      canvas.drawImageRect(img, src, dest,
+          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+    }
   }
 
   // ── Stoa — 5 mini Greek temples, spread wide ─────────────────────────────
@@ -653,8 +665,8 @@ class _CityMapPainter extends CustomPainter {
 
   void _miniTemple(Canvas canvas, double cx, double baseY,
       Color c, Color cLt, Color cDk, Color cMd) {
-    const tw    = _px * 22.0;  // face width at top step
-    const colH  = _px * 14.0;  // column height
+    final tw    = _px * 22.0;
+    final colH  = _px * 14.0;
     const nCols = 4;
 
     // ── 3 steps — widest at bottom ────────────────────────────────────────
@@ -735,11 +747,16 @@ class _CityMapPainter extends CustomPainter {
     final topY = h * 0.07;
     final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    if (templeAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - templeAlpha);
-    canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, templeAlpha));
-    canvas.drawImageRect(img, src, dest,
-        Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-    canvas.restore();
+    if (templeAlpha < 1.0) {
+      _shimmerPlaceholder(canvas, dest, 1 - templeAlpha);
+      canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, templeAlpha));
+      canvas.drawImageRect(img, src, dest,
+          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+      canvas.restore();
+    } else {
+      canvas.drawImageRect(img, src, dest,
+          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+    }
   }
 
   // ── Temple — more depth with shadow + visible side faces ─────────────────
@@ -751,11 +768,11 @@ class _CityMapPainter extends CustomPainter {
     final vDk  = cDk.withValues(alpha: 0.92);
     final cx   = w * 0.500;
     final baseY = h * 0.368;
-    const tW   = _px * 50.0;
-    const colH = _px * 20.0;
+    final tW   = _px * 50.0;
+    final colH = _px * 20.0;
     // Deeper 3-D offset
-    const dX   = _px * 9.0;
-    const dY   = -_px * 5.0;
+    final dX   = _px * 9.0;
+    final dY   = -_px * 5.0;
 
     // Drop shadow beneath temple (blurred)
     canvas.drawPath(
@@ -952,11 +969,15 @@ class _CityMapPainter extends CustomPainter {
     final aHot = hovered == AcropolisZone.agora     || tappedZone == AcropolisZone.agora;
     final sHot = hovered == AcropolisZone.stoa      || tappedZone == AcropolisZone.stoa;
     final tHot = hovered == AcropolisZone.acropolis || tappedZone == AcropolisZone.acropolis;
-    // Use _copperLt as default (8.7:1 contrast vs black — WCAG AA+)
-    _lbl(canvas, 'AGORA',          w*.440, h*.800, aHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
-    _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
-    _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.118, tHot ? _orange : _copperLt, _px*1.9, op: labelEntrance);
-    _lbl(canvas, 'A · C · R · O', w*.500, h*.022, _copperLt,                   _px*2.3, ls: 7.0, op: labelEntrance);
+    // Responsive font sizes — readable on all phone widths, scale with screen
+    final fsZone  = (w * 0.028).clamp(10.0, 15.0);
+    final fsSub   = (w * 0.025).clamp(9.0,  13.0);
+    final fsTitle = (w * 0.030).clamp(10.0, 16.0);
+    _lbl(canvas, 'AGORA',          w*.440, h*.800, aHot ? _orange : _copperLt, fsZone,  op: labelEntrance);
+    _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copperLt, fsZone,  op: labelEntrance);
+    // SYMPOSIUM sits below the temple image (temple bottom ≈ h*0.30 on mobile)
+    _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.330, tHot ? _orange : _copperLt, fsSub,   op: labelEntrance);
+    _lbl(canvas, 'A · C · R · O', w*.500, h*.026, _copperLt,                   fsTitle, ls: 7.0, op: labelEntrance);
   }
 
   void _lbl(Canvas canvas, String text, double cx, double cy,
