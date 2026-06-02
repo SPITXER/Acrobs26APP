@@ -15,7 +15,7 @@ class CloudCornerBox extends StatelessWidget {
   const CloudCornerBox({
     super.key,
     required this.child,
-    this.backgroundColor = const Color(0xFF0E1320),
+    this.backgroundColor = const Color(0xFF0B0F1A),
     this.borderColor     = const Color(0x38B87333), // gold ~22%
     this.borderWidth     = 1.0,
     this.borderRadius    = const BorderRadius.all(Radius.circular(4)),
@@ -73,12 +73,12 @@ class _SwirlPainter extends CustomPainter {
   // The corner of the card sits at the centre of the 76×76 canvas
   static const double _k = 38.0;
 
-  // colours: 0=white  1=lightBlue  2=midBlue  3=swirlBlue
+  // colours: 0=brightGold  1=copper  2=darkCopper  3=deepBronze
   static const _col = [
-    Color(0xFFFFFFFF),
-    Color(0xFFDCECF8),
-    Color(0xFFBDD2EC),
-    Color(0xFF7AAFC8),
+    Color(0xFFD4A853),
+    Color(0xFFB87333),
+    Color(0xFF8B5A22),
+    Color(0xFF5C3A12),
   ];
 
   // Pixel positions relative to corner (0,0).

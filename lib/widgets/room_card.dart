@@ -15,8 +15,8 @@ class RoomCard extends StatelessWidget {
       onTap: room.isFull ? null : onJoin,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          border: Border.all(color: AcroColors.gold.withOpacity(0.12)),
+          color: Colors.white.withOpacity(0.05),
+          border: Border.all(color: AcroColors.gold.withOpacity(0.25)),
           borderRadius: BorderRadius.circular(13),
         ),
         padding: const EdgeInsets.all(16),
@@ -40,8 +40,8 @@ class RoomCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(room.host, style: const TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w500)),
-                    const Text('Host', style: TextStyle(fontSize: 10, color: Colors.white30)),
+                    Text(room.host, style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500)),
+                    const Text('Host', style: TextStyle(fontSize: 10, color: Colors.white54)),
                   ],
                 ),
                 const Spacer(),
@@ -98,23 +98,28 @@ class RoomCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 10),
               child: Row(
                 children: [
-                  Icon(Icons.people, size: 12, color: Colors.white30),
+                  Icon(Icons.people, size: 12, color: Colors.white54),
                   const SizedBox(width: 3),
                   Text('${room.guestCount}/${room.capacity}',
-                      style: const TextStyle(fontSize: 10, color: Colors.white30)),
+                      style: const TextStyle(fontSize: 10, color: Colors.white54)),
                   const SizedBox(width: 9),
-                  Icon(Icons.access_time, size: 12, color: Colors.white30),
+                  Icon(Icons.access_time, size: 12, color: Colors.white54),
                   const SizedBox(width: 3),
                   Text(room.duration,
-                      style: const TextStyle(fontSize: 10, color: Colors.white30)),
+                      style: const TextStyle(fontSize: 10, color: Colors.white54)),
                   const Spacer(),
                   TextButton(
                     onPressed: room.isFull ? null : onJoin,
                     style: TextButton.styleFrom(
                       backgroundColor: room.isFull
-                          ? AcroColors.gold.withOpacity(0.3)
+                          ? Colors.transparent
                           : AcroColors.gold,
-                      foregroundColor: AcroColors.stone,
+                      foregroundColor: room.isFull
+                          ? Colors.white38
+                          : AcroColors.stone,
+                      side: room.isFull
+                          ? const BorderSide(color: Colors.white24)
+                          : BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,

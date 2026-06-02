@@ -223,8 +223,7 @@ class _StoaScreenState extends State<StoaScreen>
                     color: Colors.white, fontSize: 13)),
           ),
           Text('LIVE',
-              style: TextStyle(
-                  fontFamily: 'monospace',
+              style: GoogleFonts.spaceMono(
                   fontSize: 9,
                   letterSpacing: 2,
                   color: AcroColors.gold.withOpacity(0.65))),
@@ -246,8 +245,7 @@ class _StoaScreenState extends State<StoaScreen>
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
           Text('${idx + 1} / ${rooms.length}',
-              style: TextStyle(
-                  fontFamily: 'monospace',
+              style: GoogleFonts.spaceMono(
                   fontSize: 11,
                   color: Colors.white.withOpacity(0.22))),
         ]),
@@ -360,23 +358,21 @@ class _StoaScreenState extends State<StoaScreen>
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: Text(category,
-                    style: TextStyle(
-                        fontFamily: 'monospace',
+                    style: GoogleFonts.spaceMono(
                         fontSize: 9,
                         color: AcroColors.gold.withOpacity(0.70),
                         letterSpacing: 1.5)),
               ),
             const Spacer(),
             Text(_timeAgo(ts),
-                style: TextStyle(
-                    fontFamily: 'monospace',
+                style: GoogleFonts.spaceMono(
                     fontSize: 9,
                     color: Colors.white.withOpacity(0.22))),
           ]),
           const SizedBox(height: 18),
           Text(title,
-              style: GoogleFonts.playfairDisplay(
-                  fontSize: 20,
+              style: GoogleFonts.cormorant(
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                   height: 1.3)),
@@ -416,9 +412,8 @@ class _StoaScreenState extends State<StoaScreen>
             border: Border.all(color: color, width: 1.5),
             borderRadius: BorderRadius.circular(3)),
         child: Text(label,
-            style: TextStyle(
+            style: GoogleFonts.spaceMono(
                 color: color,
-                fontFamily: 'monospace',
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2)),
@@ -434,8 +429,7 @@ class _StoaScreenState extends State<StoaScreen>
             hasOwnRooms
                 ? 'Your argument is live.'
                 : 'The floor is empty.',
-            style: TextStyle(
-                fontFamily: 'monospace',
+            style: GoogleFonts.spaceMono(
                 fontSize: 14,
                 color: Colors.white.withOpacity(0.4)),
           ),
@@ -507,15 +501,12 @@ class _StoaScreenState extends State<StoaScreen>
                     const SizedBox(height: 6),
                     TextField(
                       controller: _nameCtrl,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontFamily: 'monospace'),
+                      style: GoogleFonts.spaceMono(
+                          color: Colors.white, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Your full name…',
-                        hintStyle: TextStyle(
-                            color: Colors.white.withOpacity(0.22),
-                            fontFamily: 'monospace'),
+                        hintStyle: GoogleFonts.spaceMono(
+                            color: Colors.white.withOpacity(0.22)),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.04),
                         border: OutlineInputBorder(
@@ -667,13 +658,11 @@ class _PostSheetState extends State<_PostSheet> {
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: Text(cat,
-                            style: TextStyle(
-                                fontFamily: 'monospace',
+                            style: GoogleFonts.spaceMono(
                                 fontSize: 10,
                                 color: sel
                                     ? AcroColors.gold
-                                    : Colors.white
-                                        .withOpacity(0.45))),
+                                    : Colors.white.withOpacity(0.45))),
                       ),
                     );
                   }).toList(),
@@ -711,8 +700,7 @@ class _PostSheetState extends State<_PostSheet> {
           const Text('⚖', style: TextStyle(fontSize: 32)),
           const SizedBox(height: 12),
           Text('10-room limit reached.',
-              style: TextStyle(
-                  fontFamily: 'monospace',
+              style: GoogleFonts.spaceMono(
                   fontSize: 13,
                   color: Colors.white.withOpacity(0.45))),
           const SizedBox(height: 6),
@@ -730,15 +718,11 @@ class _PostSheetState extends State<_PostSheet> {
         child: TextField(
           controller: ctrl,
           maxLines: maxLines,
-          style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontFamily: 'monospace'),
+          style: GoogleFonts.spaceMono(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-                color: Colors.white.withOpacity(0.25),
-                fontFamily: 'monospace'),
+            hintStyle: GoogleFonts.spaceMono(
+                color: Colors.white.withOpacity(0.25)),
             filled: true,
             fillColor: Colors.white.withOpacity(0.04),
             border: OutlineInputBorder(
