@@ -571,10 +571,10 @@ class _CityMapPainter extends CustomPainter {
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
 
     if (hot) {
-      canvas.drawRect(dest.inflate(_px * 4),
+      canvas.drawCircle(dest.center, dest.width * 0.38,
         Paint()
           ..color = _orange.withValues(alpha: (0.10 + 0.16 * pulseT).clamp(0.0, 1.0))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12));
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
     }
 
     canvas.drawImageRect(img, src, dest,
@@ -691,12 +691,10 @@ class _CityMapPainter extends CustomPainter {
 
     // Pulsing glow behind image when hovered
     if (hot) {
-      canvas.drawRect(
-        dest.inflate(_px * 4),
+      canvas.drawCircle(dest.center, dest.width * 0.40,
         Paint()
           ..color = _orange.withValues(alpha: (0.10 + 0.18 * pulseT).clamp(0.0, 1.0))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
-      );
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
     }
 
     // Screen blend makes the black PNG background disappear on the dark map
@@ -889,9 +887,11 @@ class _CityMapPainter extends CustomPainter {
       AcropolisZone.stoa      => stoaRect,
       AcropolisZone.acropolis => acropolisRect,
     };
-    canvas.drawRect(rect.inflate(_px * 2), Paint()
-      ..color = _orange.withValues(alpha: (0.13 + 0.18 * pulseT).clamp(0.0, 1.0))
-      ..style = PaintingStyle.stroke..strokeWidth = _px * 1.8);
+    // Soft radial glow radiating from the building centre
+    canvas.drawCircle(rect.center, rect.shortestSide * 0.42,
+      Paint()
+        ..color = _orange.withValues(alpha: (0.08 + 0.12 * pulseT).clamp(0.0, 1.0))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22));
   }
 
   void _labels(Canvas canvas, double w, double h) {
