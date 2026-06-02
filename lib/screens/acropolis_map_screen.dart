@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import '../services/app_state.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/signup_dialog.dart';
 import 'agora_screen.dart';
