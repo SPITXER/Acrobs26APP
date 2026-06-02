@@ -15,6 +15,10 @@ const _orange   = Color(0xFFFF8C42);
 const _wallFill = Color(0xFF0F0500);
 const _treeDk   = Color(0xFF3D1800);
 const _treeLt   = Color(0xFF7A4520);
+const _sandLt   = Color(0xFFF0DDB8);
+const _sand     = Color(0xFFD4B87A);
+const _sandMd   = Color(0xFFBE9A60);
+const _sandDk   = Color(0xFF7A5030);
 
 class AcropolisMapScreen extends StatefulWidget {
   const AcropolisMapScreen({super.key});
@@ -50,8 +54,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final agoraRect     = Rect.fromLTWH(w * 0.40, h * 0.84, w * 0.20, h * 0.09);
-            // Wider stoa rect to cover spread booths (0.285–0.688 cx)
-            final stoaRect      = Rect.fromLTWH(w * 0.20, h * 0.50, w * 0.60, h * 0.18);
+            final stoaRect      = Rect.fromLTWH(w * 0.16, h * 0.46, w * 0.68, h * 0.22);
             final acropolisRect = Rect.fromLTWH(w * 0.30, h * 0.10, w * 0.40, h * 0.28);
             return Stack(children: [
               GestureDetector(
@@ -417,12 +420,12 @@ class _CityMapPainter extends CustomPainter {
       Offset(w*.500, h*.948),  // gate floor
       Offset(w*.500, h*.908),  // gate void top
       Offset(w*.500, h*.868),  // inside city, above gate
-      Offset(w*.285, h*.600),  // through booth 1 (far left)
-      Offset(w*.378, h*.596),  // through booth 2
-      Offset(w*.488, h*.601),  // through booth 3 (centre)
-      Offset(w*.602, h*.595),  // through booth 4
-      Offset(w*.688, h*.590),  // through booth 5 (far right)
-      Offset(w*.500, h*.532),  // converge to centre after market
+      Offset(w*.230, h*.614),  // stoa temple 1
+      Offset(w*.355, h*.608),  // stoa temple 2
+      Offset(w*.500, h*.616),  // stoa temple 3
+      Offset(w*.645, h*.607),  // stoa temple 4
+      Offset(w*.770, h*.612),  // stoa temple 5
+      Offset(w*.500, h*.530),  // converge to centre after stoa
       Offset(w*.500, h*.450),  // upper city
       Offset(w*.500, h*.372),  // temple base approach
       Offset(w*.500, h*.305),  // through temple steps
@@ -531,171 +534,101 @@ class _CityMapPainter extends CustomPainter {
     _r(canvas, Paint()..color = cDk, cx - gateW / 2 - _px, floorY, gateW + _px * 2, _px * 1.1);
   }
 
-  // ── Market — 5 booths, spread wide + non-symmetrical ─────────────────────
+  // ── Stoa — 5 mini Greek temples, spread wide ─────────────────────────────
   void _market(Canvas canvas, double w, double h) {
     final hot = hovered == AcropolisZone.stoa;
-    final c   = hot ? _orange   : _copper;
-    final cLt = hot ? const Color(0xFFFFD090) : _copperLt;
-    final cDk = hot ? _copper   : _copperDk;
+    final c   = hot ? _orange              : _sand;
+    final cLt = hot ? const Color(0xFFFFD090) : _sandLt;
+    final cDk = hot ? _copper              : _sandDk;
+    final cMd = hot ? _copperLt            : _sandMd;
 
-    // [centerX, baseY, widthPx, heightPx]
-    final booths = [
-      [0.285, 0.600,  9.0, 16.0],
-      [0.378, 0.596, 15.0, 12.0],
-      [0.488, 0.603, 10.0, 17.0],
-      [0.602, 0.597, 13.0, 14.0],
-      [0.688, 0.592,  8.0, 11.0],
+    const positions = [
+      [0.230, 0.614],
+      [0.355, 0.608],
+      [0.500, 0.616],
+      [0.645, 0.607],
+      [0.770, 0.612],
     ];
-
-    // Overhead banner connecting all booths
-    final bx0 = booths.first[0] * w - booths.first[2] * _px / 2 - _px * 4;
-    final bx1 = booths.last[0]  * w + booths.last[2]  * _px / 2 + _px * 4;
-    final bannerY = booths[0][1] * h - booths[0][3] * _px - _px * 9;
-    _r(canvas, Paint()..color = c,   bx0, bannerY,          bx1 - bx0, _px * 1.0);
-    _r(canvas, Paint()..color = cLt, bx0, bannerY,          bx1 - bx0, _px * 0.4);
-    _r(canvas, Paint()..color = cDk, bx0, bannerY + _px,    bx1 - bx0, _px * 0.4);
-    // Banner pendant drops
-    final pendW = (bx1 - bx0) / 9;
-    for (int d = 0; d < 9; d++) {
-      _r(canvas, Paint()..color = cDk, bx0 + d * pendW + pendW * 0.35, bannerY + _px * 1.0, _px * 0.7, _px * 2.5);
-      _r(canvas, Paint()..color = c,   bx0 + d * pendW + pendW * 0.35, bannerY + _px * 3.0, _px * 1.4, _px * 1.4);
-    }
-
-    for (int i = 0; i < booths.length; i++) {
-      final bx = booths[i][0] * w;
-      final by = booths[i][1] * h;
-      final bw = booths[i][2] * _px;
-      final bh = booths[i][3] * _px;
-      final sx = bx - bw / 2;
-      final sy = by - bh;
-
-      // Subtle drop shadow
-      _r(canvas, Paint()..color = cDk.withValues(alpha: .55), sx + _px * 0.6, sy + _px * 0.6, bw, bh);
-      // Back wall
-      _r(canvas, Paint()..color = cDk, sx, sy, bw, bh);
-      // Side shadow stripe
-      _r(canvas, Paint()..color = cDk.withValues(alpha: .40), sx + bw - _px * 1.4, sy, _px * 1.4, bh);
-
-      // Window
-      _r(canvas, Paint()..color = _wallFill, sx + bw * .18, sy + bh * .12, bw * .64, bh * .42);
-
-      // Goods — varied per booth
-      _boothGoods(canvas, sx, sy, bw, bh, c, cLt, cDk, i);
-
-      // Hanging cord + sign above each booth
-      final signW = bw * 0.52;
-      _r(canvas, Paint()..color = cDk, bx - _px * 0.3, sy - _px * 4.5, _px * 0.6, _px * 4.5);
-      _r(canvas, Paint()..color = cDk, bx - signW / 2 - _px * 0.4, sy - _px * 0.2, signW + _px * 0.8, _px * 2.8);
-      _r(canvas, Paint()..color = c,   bx - signW / 2, sy - _px * 0.2, signW, _px * 2.4);
-      _r(canvas, Paint()..color = cLt, bx - signW / 2, sy - _px * 0.2, signW, _px * 0.4);
-
-      // Awning
-      _awning(canvas, sx - _px * 1.5, sy - _px * 5.5, bw + _px * 3, _px * 5.5, c, cLt, i);
-
-      // Counter
-      _r(canvas, Paint()..color = c,   sx - _px * .5, by - _px * 2.8, bw + _px, _px * 2.8);
-      _r(canvas, Paint()..color = cLt, sx - _px * .5, by - _px * 2.8, bw + _px, _px * 0.6);
-      _r(canvas, Paint()..color = cDk, sx - _px * .5, by - _px * 0.4, bw + _px, _px * 0.6);
-
-      // Jar/barrel beside alternate booths
-      if (i.isEven) {
-        _jar(canvas, sx - _px * 4.0, by - _px * 4.5, c, cDk);
-      } else {
-        _jar(canvas, sx + bw + _px * 1.8, by - _px * 4.5, c, cDk);
-      }
+    for (final p in positions) {
+      _miniTemple(canvas, p[0] * w, p[1] * h, c, cLt, cDk, cMd);
     }
   }
 
-  void _boothGoods(Canvas canvas, double sx, double sy, double bw, double bh,
-      Color c, Color cLt, Color cDk, int i) {
-    final wx = sx + bw * .18;
-    final wy = sy + bh * .12;
-    final ww = bw * .64;
-    final wh = bh * .42;
+  void _miniTemple(Canvas canvas, double cx, double baseY,
+      Color c, Color cLt, Color cDk, Color cMd) {
+    const tw    = _px * 22.0;  // face width at top step
+    const colH  = _px * 14.0;  // column height
+    const nCols = 4;
 
-    if (i == 0) {
-      // Scrolls
-      _r(canvas, Paint()..color = cLt, wx + ww * .10, wy + wh * .10, _px * 2.0, wh * .72);
-      _r(canvas, Paint()..color = cLt, wx + ww * .38, wy + wh * .20, _px * 1.6, wh * .60);
-      _r(canvas, Paint()..color = cLt.withValues(alpha: .55), wx + ww * .62, wy + wh * .15, _px * 1.8, wh * .66);
-      _r(canvas, Paint()..color = cDk, wx + ww * .10, wy + wh * .10, _px * 2.0, _px * 0.5);
-      _r(canvas, Paint()..color = cDk, wx + ww * .10, wy + wh * .82 - _px * .5, _px * 2.0, _px * 0.5);
-    } else if (i == 1) {
-      // Pots
-      _r(canvas, Paint()..color = c, wx + ww * .10, wy + wh * .50, _px * 2.8, wh * .40);
-      _r(canvas, Paint()..color = cLt, wx + ww * .10, wy + wh * .50, _px * 2.8, _px * 0.5);
-      _r(canvas, Paint()..color = c, wx + ww * .43, wy + wh * .32, _px * 3.2, wh * .58);
-      _r(canvas, Paint()..color = cLt, wx + ww * .43, wy + wh * .32, _px * 3.2, _px * 0.5);
-      _r(canvas, Paint()..color = c, wx + ww * .76, wy + wh * .55, _px * 2.0, wh * .35);
-    } else if (i == 2) {
-      // Cloth/fabric (horizontal bands)
-      for (int row = 0; row < 4; row++) {
-        _r(canvas, Paint()..color = row.isEven ? cLt.withValues(alpha: .85) : cDk.withValues(alpha: .75),
-            wx, wy + row * wh / 4 + _px * .4, ww, wh * .22);
-      }
-    } else if (i == 3) {
-      // Weapons/tools
-      _r(canvas, Paint()..color = cLt, wx + ww * .10, wy + wh * .05, _px * 0.8, wh * .90);
-      _r(canvas, Paint()..color = cLt, wx + ww * .10 - _px, wy + wh * .05, _px * 2.8, _px * 0.8);
-      _r(canvas, Paint()..color = c,   wx + ww * .40, wy + wh * .15, _px * 1.4, wh * .70);
-      _r(canvas, Paint()..color = c,   wx + ww * .64, wy + wh * .10, _px * 3.0, _px * 2.0);
-      _r(canvas, Paint()..color = cLt, wx + ww * .64, wy + wh * .10, _px * 3.0, _px * 0.5);
-      _r(canvas, Paint()..color = c,   wx + ww * .64, wy + wh * .10, _px * 3.0, wh * .62);
-    } else {
-      // Hanging items (5th booth — smallest)
-      for (int j = 0; j < 2; j++) {
-        final hx = wx + ww * (0.18 + j * 0.48);
-        _r(canvas, Paint()..color = cDk, hx, wy,             _px * 0.5, wh * .32);
-        _r(canvas, Paint()..color = cLt, hx - _px, wy + wh * .32, _px * 2.4, _px * 1.8);
-        _r(canvas, Paint()..color = c,   hx - _px * .5, wy + wh * .32 + _px * 1.8, _px * 1.4, _px * 2.4);
-      }
+    // ── 3 steps — widest at bottom ────────────────────────────────────────
+    for (int s = 0; s < 3; s++) {
+      final sw = tw + (2 - s) * _px * 4.5;
+      final sy = baseY - (s + 1) * _px * 2.5;
+      _r(canvas, Paint()..color = s == 0 ? c : cLt, cx - sw / 2, sy, sw, _px * 2.5);
+      _r(canvas, Paint()..color = cDk, cx - sw / 2, sy + _px * 2.0, sw, _px * 0.5);
     }
-  }
 
-  void _jar(Canvas canvas, double cx, double cy, Color c, Color cDk) {
-    _r(canvas, Paint()..color = cDk, cx - _px,        cy,          _px * 2.5, _px * 5.0);
-    _r(canvas, Paint()..color = cDk, cx - _px * 1.5,  cy + _px * 1.5, _px * 3.5, _px * 3.0);
-    _r(canvas, Paint()..color = c,   cx - _px * 1.5,  cy + _px * 1.5, _px * 0.5, _px * 2.0);
-    _r(canvas, Paint()..color = cDk, cx - _px * 0.5,  cy - _px,    _px * 1.5,  _px * 1.5);
-  }
+    // ── Stylobate (platform) ───────────────────────────────────────────────
+    final platTop = baseY - _px * 7.5;
+    _r(canvas, Paint()..color = cLt, cx - tw / 2, platTop - _px * 2.0, tw, _px * 2.0);
+    _r(canvas, Paint()..color = cDk.withValues(alpha: 0.38),
+        cx - tw / 2, platTop - _px * 0.5, tw, _px * 0.5);
 
-  void _awning(Canvas canvas, double x, double y, double aw, double ah,
-      Color c, Color cLt, int style) {
-    if (style == 0) {
-      double ry = y; int row = 0;
-      while (ry < y + ah) {
-        final rh = (y + ah - ry).clamp(0.0, _px * 1.6);
-        _r(canvas, Paint()..color = row % 2 == 0 ? c : cLt.withValues(alpha: .62), x, ry, aw, rh);
-        ry += _px * 1.6; row++;
-      }
-    } else if (style == 1) {
-      _r(canvas, Paint()..color = c, x, y, aw, ah);
-      _r(canvas, Paint()..color = cLt, x, y, aw, _px * 0.7);
-      _r(canvas, Paint()..color = cLt, x, y + ah - _px * 0.7, aw, _px * 0.7);
-    } else if (style == 2) {
-      double ry = y; int row = 0;
-      while (ry < y + ah) {
-        final rh = (y + ah - ry).clamp(0.0, _px * 1.2);
-        _r(canvas, Paint()..color = row % 2 == 0 ? cLt.withValues(alpha: .78) : c, x, ry, aw, rh);
-        ry += _px * 1.2; row++;
-      }
-    } else if (style == 3) {
-      _r(canvas, Paint()..color = c, x, y, aw, ah);
-      for (int i = 0; i < (aw / (_px * 2.8)).floor(); i++) {
-        _r(canvas, Paint()..color = cLt, x + i * _px * 2.8, y, _px * 1.1, ah);
-      }
-    } else {
-      _r(canvas, Paint()..color = _copperDk.withValues(alpha: .78), x, y, aw, ah);
-      for (int i = 0; i < (aw / (_px * 3.5)).floor(); i++) {
-        _r(canvas, Paint()..color = cLt.withValues(alpha: .55), x + i * _px * 3.5, y, _px * 1.8, ah);
-      }
+    // ── Dark interior void behind columns ──────────────────────────────────
+    final colBase = platTop - _px * 2.0;
+    final colTop  = colBase - colH;
+    _r(canvas, Paint()..color = _wallFill.withValues(alpha: 0.90),
+        cx - tw / 2 + _px * 1.8, colTop, tw - _px * 3.6, colH + _px * 2.0);
+
+    // ── Columns ────────────────────────────────────────────────────────────
+    final colArea = tw - _px * 4.0;
+    final colSp   = colArea / (nCols - 1);
+    for (int i = 0; i < nCols; i++) {
+      final colX = cx - colArea / 2 + i * colSp;
+      // Abacus (flat cap slab)
+      _r(canvas, Paint()..color = cLt, colX - _px * 2.2, colTop, _px * 4.4, _px * 1.4);
+      // Echinus (curved cap — faked with a narrower layer)
+      _r(canvas, Paint()..color = cMd, colX - _px * 1.8, colTop + _px * 1.0, _px * 3.6, _px * 1.0);
+      // Shaft
+      _r(canvas, Paint()..color = c, colX - _px * 1.4, colTop + _px * 2.0, _px * 2.8, colH - _px * 4.5);
+      // Flute shadow
+      _r(canvas, Paint()..color = cDk.withValues(alpha: 0.40),
+          colX + _px * 0.5, colTop + _px * 2.0, _px * 0.5, colH - _px * 4.5);
+      // Highlight
+      _r(canvas, Paint()..color = cLt.withValues(alpha: 0.30),
+          colX - _px * 1.4, colTop + _px * 2.0, _px * 0.45, colH - _px * 4.5);
+      // Column base
+      _r(canvas, Paint()..color = cLt, colX - _px * 2.0, colBase - _px * 2.0, _px * 4.0, _px * 2.0);
     }
-    // Fringe
-    _r(canvas, Paint()..color = cLt, x, y, aw, _px * 0.65);
-    final drops = (aw / (_px * 4.5)).floor();
-    for (int d = 0; d < drops; d++) {
-      _r(canvas, Paint()..color = c, x + d * _px * 4.5 + _px * 0.8, y + ah, _px * 1.7, _px * 2.8);
+
+    // ── Entablature ────────────────────────────────────────────────────────
+    final entY = colTop - _px * 5.0;
+    // Architrave
+    _r(canvas, Paint()..color = c,   cx - tw / 2, entY + _px * 2.5, tw, _px * 2.5);
+    _r(canvas, Paint()..color = cLt, cx - tw / 2, entY + _px * 2.5, tw, _px * 0.6);
+    // Frieze
+    _r(canvas, Paint()..color = cMd, cx - tw / 2, entY, tw, _px * 2.5);
+    // Triglyphs (3 pairs of slots)
+    for (int t = 0; t < 3; t++) {
+      final tx = cx - tw / 2 + _px * 2.5 + t * (tw - _px * 5.0) / 2 - _px * 0.9;
+      _r(canvas, Paint()..color = cDk, tx,           entY + _px * 0.3, _px * 0.8, _px * 2.2);
+      _r(canvas, Paint()..color = cDk, tx + _px * 1.5, entY + _px * 0.3, _px * 0.8, _px * 2.2);
     }
+    // Cornice
+    _r(canvas, Paint()..color = cLt, cx - tw / 2 - _px * 0.5, entY - _px * 0.5, tw + _px, _px * 1.0);
+
+    // ── Pediment ──────────────────────────────────────────────────────────
+    const pedRows = 7;
+    final pedBaseY = entY - _px * 0.5;
+    for (int i = 0; i < pedRows; i++) {
+      final rowW = (tw + _px) * (1.0 - i / pedRows) + _px;
+      _r(canvas, Paint()..color = i == 0 ? cLt : c,
+          cx - rowW / 2, pedBaseY - i * _px * 1.6, rowW, _px * 1.9);
+    }
+    // Acroterion at peak
+    final peakY = pedBaseY - pedRows * _px * 1.6;
+    _r(canvas, Paint()..color = cLt, cx - _px * 1.0, peakY - _px * 2.5, _px * 2.0, _px * 2.5);
+    _r(canvas, Paint()..color = cLt, cx - _px * 1.8, peakY - _px * 3.5, _px * 3.6, _px * 1.0);
   }
 
   // ── Temple — more depth with shadow + visible side faces ─────────────────
