@@ -321,7 +321,7 @@ class _CityMapPainter extends CustomPainter {
   void _moon(Canvas canvas, double w, double h) {
     final cx = w * 0.130;
     final cy = h * 0.108;
-    const r  = _px * 6.3;
+    const r  = _px * 7.8;
 
     // Soft pulsing ambient glow
     canvas.drawCircle(Offset(cx, cy), r * 1.9,
@@ -329,25 +329,26 @@ class _CityMapPainter extends CustomPainter {
         ..color = _orange.withValues(alpha: 0.022 + 0.014 * pulseT)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
 
-    // Crescent = outer circle minus inner offset circle
+    // Tilt the crescent clockwise ~38° so it leans to the right
+    canvas.save();
+    canvas.translate(cx, cy);
+    canvas.rotate(0.66); // ~38 degrees clockwise
     final outer = Path()
-      ..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+      ..addOval(Rect.fromCircle(center: Offset.zero, radius: r));
     final inner = Path()
       ..addOval(Rect.fromCircle(
-          center: Offset(cx + r * 0.36, cy), radius: r * 0.80));
+          center: Offset(r * 0.36, 0), radius: r * 0.80));
     final crescent = Path.combine(PathOperation.difference, outer, inner);
 
-    // Fill
     canvas.drawPath(crescent,
         Paint()..color = _copper.withValues(alpha: 0.92));
-
-    // Sleek rim highlight — thin bright stroke around the edge
     canvas.drawPath(crescent,
         Paint()
           ..color = _copperLt.withValues(alpha: 0.70)
           ..style = PaintingStyle.stroke
           ..strokeWidth = _px * 0.55
           ..strokeCap = StrokeCap.round);
+    canvas.restore();
   }
 
   // ── Terrain: artisanal trees + rocks outside wall, denser at bottom ───────
@@ -470,22 +471,22 @@ class _CityMapPainter extends CustomPainter {
       return true;
     }
 
-    // Single flowing road: bottom entry → left past agora → right to stoa
-    //                      → up-left to temple. No loops, no zigzags.
+    // Road stays inside city walls (y 0.87–0.42).
+    // Flows: bottom-centre → left past agora → right to stoa → up to temple.
     final pts = [
-      Offset(w*.500, h*.960),  // bottom entry
-      Offset(w*.460, h*.890),  // heading up-left
-      Offset(w*.340, h*.820),  // toward agora
-      Offset(w*.215, h*.730),  // left of agora, passing alongside
-      Offset(w*.240, h*.640),  // above agora, swinging right
-      Offset(w*.420, h*.610),  // centre stretch heading right
-      Offset(w*.520, h*.680),  // dip below stoa
-      Offset(w*.740, h*.620),  // right of stoa
-      Offset(w*.720, h*.470),  // top-right of stoa heading left
-      Offset(w*.520, h*.430),  // above stoa, heading left
-      Offset(w*.390, h*.440),  // left of stoa heading toward temple
-      Offset(w*.280, h*.380),  // lower-left of temple
-      Offset(w*.230, h*.290),  // temple left side
+      Offset(w*.500, h*.870),  // start — bottom centre inside walls
+      Offset(w*.420, h*.840),  // veering left
+      Offset(w*.310, h*.810),  // approaching agora from below-right
+      Offset(w*.200, h*.730),  // left side of agora
+      Offset(w*.230, h*.650),  // above agora, swinging right
+      Offset(w*.400, h*.620),  // centre stretch
+      Offset(w*.510, h*.680),  // dip toward stoa from below-left
+      Offset(w*.750, h*.620),  // right of stoa
+      Offset(w*.730, h*.470),  // above-right stoa, heading left
+      Offset(w*.520, h*.440),  // above stoa centre
+      Offset(w*.390, h*.450),  // heading toward temple
+      Offset(w*.290, h*.400),  // lower-left approach to temple
+      Offset(w*.240, h*.320),  // temple left side
     ];
 
     const dotSz = _px * 2.2;
