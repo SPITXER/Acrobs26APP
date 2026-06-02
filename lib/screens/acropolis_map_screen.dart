@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -43,6 +44,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   late AnimationController _templeFade;
   late AnimationController _stoaFade;
   late AnimationController _agoraFade;
+  late AnimationController _shimmer;
+  late AnimationController _entrance;
   ui.Image? _templeImg;
   ui.Image? _stoaImg;
   ui.Image? _agoraImg;
@@ -57,6 +60,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     _templeFade = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _stoaFade   = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _agoraFade  = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _shimmer  = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+    _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..forward();
     _loadTempleImage();
     _loadStoaImage();
     _loadAgoraImage();
@@ -101,6 +106,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   void dispose() {
     _pulse.dispose(); _flicker.dispose();
     _tapFlash.dispose(); _templeFade.dispose(); _stoaFade.dispose(); _agoraFade.dispose();
+    _shimmer.dispose(); _entrance.dispose();
     _templeImg?.dispose(); _stoaImg?.dispose(); _agoraImg?.dispose();
     super.dispose();
   }
@@ -111,7 +117,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       backgroundColor: Colors.black,
       endDrawer: const SideMenu(),
       body: AnimatedBuilder(
-        animation: Listenable.merge([_pulse, _flicker, _tapFlash, _templeFade, _stoaFade, _agoraFade]),
+        animation: Listenable.merge([_pulse, _flicker, _tapFlash, _templeFade, _stoaFade, _agoraFade, _shimmer, _entrance]),
         builder: (context, _) {
           return LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth;
@@ -125,6 +131,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final acropolisRect = Rect.fromLTWH(w * 0.28, h * 0.04, w * 0.44, h * 0.36);
             return Stack(children: [
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTapDown: (d) {
                   if (_menuOpen) { setState(() => _menuOpen = false); return; }
                   _handleTap(d.localPosition, agoraRect, stoaRect, acropolisRect);
@@ -141,6 +148,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       templeImg: _templeImg, stoaImg: _stoaImg, agoraImg: _agoraImg,
                       templeAlpha: _templeFade.value, stoaAlpha: _stoaFade.value, agoraAlpha: _agoraFade.value,
                       tapFlashT: _tapFlash.value, tappedZone: _tappedZone,
+                      shimmerT: _shimmer.value, entranceT: _entrance.value,
                     ),
                   ),
                 ),
@@ -162,10 +170,10 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(color: Colors.black, border: Border.all(color: _copper, width: 1.5)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Text('MENU', style: TextStyle(fontFamily: 'monospace', fontSize: 11,
+            Text('MENU', style: GoogleFonts.spaceMono(fontSize: 11,
                 color: _copper, letterSpacing: 2.5, fontWeight: FontWeight.bold)),
             const SizedBox(width: 7),
-            Text(_menuOpen ? '▲' : '▼', style: const TextStyle(color: _copper, fontSize: 9)),
+            Text(_menuOpen ? '▲' : '▼', style: GoogleFonts.spaceMono(color: _copper, fontSize: 9)),
           ]),
         ),
       ),
@@ -186,7 +194,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   Widget _mi(String label) => InkWell(
     onTap: () => setState(() => _menuOpen = false),
     child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(label, style: const TextStyle(fontFamily: 'monospace',
+        child: Text(label, style: GoogleFonts.spaceMono(
             fontSize: 11, color: _copperLt, letterSpacing: 1.5))),
   );
   Widget _md() => Container(height: 1, color: const Color(0x40B87333));
@@ -227,13 +235,20 @@ class _CityMapPainter extends CustomPainter {
   final double templeAlpha, stoaAlpha, agoraAlpha;
   final double tapFlashT;
   final AcropolisZone? tappedZone;
+  final double shimmerT;
+  final double entranceT;
 
   _CityMapPainter({required this.pulseT, required this.flickerT,
       required this.hovered, required this.agoraRect,
       required this.stoaRect, required this.acropolisRect,
       this.templeImg, this.stoaImg, this.agoraImg,
       this.templeAlpha = 1.0, this.stoaAlpha = 1.0, this.agoraAlpha = 1.0,
-      this.tapFlashT = 0.0, this.tappedZone});
+      this.tapFlashT = 0.0, this.tappedZone,
+      this.shimmerT = 0.0, this.entranceT = 1.0});
+
+  // Eased alpha for staggered entrance — start 0→1 over a 0.22-wide window
+  double _eAlpha(double start) =>
+    Curves.easeOut.transform(((entranceT - start) / 0.22).clamp(0.0, 1.0));
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -360,6 +375,8 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Stars — top 32%, staggered twinkle ───────────────────────────────────
   void _stars(Canvas canvas, double w, double h) {
+    final starEntrance = _eAlpha(0.14);
+    if (starEntrance == 0) return;
     final rng = math.Random(42);
     for (int i = 0; i < 68; i++) {
       final x     = rng.nextDouble() * w;
@@ -368,18 +385,15 @@ class _CityMapPainter extends CustomPainter {
       final speed = 2.0 + rng.nextDouble() * 4.0; // each star flickers at its own rate
       final sz    = 0.5 + rng.nextDouble() * 1.3;
       final flick = math.sin(flickerT * math.pi * speed + phase * math.pi * 2);
-      final alpha = (0.30 + 0.60 * ((flick + 1) / 2)).clamp(0.0, 1.0);
+      final alpha = ((0.30 + 0.60 * ((flick + 1) / 2)) * starEntrance).clamp(0.0, 1.0);
 
       if (rng.nextDouble() > 0.58) {
-        // Cross-shaped star (4 arms)
         final ca = _copper.withValues(alpha: alpha * 0.82);
         _r(canvas, Paint()..color = ca, x - sz*0.28, y - sz*1.5, sz*0.56, sz*3.0);
         _r(canvas, Paint()..color = ca, x - sz*1.5,  y - sz*0.28, sz*3.0,  sz*0.56);
-        // Bright centre pixel
         _r(canvas, Paint()..color = _copperLt.withValues(alpha: alpha),
             x - sz*0.18, y - sz*0.18, sz*0.36, sz*0.36);
       } else {
-        // Simple square dot
         canvas.drawRect(Rect.fromLTWH(x - sz/2, y - sz/2, sz, sz),
             Paint()..color = _copper.withValues(alpha: alpha));
       }
@@ -388,9 +402,13 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Smooth crescent moon ──────────────────────────────────────────────────
   void _moon(Canvas canvas, double w, double h) {
+    final moonEntrance = _eAlpha(0.28);
+    if (moonEntrance == 0) return;
     final cx = w * 0.50;
     final cy = h * 0.10;
     const r  = _px * 7.8;
+    canvas.saveLayer(Rect.fromCircle(center: Offset(cx, cy), radius: r * 3),
+        Paint()..color = Color.fromRGBO(255, 255, 255, moonEntrance));
 
     // Soft pulsing ambient glow
     canvas.drawCircle(Offset(cx, cy), r * 1.9,
@@ -417,7 +435,8 @@ class _CityMapPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = _px * 0.55
           ..strokeCap = StrokeCap.round);
-    canvas.restore();
+    canvas.restore(); // crescent rotation
+    canvas.restore(); // entrance layer
   }
 
   // ── Terrain: artisanal trees + rocks outside wall, denser at bottom ───────
@@ -521,19 +540,36 @@ class _CityMapPainter extends CustomPainter {
     _r(canvas, Paint()..color = _treeLt, cx,           cy-_px*3,   _px*0.6, _px*0.6);
   }
 
+  // ── Shimmer sweep placeholder shown while an image loads ─────────────────
+  void _shimmerPlaceholder(Canvas canvas, Rect dest, double intensity) {
+    // Dim base glow
+    canvas.drawCircle(dest.center, dest.width * 0.30,
+      Paint()
+        ..color = _copperDk.withValues(alpha: 0.18 * intensity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
+    // Sweeping highlight — travels left to right across the placeholder
+    final sweep = dest.left - dest.width * 0.3 + dest.width * 1.6 * shimmerT;
+    canvas.save();
+    canvas.clipRect(dest.inflate(dest.width * 0.12));
+    canvas.drawRect(
+      Rect.fromLTWH(sweep - dest.width * 0.22, dest.top, dest.width * 0.44, dest.height),
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(sweep - dest.width * 0.22, 0), Offset(sweep + dest.width * 0.22, 0),
+          [Colors.transparent, _copper.withValues(alpha: 0.28 * intensity), Colors.transparent],
+        ),
+    );
+    canvas.restore();
+  }
+
   // ── Greek market compound image ───────────────────────────────────────────
   void _drawStoaImage(Canvas canvas, double w, double h, ui.Image img) {
     final side = w * 0.221;
     final dest = Rect.fromCenter(
       center: Offset(w * 0.63, h * 0.58), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    // Loading placeholder while fading in
-    if (stoaAlpha < 1.0) {
-      canvas.drawCircle(dest.center, dest.width * 0.32,
-        Paint()
-          ..color = _copper.withValues(alpha: (0.04 + 0.07 * pulseT) * (1 - stoaAlpha))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22));
-    }
+    // Shimmer placeholder while loading
+    if (stoaAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - stoaAlpha);
     canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, stoaAlpha));
     canvas.drawImageRect(img, src, dest,
         Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
@@ -546,13 +582,7 @@ class _CityMapPainter extends CustomPainter {
     final dest = Rect.fromCenter(
       center: Offset(w * 0.30, h * 0.73), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    // Loading placeholder while fading in
-    if (agoraAlpha < 1.0) {
-      canvas.drawCircle(dest.center, dest.width * 0.32,
-        Paint()
-          ..color = _copper.withValues(alpha: (0.04 + 0.07 * pulseT) * (1 - agoraAlpha))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
-    }
+    if (agoraAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - agoraAlpha);
     canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, agoraAlpha));
     canvas.drawImageRect(img, src, dest,
         Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
@@ -663,13 +693,7 @@ class _CityMapPainter extends CustomPainter {
     final topY = h * 0.03;
     final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    // Loading placeholder while fading in
-    if (templeAlpha < 1.0) {
-      canvas.drawCircle(dest.center, dest.width * 0.35,
-        Paint()
-          ..color = _copper.withValues(alpha: (0.04 + 0.07 * pulseT) * (1 - templeAlpha))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
-    }
+    if (templeAlpha < 1.0) _shimmerPlaceholder(canvas, dest, 1 - templeAlpha);
     canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, templeAlpha));
     canvas.drawImageRect(img, src, dest,
         Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
@@ -877,22 +901,26 @@ class _CityMapPainter extends CustomPainter {
   }
 
   void _labels(Canvas canvas, double w, double h) {
+    final labelEntrance = _eAlpha(0.62);
+    if (labelEntrance == 0) return;
     final aHot = hovered == AcropolisZone.agora     || tappedZone == AcropolisZone.agora;
     final sHot = hovered == AcropolisZone.stoa      || tappedZone == AcropolisZone.stoa;
     final tHot = hovered == AcropolisZone.acropolis || tappedZone == AcropolisZone.acropolis;
-    _lbl(canvas, 'AGORA',          w*.300, h*.800, aHot ? _orange : _copper,   _px*2.1);
-    _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copper,   _px*2.1);
-    _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.118, tHot ? _orange : _copperLt, _px*1.9);
-    _lbl(canvas, 'A · C · R · O', w*.500, h*.022, _copper,                     _px*2.3, ls: 7.0);
+    // Use _copperLt as default (8.7:1 contrast vs black — WCAG AA+)
+    _lbl(canvas, 'AGORA',          w*.300, h*.800, aHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
+    _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copperLt, _px*2.1, op: labelEntrance);
+    _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.118, tHot ? _orange : _copperLt, _px*1.9, op: labelEntrance);
+    _lbl(canvas, 'A · C · R · O', w*.500, h*.022, _copperLt,                   _px*2.3, ls: 7.0, op: labelEntrance);
   }
 
   void _lbl(Canvas canvas, String text, double cx, double cy,
-      Color color, double fs, {double ls = 2.0}) {
+      Color color, double fs, {double ls = 2.0, double op = 1.0}) {
     final tp = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(
-          fontFamily: 'monospace', fontSize: fs, fontWeight: FontWeight.bold,
-          color: color, letterSpacing: ls,
-          shadows: const [Shadow(color: Colors.black, blurRadius: 4)])),
+      text: TextSpan(text: text, style: GoogleFonts.spaceMono(
+          fontSize: fs, fontWeight: FontWeight.bold,
+          color: color.withValues(alpha: op),
+          letterSpacing: ls,
+          shadows: const [Shadow(color: Colors.black, blurRadius: 5)])),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
@@ -909,5 +937,6 @@ class _CityMapPainter extends CustomPainter {
       old.hovered != hovered || old.tappedZone != tappedZone ||
       old.tapFlashT != tapFlashT ||
       old.templeImg != templeImg || old.stoaImg != stoaImg || old.agoraImg != agoraImg ||
-      old.templeAlpha != templeAlpha || old.stoaAlpha != stoaAlpha || old.agoraAlpha != agoraAlpha;
+      old.templeAlpha != templeAlpha || old.stoaAlpha != stoaAlpha || old.agoraAlpha != agoraAlpha ||
+      old.shimmerT != shimmerT || old.entranceT != entranceT;
 }
