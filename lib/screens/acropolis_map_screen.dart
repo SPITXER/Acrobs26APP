@@ -218,7 +218,6 @@ class _CityMapPainter extends CustomPainter {
     _moon(canvas, w, h);
     _terrain(canvas, w, h);
 
-    _route(canvas, w, h);
     if (agoraImg != null) _drawAgoraImage(canvas, w, h, agoraImg!);
     if (stoaImg != null) {
       _drawStoaImage(canvas, w, h, stoaImg!);
@@ -350,8 +349,8 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Smooth crescent moon ──────────────────────────────────────────────────
   void _moon(Canvas canvas, double w, double h) {
-    final cx = w * 0.130;
-    final cy = h * 0.108;
+    final cx = w * 0.50;
+    final cy = h * 0.10;
     const r  = _px * 7.8;
 
     // Soft pulsing ambient glow
@@ -360,10 +359,10 @@ class _CityMapPainter extends CustomPainter {
         ..color = _orange.withValues(alpha: 0.022 + 0.014 * pulseT)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
 
-    // Tilt the crescent clockwise ~38° so it leans to the right
+    // Tilt counter-clockwise ~38° so the crescent leans to the left
     canvas.save();
     canvas.translate(cx, cy);
-    canvas.rotate(0.66); // ~38 degrees clockwise
+    canvas.rotate(-0.66);
     final outer = Path()
       ..addOval(Rect.fromCircle(center: Offset.zero, radius: r));
     final inner = Path()
@@ -481,59 +480,6 @@ class _CityMapPainter extends CustomPainter {
     _r(canvas, Paint()..color = _treeDk, cx,          cy-_px*2.5, _px,     _px*2.5);
     _r(canvas, Paint()..color = _treeDk, cx+_px*1.5,  cy-_px*1.5, _px,     _px*1.5);
     _r(canvas, Paint()..color = _treeLt, cx,           cy-_px*3,   _px*0.6, _px*0.6);
-  }
-
-  // ── Dotted road — smooth S-curve through city, dots stop at building edges ─
-  void _route(Canvas canvas, double w, double h) {
-    final dot = Paint()..color = _copper.withValues(alpha: 0.58);
-
-    // Tight clearance: dots stop only when almost touching a building
-    final excludes = [
-      (w * 0.30, h * 0.73, w * 0.078),  // agora
-      (w * 0.63, h * 0.58, w * 0.112),  // stoa
-      (w * 0.50, h * 0.22, w * 0.255),  // acropolis
-    ];
-
-    bool clear(double x, double y) {
-      for (final z in excludes) {
-        final dx = x - z.$1; final dy = y - z.$2;
-        if (dx * dx + dy * dy < z.$3 * z.$3) return false;
-      }
-      return true;
-    }
-
-    // Road stays inside city walls (y 0.87–0.42).
-    // Flows: bottom-centre → left past agora → right to stoa → up to temple.
-    final pts = [
-      Offset(w*.500, h*.870),  // start — bottom centre inside walls
-      Offset(w*.420, h*.840),  // veering left
-      Offset(w*.310, h*.810),  // approaching agora from below-right
-      Offset(w*.200, h*.730),  // left side of agora
-      Offset(w*.230, h*.650),  // above agora, swinging right
-      Offset(w*.400, h*.620),  // centre stretch
-      Offset(w*.510, h*.680),  // dip toward stoa from below-left
-      Offset(w*.750, h*.620),  // right of stoa
-      Offset(w*.730, h*.470),  // above-right stoa, heading left
-      Offset(w*.520, h*.440),  // above stoa centre
-      Offset(w*.390, h*.450),  // heading toward temple
-      Offset(w*.290, h*.400),  // lower-left approach to temple
-      Offset(w*.240, h*.320),  // temple left side
-    ];
-
-    const dotSz = _px * 2.2;
-    const spacing = _px * 5.5;
-    for (int i = 0; i < pts.length - 1; i++) {
-      final p0 = pts[i]; final p1 = pts[i + 1];
-      final steps = ((p1 - p0).distance / spacing).floor().clamp(1, 300);
-      for (int j = 0; j <= steps; j++) {
-        final t  = j / steps;
-        final px = p0.dx + (p1.dx - p0.dx) * t;
-        final py = p0.dy + (p1.dy - p0.dy) * t;
-        if (clear(px, py)) {
-          _r(canvas, dot, px - dotSz / 2, py - dotSz / 2, dotSz, dotSz);
-        }
-      }
-    }
   }
 
   // ── Greek market compound image ───────────────────────────────────────────
