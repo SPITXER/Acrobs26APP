@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/acro_mode.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
+import '../widgets/avatar.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
 
@@ -402,25 +403,10 @@ class _StoaScreenState extends State<StoaScreen>
         const Divider(color: Colors.white10),
         const SizedBox(height: 12),
         Row(children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              color: AcroColors.gold.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(3),
-              border: Border.all(
-                  color: AcroColors.gold.withOpacity(0.25)),
-            ),
-            child: Center(
-              child: Text(
-                hostName.isNotEmpty
-                    ? hostName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                    color: AcroColors.gold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700),
-              ),
-            ),
+          AcroAvatar(
+            initials: hostName.isNotEmpty ? hostName[0].toUpperCase() : '?',
+            seed: room['hostUid'] as String? ?? hostName,
+            size: 36,
           ),
           const SizedBox(width: 10),
           Text(hostName,

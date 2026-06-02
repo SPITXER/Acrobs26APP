@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/acro_mode.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
+import '../widgets/avatar.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
 
@@ -362,26 +363,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: AcroColors.gold.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AcroColors.gold.withOpacity(0.35)),
-            ),
-            child: Center(
-              child: Text(
-                ini,
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AcroColors.gold,
-                ),
-              ),
-            ),
-          ),
+          AcroAvatar(initials: ini, seed: uid, size: 54),
           const SizedBox(width: 16),
 
           // Info
@@ -513,25 +495,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         children: [
           Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AcroColors.gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: AcroColors.gold.withOpacity(0.45)),
-                ),
-                child: Center(
-                  child: Text(
-                    ini,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AcroColors.gold,
-                    ),
-                  ),
-                ),
-              ),
+              AcroAvatar(initials: ini, seed: name, size: 44),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

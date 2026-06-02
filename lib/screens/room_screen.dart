@@ -426,6 +426,7 @@ class _RoomScreenState extends State<RoomScreen> {
                       children: [
                         AcroAvatar(
                             initials: m.initials,
+                            seed: m.name,
                             size: n <= 2 ? 60 : n <= 4 ? 48 : 38,
                             style: avColors[i % avColors.length]),
                         const SizedBox(height: 8),

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
+import 'avatar.dart';
 
 /// End-drawer ledger — open debates, stoa rooms, notifications, terminate.
 class SideMenu extends StatelessWidget {
@@ -78,20 +79,10 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 8, 14),
       child: Row(children: [
-        Container(
-          width: 40, height: 40,
-          decoration: BoxDecoration(
-            color: AcroColors.gold.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AcroColors.gold.withOpacity(0.40)),
-          ),
-          child: Center(
-            child: Text(state.profile.initials,
-                style: GoogleFonts.playfairDisplay(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AcroColors.gold)),
-          ),
+        AcroAvatar(
+          initials: state.profile.initials,
+          seed: state.profile.uid,
+          size: 42,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -302,21 +293,10 @@ class _ActiveDebates extends StatelessWidget {
           dense: true,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          leading: Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(
-              color: AcroColors.gold.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                  color: AcroColors.gold.withOpacity(0.25)),
-            ),
-            child: Center(
-              child: Text(d['partnerIni'] ?? '?',
-                  style: TextStyle(
-                      color: AcroColors.gold,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700)),
-            ),
+          leading: AcroAvatar(
+            initials: d['partnerIni'] ?? '?',
+            seed: d['partnerName'] ?? '',
+            size: 36,
           ),
           title: Text(d['title'] ?? 'Debate',
               maxLines: 1,
