@@ -40656,7 +40656,7 @@ A.ak0.prototype={
 $2(a,b){return A.a75(new A.ak_(this.a))},
 $S:445}
 A.ak_.prototype={
-$2(a,b){var s,r,q=null,p=b.b,o=b.d,n=p*0.4,m=o*0.84,l=new A.t(n,m,n+p*0.2,m+o*0.09),k=p*0.34,j=A.ady(new A.i(p*0.63,o*0.58),k,k)
+$2(a,b){var s,r,q=null,p=b.b,o=b.d,n=p*0.4,m=o*0.84,l=new A.t(n,m,n+p*0.2,m+o*0.09),k=p*0.221,j=A.ady(new A.i(p*0.63,o*0.58),k,k)
 m=p*0.28
 n=o*0.04
 s=new A.t(m,n,m+p*0.44,n+o*0.36)
@@ -40814,7 +40814,7 @@ c.lY(a0,b*0.784,a*0.962)
 c.afV(a0,b,a)
 c.a86(a0,b,a)
 s=c.x
-if(s!=null){g=b*0.34
+if(s!=null){g=b*0.221
 f=A.ady(new A.i(b*0.63,a*0.58),g,g)
 m=s.b
 m===$&&A.a()
