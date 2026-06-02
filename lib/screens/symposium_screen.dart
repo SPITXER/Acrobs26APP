@@ -441,6 +441,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 ),
               ],
             ),
+          ),
           ],
         ),
       ),
