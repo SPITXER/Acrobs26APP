@@ -19,11 +19,19 @@ class AppState extends ChangeNotifier {
   DebateRoom? currentRoom;
   List<Post> posts = List.from(samplePosts);
 
-  // Active stoa argument room posted by this user
-  String? _myStoaRoomId;
-  StreamSubscription? _stoaJoinWatcher;
+  // Stoa argument rooms (up to 10 active at once)
+  final List<String> _myStoaRoomIds = [];
+  StreamSubscription? _globalStoaWatcher;
 
-  String? get myStoaRoomId => _myStoaRoomId;
+  // roomId → joiner name, persists until cleared
+  final Map<String, String> stoaNotifications = {};
+
+  // Rooms this user is currently debating in
+  final List<Map<String, String>> activeDebates = [];
+
+  List<String> get myStoaRoomIds => List.unmodifiable(_myStoaRoomIds);
+  bool get canCreateStoaRoom => _myStoaRoomIds.length < 10;
+  int  get stoaNotificationCount => stoaNotifications.length;
 
   AppState({
     required GlobalKey<NavigatorState>        navigatorKey,
@@ -71,10 +79,22 @@ class AppState extends ChangeNotifier {
 
   void enterRoom(DebateRoom room) {
     currentRoom = room;
+    // Track in active debates ledger
+    activeDebates.removeWhere((d) => d['roomId'] == room.id);
+    final partner = room.members.where((m) => m.name != profile.name).toList();
+    activeDebates.add({
+      'roomId':      room.id,
+      'title':       room.title,
+      'partnerName': partner.isNotEmpty ? partner.first.name     : '',
+      'partnerIni':  partner.isNotEmpty ? partner.first.initials : '?',
+    });
     notifyListeners();
   }
 
   void leaveRoom() {
+    if (currentRoom != null) {
+      activeDebates.removeWhere((d) => d['roomId'] == currentRoom!.id);
+    }
     currentRoom = null;
     notifyListeners();
   }
@@ -445,7 +465,7 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // Stoa argument rooms
+  // Stoa argument rooms  (up to 10 per user)
   // ---------------------------------------------------------------------------
 
   Stream<List<Map<String, dynamic>>> stoaRoomsStream() {
@@ -467,9 +487,9 @@ class AppState extends ChangeNotifier {
     required String thesis,
     required String category,
   }) async {
-    if (_myStoaRoomId != null) return; // already have one open
+    if (_myStoaRoomIds.length >= 10) return; // hard cap
     final roomId = 'stoa_${_uuid.v4()}';
-    _myStoaRoomId = roomId;
+    _myStoaRoomIds.add(roomId);
     await _db.ref('stoa_rooms/$roomId').set({
       'roomId':   roomId,
       'hostUid':  profile.uid,
@@ -480,16 +500,23 @@ class AppState extends ChangeNotifier {
       'category': category,
       'ts':       ServerValue.timestamp,
     });
-    _startStoaJoinWatch(roomId);
+    _ensureGlobalStoaWatch();
     notifyListeners();
   }
 
-  Future<void> terminateStoaRoom() async {
-    if (_myStoaRoomId == null) return;
-    await _db.ref('stoa_rooms/$_myStoaRoomId').remove();
-    _stoaJoinWatcher?.cancel();
-    _stoaJoinWatcher = null;
-    _myStoaRoomId = null;
+  Future<void> terminateStoaRoom(String roomId) async {
+    await _db.ref('stoa_rooms/$roomId').remove();
+    _myStoaRoomIds.remove(roomId);
+    stoaNotifications.remove(roomId);
+    if (_myStoaRoomIds.isEmpty) {
+      _globalStoaWatcher?.cancel();
+      _globalStoaWatcher = null;
+    }
+    notifyListeners();
+  }
+
+  void clearStoaNotification(String roomId) {
+    stoaNotifications.remove(roomId);
     notifyListeners();
   }
 
@@ -516,25 +543,32 @@ class AppState extends ChangeNotifier {
         'partnerName': profile.name,
         'partnerIni':  profile.initials,
         'isHost':      true,
+        'stoaRoomId':  stoaRoomId, // lets the host's watcher identify which room
       },
       'rooms/$debateRoomId': _buildRoomMap(debateRoomId, title),
     });
   }
 
-  void _startStoaJoinWatch(String roomId) {
-    _stoaJoinWatcher?.cancel();
-    // Watch matches/{uid} — fires when a challenger joins the stoa room
-    _stoaJoinWatcher = _db.ref('matches/${profile.uid}').onValue.listen((event) {
+  // Single watcher for all of this user's stoa rooms
+  void _ensureGlobalStoaWatch() {
+    if (_globalStoaWatcher != null) return;
+    _globalStoaWatcher = _db.ref('matches/${profile.uid}').onValue.listen((event) {
       if (!event.snapshot.exists) return;
-      if (_myStoaRoomId == null) return;
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      final stoaRoomId = data['stoaRoomId'] as String?;
+      if (stoaRoomId == null) return;            // not a stoa-triggered match
+      if (!_myStoaRoomIds.contains(stoaRoomId)) return; // not our room
+
       final partnerName = data['partnerName'] as String? ?? 'Someone';
       final room = buildRoomFromMatch(data);
       enterRoom(room);
       clearMatch();
-      _stoaJoinWatcher?.cancel();
-      _stoaJoinWatcher = null;
-      _myStoaRoomId = null;
+      _myStoaRoomIds.remove(stoaRoomId);
+      stoaNotifications[stoaRoomId] = partnerName;
+      if (_myStoaRoomIds.isEmpty) {
+        _globalStoaWatcher?.cancel();
+        _globalStoaWatcher = null;
+      }
       notifyListeners();
 
       _messengerKey.currentState?.showSnackBar(SnackBar(

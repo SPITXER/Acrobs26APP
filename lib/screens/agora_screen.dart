@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/acro_mode.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
+import '../widgets/side_menu.dart';
 import 'searching_screen.dart';
 
 class AgoraScreen extends StatefulWidget {
@@ -58,6 +59,7 @@ class _AgoraScreenState extends State<AgoraScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
+      endDrawer: const SideMenu(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0F1A),
         leading: IconButton(
@@ -73,6 +75,7 @@ class _AgoraScreenState extends State<AgoraScreen>
             letterSpacing: 3,
           ),
         ),
+        actions: const [SideMenuButton(), SizedBox(width: 4)],
       ),
       body: _nameSet ? _buildHome() : _buildNameEntry(),
     );

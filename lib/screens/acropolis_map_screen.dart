@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import '../widgets/side_menu.dart';
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
@@ -62,6 +63,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      endDrawer: const SideMenu(),
       body: AnimatedBuilder(
         animation: Listenable.merge([_pulse, _flicker]),
         builder: (context, _) {
@@ -91,6 +93,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                   ),
                 ),
               ),
+              Positioned(top: 6, right: 60, child: const SideMenuButton()),
               Positioned(top: 14, right: 16, child: _buildDropdown()),
             ]);
           });

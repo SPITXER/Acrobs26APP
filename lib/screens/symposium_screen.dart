@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/acro_mode.dart';
 import '../services/app_state.dart';
 import '../theme/acro_theme.dart';
+import '../widgets/side_menu.dart';
 import 'room_screen.dart';
 
 const _kInterests = [
@@ -136,6 +137,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             letterSpacing: 3,
           ),
         ),
+        actions: const [SideMenuButton(), SizedBox(width: 4)],
         bottom: _onboarded
             ? TabBar(
                 controller: _tabs,
@@ -155,6 +157,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
               )
             : null,
       ),
+      endDrawer: const SideMenu(),
       body: Column(
         children: [
           _courtroomBanner(),
