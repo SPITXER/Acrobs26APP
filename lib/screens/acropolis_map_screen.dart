@@ -102,7 +102,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final _agoraSide    = w * 0.144;
-            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.21, h * 0.81), width: _agoraSide, height: _agoraSide);
+            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.30, h * 0.73), width: _agoraSide, height: _agoraSide);
             final _stoaSide     = w * 0.221;
             final stoaRect      = Rect.fromCenter(
               center: Offset(w * 0.63, h * 0.58),
@@ -319,9 +319,9 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Smooth crescent moon ──────────────────────────────────────────────────
   void _moon(Canvas canvas, double w, double h) {
-    final cx = w * 0.090;
-    final cy = h * 0.068;
-    const r  = _px * 5.5;   // 15% bigger than old 7×7 effective radius
+    final cx = w * 0.130;
+    final cy = h * 0.108;
+    const r  = _px * 6.3;
 
     // Soft pulsing ambient glow
     canvas.drawCircle(Offset(cx, cy), r * 1.9,
@@ -451,15 +451,15 @@ class _CityMapPainter extends CustomPainter {
     _r(canvas, Paint()..color = _treeLt, cx,           cy-_px*3,   _px*0.6, _px*0.6);
   }
 
-  // ── Dotted road — arcs around each building, dots skip within clearance ───
+  // ── Dotted road — smooth S-curve through city, dots stop at building edges ─
   void _route(Canvas canvas, double w, double h) {
-    final dot = Paint()..color = _copper.withValues(alpha: 0.55);
+    final dot = Paint()..color = _copper.withValues(alpha: 0.58);
 
-    // Exclusion zones: (cx, cy, radius) — dots within radius are not drawn
+    // Tight clearance: dots stop only when almost touching a building
     final excludes = [
-      (w * 0.21, h * 0.81, w * 0.10),  // agora image
-      (w * 0.63, h * 0.58, w * 0.14),  // stoa image
-      (w * 0.50, h * 0.22, w * 0.28),  // acropolis temple
+      (w * 0.30, h * 0.73, w * 0.078),  // agora
+      (w * 0.63, h * 0.58, w * 0.112),  // stoa
+      (w * 0.50, h * 0.22, w * 0.255),  // acropolis
     ];
 
     bool clear(double x, double y) {
@@ -470,36 +470,22 @@ class _CityMapPainter extends CustomPainter {
       return true;
     }
 
-    // Road enters bottom-centre, arcs left around agora,
-    // swings right around stoa, then climbs around the temple base
+    // Single flowing road: bottom entry → left past agora → right to stoa
+    //                      → up-left to temple. No loops, no zigzags.
     final pts = [
-      Offset(w*.500, h*.960),  // entry bottom
-      Offset(w*.500, h*.910),  // heading up
-      Offset(w*.390, h*.895),  // veering left
-      Offset(w*.255, h*.905),  // below agora
-      Offset(w*.130, h*.875),  // left-bottom of agora
-      Offset(w*.090, h*.810),  // left of agora
-      Offset(w*.105, h*.740),  // left-above agora
-      Offset(w*.215, h*.700),  // above agora heading right
-      Offset(w*.340, h*.695),  // continuing right
-      Offset(w*.445, h*.690),  // middle stretch
-      Offset(w*.510, h*.735),  // below stoa, heading right
-      Offset(w*.570, h*.725),  // stoa lower-right approach
-      Offset(w*.780, h*.655),  // right of stoa bottom
-      Offset(w*.800, h*.575),  // right of stoa centre
-      Offset(w*.775, h*.490),  // right of stoa top
-      Offset(w*.665, h*.440),  // above stoa right
-      Offset(w*.545, h*.430),  // above stoa centre
-      Offset(w*.420, h*.445),  // above stoa left
-      Offset(w*.330, h*.465),  // heading toward temple
-      Offset(w*.250, h*.420),  // lower-left of temple
-      Offset(w*.210, h*.340),  // left side of temple
-      Offset(w*.240, h*.255),  // upper-left of temple
-      Offset(w*.355, h*.215),  // temple base left
-      Offset(w*.500, h*.200),  // temple base centre
-      Offset(w*.645, h*.215),  // temple base right
-      Offset(w*.760, h*.255),  // upper-right of temple
-      Offset(w*.790, h*.340),  // right side of temple
+      Offset(w*.500, h*.960),  // bottom entry
+      Offset(w*.460, h*.890),  // heading up-left
+      Offset(w*.340, h*.820),  // toward agora
+      Offset(w*.215, h*.730),  // left of agora, passing alongside
+      Offset(w*.240, h*.640),  // above agora, swinging right
+      Offset(w*.420, h*.610),  // centre stretch heading right
+      Offset(w*.520, h*.680),  // dip below stoa
+      Offset(w*.740, h*.620),  // right of stoa
+      Offset(w*.720, h*.470),  // top-right of stoa heading left
+      Offset(w*.520, h*.430),  // above stoa, heading left
+      Offset(w*.390, h*.440),  // left of stoa heading toward temple
+      Offset(w*.280, h*.380),  // lower-left of temple
+      Offset(w*.230, h*.290),  // temple left side
     ];
 
     const dotSz = _px * 2.2;
@@ -544,7 +530,7 @@ class _CityMapPainter extends CustomPainter {
     final hot  = hovered == AcropolisZone.agora;
     final side = w * 0.144;
     final dest = Rect.fromCenter(
-      center: Offset(w * 0.21, h * 0.81), width: side, height: side);
+      center: Offset(w * 0.30, h * 0.73), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
 
     if (hot) {
