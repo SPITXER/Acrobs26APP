@@ -192,3 +192,13 @@ Ranking system
 - Socartes participant badges (built on a voting system? or Merit - Number of hours on the app) system combo
 Agora - Sohpisticated ideas generally for fun things
 Bcla
+
+
+6/1/26
+Safety notes:
+-Stress Test 
+-Seemless funcionality funnel
+-Lock server/Github/Claude Api
+-Privcy Agreemnts/Data handling.
+Motto- Freespeach is ""
+i do

@@ -40,6 +40,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   late AnimationController _flicker;
   ui.Image? _templeImg;
   ui.Image? _stoaImg;
+  ui.Image? _agoraImg;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     _flicker = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))..repeat(reverse: true);
     _loadTempleImage();
     _loadStoaImage();
+    _loadAgoraImage();
     // Register the 5-minute signup prompt — fires above any active screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppState>().registerSignupDialogCallback(() {
@@ -70,15 +72,23 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   }
 
   Future<void> _loadStoaImage() async {
-    final data = await rootBundle.load('assets/images/greek_market_compound.png');
+    final data = await rootBundle.load('assets/images/Stoa1.png');
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
     final frame = await codec.getNextFrame();
     if (mounted) setState(() => _stoaImg = frame.image);
   }
 
+  Future<void> _loadAgoraImage() async {
+    final data = await rootBundle.load('assets/images/AgoraF2i.png');
+    final codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
+    final frame = await codec.getNextFrame();
+    if (mounted) setState(() => _agoraImg = frame.image);
+  }
+
   @override
-  void dispose() { _pulse.dispose(); _flicker.dispose(); _templeImg?.dispose(); _stoaImg?.dispose(); super.dispose(); }
+  void dispose() { _pulse.dispose(); _flicker.dispose(); _templeImg?.dispose(); _stoaImg?.dispose(); _agoraImg?.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +101,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           return LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
-            final agoraRect     = Rect.fromLTWH(w * 0.40, h * 0.84, w * 0.20, h * 0.09);
+            final _agoraSide    = w * 0.144;
+            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.17, h * 0.87), width: _agoraSide, height: _agoraSide);
             final _stoaSide     = w * 0.221;
             final stoaRect      = Rect.fromCenter(
               center: Offset(w * 0.63, h * 0.58),
@@ -112,7 +123,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       pulseT: _pulse.value, flickerT: _flicker.value,
                       hovered: _hovered,
                       agoraRect: agoraRect, stoaRect: stoaRect, acropolisRect: acropolisRect,
-                      templeImg: _templeImg, stoaImg: _stoaImg,
+                      templeImg: _templeImg, stoaImg: _stoaImg, agoraImg: _agoraImg,
                     ),
                   ),
                 ),
@@ -190,11 +201,12 @@ class _CityMapPainter extends CustomPainter {
   final Rect agoraRect, stoaRect, acropolisRect;
   final ui.Image? templeImg;
   final ui.Image? stoaImg;
+  final ui.Image? agoraImg;
 
   _CityMapPainter({required this.pulseT, required this.flickerT,
       required this.hovered, required this.agoraRect,
       required this.stoaRect, required this.acropolisRect,
-      this.templeImg, this.stoaImg});
+      this.templeImg, this.stoaImg, this.agoraImg});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -207,6 +219,7 @@ class _CityMapPainter extends CustomPainter {
 
     _route(canvas, w, h);
     _gate(canvas, w, h);
+    if (agoraImg != null) _drawAgoraImage(canvas, w, h, agoraImg!);
     if (stoaImg != null) {
       _drawStoaImage(canvas, w, h, stoaImg!);
     } else {
@@ -583,6 +596,27 @@ class _CityMapPainter extends CustomPainter {
           ..filterQuality = FilterQuality.medium);
   }
 
+  // ── Agora image icon ─────────────────────────────────────────────────────
+  void _drawAgoraImage(Canvas canvas, double w, double h, ui.Image img) {
+    final hot  = hovered == AcropolisZone.agora;
+    final side = w * 0.144;
+    final dest = Rect.fromCenter(
+      center: Offset(w * 0.17, h * 0.87), width: side, height: side);
+    final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
+
+    if (hot) {
+      canvas.drawCircle(dest.center, dest.width * 0.38,
+        Paint()
+          ..color = _orange.withValues(alpha: (0.10 + 0.16 * pulseT).clamp(0.0, 1.0))
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
+    }
+
+    canvas.drawImageRect(img, src, dest,
+        Paint()
+          ..blendMode = BlendMode.screen
+          ..filterQuality = FilterQuality.medium);
+  }
+
   // ── Stoa — 5 mini Greek temples, spread wide ─────────────────────────────
   void _market(Canvas canvas, double w, double h) {
     final hot = hovered == AcropolisZone.stoa;
@@ -922,5 +956,5 @@ class _CityMapPainter extends CustomPainter {
   bool shouldRepaint(_CityMapPainter old) =>
       old.pulseT != pulseT || old.flickerT != flickerT ||
       old.hovered != hovered || old.templeImg != templeImg ||
-      old.stoaImg != stoaImg;
+      old.stoaImg != stoaImg || old.agoraImg != agoraImg;
 }
