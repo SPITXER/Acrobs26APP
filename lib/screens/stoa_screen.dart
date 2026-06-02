@@ -341,7 +341,28 @@ class _StoaScreenState extends State<StoaScreen>
     final category = room['category'] as String? ?? '';
     final ts       = room['ts']       as int?    ?? 0;
 
-    return Container(
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        // Pixel art clouds — left side
+        Positioned(
+          left: -48, top: 24,
+          child: CustomPaint(
+            painter: const _CloudPainter(isLeft: true),
+            size: const Size(48, 170),
+          ),
+        ),
+        // Pixel art clouds — right side
+        Positioned(
+          right: -48, top: 24,
+          child: CustomPaint(
+            painter: const _CloudPainter(isLeft: false),
+            size: const Size(48, 170),
+          ),
+        ),
+        // Card
+        Container(
       width: 320,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
@@ -415,7 +436,9 @@ class _StoaScreenState extends State<StoaScreen>
                   color: Colors.white.withOpacity(0.60))),
         ]),
       ]),
-    );
+        ), // closes Container (card)
+      ], // closes Stack children
+    ); // closes Stack
   }
 
   Widget _badge(String label, Color color) => Container(
@@ -580,6 +603,56 @@ class _StoaScreenState extends State<StoaScreen>
     if (d.inHours < 24) return '${d.inHours}h ago';
     return '${d.inDays}d ago';
   }
+}
+
+// ── Pixel art cloud painter ────────────────────────────────────────────────
+
+class _CloudPainter extends CustomPainter {
+  final bool isLeft;
+  const _CloudPainter({required this.isLeft});
+
+  static const double u = 3.2; // pixel unit
+
+  // Colors: 0=white  1=light-blue  2=mid-blue  3=swirl-blue
+  static const _c = [
+    Color(0xFFFFFFFF),
+    Color(0xFFDCECF8),
+    Color(0xFFBDD2EC),
+    Color(0xFF7AAFC8),
+  ];
+
+  // Single cloud puff: [col, row, colorIdx] — 7 cols × 5 rows
+  static const _puff = [
+    [2, 0, 0], [3, 0, 0], [4, 0, 0],
+    [1, 1, 0], [2, 1, 0], [3, 1, 0], [4, 1, 1], [5, 1, 1],
+    [0, 2, 0], [1, 2, 0], [2, 2, 1], [3, 2, 3], [4, 2, 1], [5, 2, 2], [6, 2, 2],
+    [0, 3, 1], [1, 3, 1], [2, 3, 2], [3, 3, 1], [4, 3, 2], [5, 3, 2], [6, 3, 2],
+    [1, 4, 2], [2, 4, 2], [3, 4, 2], [4, 4, 2], [5, 4, 2],
+  ];
+
+  void _puffAt(Canvas canvas, double ox, double oy) {
+    for (final p in _puff) {
+      final col = isLeft ? p[0] : (6 - p[0]); // mirror for right side
+      canvas.drawRect(
+        Rect.fromLTWH(ox + col * u, oy + p[1] * u, u, u),
+        Paint()..color = _c[p[2] as int],
+      );
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Three staggered puffs
+    final x0 = isLeft ? u * 1.0 : size.width - u * 8.0;
+    final x1 = isLeft ? u * 0.0 : size.width - u * 7.0;
+    final x2 = isLeft ? u * 1.5 : size.width - u * 8.5;
+    _puffAt(canvas, x0, u * 0.0);   // top
+    _puffAt(canvas, x1, u * 6.5);  // middle (slightly offset)
+    _puffAt(canvas, x2, u * 13.0); // bottom
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 // ── Post argument bottom sheet ─────────────────────────────────────────────
