@@ -25,7 +25,7 @@ class _SearchingScreenState extends State<SearchingScreen>
     super.initState();
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _startSearching());
@@ -79,29 +79,47 @@ class _SearchingScreenState extends State<SearchingScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Ghost with pulsing glow
             AnimatedBuilder(
               animation: _pulse,
-              builder: (_, __) => _buildPulseRings(_pulse.value),
-            ),
-            const SizedBox(height: 48),
-            Text(
-              'SEARCHING THE AGORA',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AcroColors.stoneLight,
-                letterSpacing: 3,
+              builder: (_, __) => Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AcroColors.gold
+                          .withOpacity(0.04 + 0.08 * _pulse.value),
+                      blurRadius: 50,
+                      spreadRadius: 20,
+                    ),
+                  ],
+                ),
+                child: Image.asset(
+                  'assets/images/ghost_socrates_gold.png',
+                  width: 110 + 6 * _pulse.value,
+                  height: 110 + 6 * _pulse.value,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-            _AnimatedDots(),
-            const SizedBox(height: 48),
+
+            const SizedBox(height: 52),
+
+            // 3 pulsing terms — staggered phase
+            const _TermWidget(word: 'Wandering',     delayMs: 0),
+            const SizedBox(height: 22),
+            const _TermWidget(word: 'Contemplating', delayMs: 600),
+            const SizedBox(height: 22),
+            const _TermWidget(word: 'Questioning',   delayMs: 1200),
+
+            const SizedBox(height: 52),
+
             TextButton(
               onPressed: _cancel,
               child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: AcroColors.stoneLight.withOpacity(0.5),
+                  color: AcroColors.stoneLight.withOpacity(0.45),
                   fontSize: 13,
                   letterSpacing: 1,
                 ),
@@ -112,100 +130,84 @@ class _SearchingScreenState extends State<SearchingScreen>
       ),
     );
   }
-
-  Widget _buildPulseRings(double t) {
-    final size = 80.0 + 40.0 * t;
-    final outerSize = 120.0 + 60.0 * t;
-    return SizedBox(
-      width: 200,
-      height: 200,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer ring
-          Container(
-            width: outerSize,
-            height: outerSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AcroColors.gold.withOpacity(0.1 + 0.1 * (1 - t)),
-                width: 2,
-              ),
-            ),
-          ),
-          // Middle ring
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AcroColors.gold.withOpacity(0.2 + 0.15 * (1 - t)),
-                width: 2,
-              ),
-            ),
-          ),
-          // Center — pixel Greek column icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AcroColors.gold.withOpacity(0.15),
-              shape: BoxShape.circle,
-              border: Border.all(color: AcroColors.gold.withOpacity(0.6)),
-            ),
-            child: Center(
-              child: Text(
-                'Α',
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 24,
-                  color: AcroColors.gold,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class _AnimatedDots extends StatefulWidget {
+// ── Pulsing term: Word + animated dashes ──────────────────────────────────
+
+class _TermWidget extends StatefulWidget {
+  final String word;
+  final int delayMs;
+  const _TermWidget({required this.word, required this.delayMs});
+
   @override
-  State<_AnimatedDots> createState() => _AnimatedDotsState();
+  State<_TermWidget> createState() => _TermWidgetState();
 }
 
-class _AnimatedDotsState extends State<_AnimatedDots> {
-  int _step = 0;
-  Timer? _timer;
+class _TermWidgetState extends State<_TermWidget>
+    with SingleTickerProviderStateMixin {
+  int  _dashes = 0;
+  Timer? _step;
+  Timer? _delay;
+  late AnimationController _glow;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      if (mounted) setState(() => _step = (_step + 1) % 4);
+    _glow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+
+    _delay = Timer(Duration(milliseconds: widget.delayMs), () {
+      if (!mounted) return;
+      _step = Timer.periodic(const Duration(milliseconds: 210), (_) {
+        if (mounted) setState(() => _dashes = (_dashes + 1) % 6);
+      });
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _glow.dispose();
+    _step?.cancel();
+    _delay?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final dots = '.' * _step;
-    return Text(
-      dots.padRight(3),
-      style: const TextStyle(
-        fontFamily: 'monospace',
-        fontSize: 20,
-        color: AcroColors.gold,
-        letterSpacing: 4,
-      ),
+    return AnimatedBuilder(
+      animation: _glow,
+      builder: (_, __) {
+        final dashStr = '─' * _dashes;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              widget.word,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.italic,
+                color: Colors.white.withOpacity(0.75),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              dashStr.padRight(5, ' '), // fixed width keeps layout stable
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 20,
+                color: AcroColors.gold
+                    .withOpacity(0.45 + 0.45 * _glow.value),
+                letterSpacing: 3,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

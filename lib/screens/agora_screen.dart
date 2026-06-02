@@ -231,13 +231,25 @@ class _AgoraScreenState extends State<AgoraScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                '🏛',
-                style: TextStyle(fontSize: 48 + 4 * t),
+              Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/ghost_socrates_gold.png',
+                    width: 80 + 4 * t,
+                    height: 80 + 4 * t,
+                    fit: BoxFit.contain,
+                  ),
+                  const Positioned(
+                    top: -22, right: -18,
+                    child: Text('💭', style: TextStyle(fontSize: 26)),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
-                'FIND A MATCH',
+                'MATCH',
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
