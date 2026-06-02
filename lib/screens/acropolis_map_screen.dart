@@ -102,7 +102,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final _agoraSide    = w * 0.144;
-            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.17, h * 0.87), width: _agoraSide, height: _agoraSide);
+            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.21, h * 0.81), width: _agoraSide, height: _agoraSide);
             final _stoaSide     = w * 0.221;
             final stoaRect      = Rect.fromCenter(
               center: Offset(w * 0.63, h * 0.58),
@@ -218,7 +218,6 @@ class _CityMapPainter extends CustomPainter {
     _terrain(canvas, w, h);
 
     _route(canvas, w, h);
-    _gate(canvas, w, h);
     if (agoraImg != null) _drawAgoraImage(canvas, w, h, agoraImg!);
     if (stoaImg != null) {
       _drawStoaImage(canvas, w, h, stoaImg!);
@@ -452,127 +451,71 @@ class _CityMapPainter extends CustomPainter {
     _r(canvas, Paint()..color = _treeLt, cx,           cy-_px*3,   _px*0.6, _px*0.6);
   }
 
-  // ── Dotted route — fine pixels, snakes through gate → each booth → temple ─
+  // ── Dotted road — arcs around each building, dots skip within clearance ───
   void _route(Canvas canvas, double w, double h) {
-    final dot = Paint()..color = _copper.withValues(alpha: 0.46);
-    // Enters gate, fans left to booth 1, travels right through all 5 booths,
-    // converges to centre, then climbs to temple
-    final pts = [
-      Offset(w*.500, h*.948),  // gate floor
-      Offset(w*.500, h*.908),  // gate void top
-      Offset(w*.500, h*.868),  // inside city, above gate
-      Offset(w*.238, h*.648),  // stoa temple 1 (low left)
-      Offset(w*.352, h*.538),  // stoa temple 2 (high)
-      Offset(w*.500, h*.612),  // stoa temple 3 (centre)
-      Offset(w*.650, h*.552),  // stoa temple 4 (high)
-      Offset(w*.775, h*.638),  // stoa temple 5 (low right)
-      Offset(w*.500, h*.520),  // converge to centre after stoa
-      Offset(w*.500, h*.450),  // upper city
-      Offset(w*.500, h*.372),  // temple base approach
-      Offset(w*.500, h*.305),  // through temple steps
-      Offset(w*.500, h*.248),  // temple colonnade
-      Offset(w*.500, h*.188),  // temple upper
+    final dot = Paint()..color = _copper.withValues(alpha: 0.55);
+
+    // Exclusion zones: (cx, cy, radius) — dots within radius are not drawn
+    final excludes = [
+      (w * 0.21, h * 0.81, w * 0.10),  // agora image
+      (w * 0.63, h * 0.58, w * 0.14),  // stoa image
+      (w * 0.50, h * 0.22, w * 0.28),  // acropolis temple
     ];
+
+    bool clear(double x, double y) {
+      for (final z in excludes) {
+        final dx = x - z.$1; final dy = y - z.$2;
+        if (dx * dx + dy * dy < z.$3 * z.$3) return false;
+      }
+      return true;
+    }
+
+    // Road enters bottom-centre, arcs left around agora,
+    // swings right around stoa, then climbs around the temple base
+    final pts = [
+      Offset(w*.500, h*.960),  // entry bottom
+      Offset(w*.500, h*.910),  // heading up
+      Offset(w*.390, h*.895),  // veering left
+      Offset(w*.255, h*.905),  // below agora
+      Offset(w*.130, h*.875),  // left-bottom of agora
+      Offset(w*.090, h*.810),  // left of agora
+      Offset(w*.105, h*.740),  // left-above agora
+      Offset(w*.215, h*.700),  // above agora heading right
+      Offset(w*.340, h*.695),  // continuing right
+      Offset(w*.445, h*.690),  // middle stretch
+      Offset(w*.510, h*.735),  // below stoa, heading right
+      Offset(w*.570, h*.725),  // stoa lower-right approach
+      Offset(w*.780, h*.655),  // right of stoa bottom
+      Offset(w*.800, h*.575),  // right of stoa centre
+      Offset(w*.775, h*.490),  // right of stoa top
+      Offset(w*.665, h*.440),  // above stoa right
+      Offset(w*.545, h*.430),  // above stoa centre
+      Offset(w*.420, h*.445),  // above stoa left
+      Offset(w*.330, h*.465),  // heading toward temple
+      Offset(w*.250, h*.420),  // lower-left of temple
+      Offset(w*.210, h*.340),  // left side of temple
+      Offset(w*.240, h*.255),  // upper-left of temple
+      Offset(w*.355, h*.215),  // temple base left
+      Offset(w*.500, h*.200),  // temple base centre
+      Offset(w*.645, h*.215),  // temple base right
+      Offset(w*.760, h*.255),  // upper-right of temple
+      Offset(w*.790, h*.340),  // right side of temple
+    ];
+
+    const dotSz = _px * 2.2;
+    const spacing = _px * 5.5;
     for (int i = 0; i < pts.length - 1; i++) {
       final p0 = pts[i]; final p1 = pts[i + 1];
-      final steps = ((p1 - p0).distance / (_px * 4.5)).floor().clamp(1, 250);
+      final steps = ((p1 - p0).distance / spacing).floor().clamp(1, 300);
       for (int j = 0; j <= steps; j++) {
-        final t = j / steps;
-        _r(canvas, dot,
-            p0.dx + (p1.dx - p0.dx) * t - _px * 0.65,
-            p0.dy + (p1.dy - p0.dy) * t - _px * 0.65,
-            _px * 1.3, _px * 1.3);
+        final t  = j / steps;
+        final px = p0.dx + (p1.dx - p0.dx) * t;
+        final py = p0.dy + (p1.dy - p0.dy) * t;
+        if (clear(px, py)) {
+          _r(canvas, dot, px - dotSz / 2, py - dotSz / 2, dotSz, dotSz);
+        }
       }
     }
-  }
-
-  // ── Gate — fine pixel details, torches, layered arch ────────────────────
-  void _gate(Canvas canvas, double w, double h) {
-    final hot   = hovered == AcropolisZone.agora;
-    final c     = hot ? _orange : _copper;
-    final cLt   = hot ? const Color(0xFFFFD090) : _copperLt;
-    final cDk   = hot ? _copper : _copperDk;
-    final cx    = w * 0.500;
-    final wallY = h * 0.902;
-    final floorY = h * 0.960;
-    final gateW  = _px * 11.5;
-    final gateH  = floorY - wallY;
-
-    // Gate void
-    _r(canvas, Paint()..color = Colors.black, cx - gateW / 2, wallY, gateW, gateH);
-
-    // Threshold steps (3 tiny pixel steps)
-    for (int s = 0; s < 3; s++) {
-      final sw = gateW - s * _px * 1.8;
-      _r(canvas, Paint()..color = cDk, cx - sw / 2, floorY - (s + 1) * _px * 2.2, sw, _px * 2.2);
-      _r(canvas, Paint()..color = cLt, cx - sw / 2, floorY - (s + 1) * _px * 2.2, sw, _px * 0.5);
-    }
-
-    // Pillars — fine, fluted
-    final pilW = _px * 2.0;
-    final pilH = _px * 18.0;
-    final pilY = wallY - pilH * 0.30 + gateH;
-    // Left pillar
-    _r(canvas, Paint()..color = cDk.withValues(alpha: .55), cx - gateW / 2 - pilW - _px * 0.5, pilY, _px * 0.5, pilH * 0.78);
-    _r(canvas, Paint()..color = c,   cx - gateW / 2 - pilW, pilY, pilW, pilH * 0.78);
-    _r(canvas, Paint()..color = cLt.withValues(alpha: .55), cx - gateW / 2 - pilW, pilY, _px * 0.4, pilH * 0.78);
-    // Left flute line
-    _r(canvas, Paint()..color = cDk.withValues(alpha: .45), cx - gateW / 2 - _px * 0.8, pilY + _px * 2, _px * 0.5, pilH * 0.68);
-    // Right pillar
-    _r(canvas, Paint()..color = cDk.withValues(alpha: .55), cx + gateW / 2 + _px * 0.5, pilY, _px * 0.5, pilH * 0.78);
-    _r(canvas, Paint()..color = c,   cx + gateW / 2, pilY, pilW, pilH * 0.78);
-    _r(canvas, Paint()..color = cLt.withValues(alpha: .55), cx + gateW / 2, pilY, _px * 0.4, pilH * 0.78);
-    _r(canvas, Paint()..color = cDk.withValues(alpha: .45), cx + gateW / 2 + pilW - _px * 0.4, pilY + _px * 2, _px * 0.5, pilH * 0.68);
-
-    // Capitals (T-caps)
-    _r(canvas, Paint()..color = cLt, cx - gateW / 2 - pilW - _px * 1.6, pilY, pilW + _px * 3.2, _px * 1.6);
-    _r(canvas, Paint()..color = cLt, cx + gateW / 2 - _px * 1.6,        pilY, pilW + _px * 3.2, _px * 1.6);
-
-    // Lintel — layered depth
-    final linX = cx - gateW / 2 - pilW - _px * 2.2;
-    final linW = gateW + pilW * 2 + _px * 4.4;
-    _r(canvas, Paint()..color = cDk, linX, wallY - _px * 4.2, linW, _px * 4.2);
-    _r(canvas, Paint()..color = c,   linX, wallY - _px * 2.8, linW, _px * 1.8);
-    _r(canvas, Paint()..color = cLt, linX, wallY - _px * 4.2, linW, _px * 0.7);
-    // Carved glyph slab on lintel centre
-    _r(canvas, Paint()..color = cDk.withValues(alpha: .8), cx - _px * 1.4, wallY - _px * 3.6, _px * 2.8, _px * 1.8);
-    _r(canvas, Paint()..color = cLt.withValues(alpha: .35), cx - _px * 1.0, wallY - _px * 3.6, _px * 1.4, _px * 0.5);
-
-    // Arch — 9 pixel steps, fine
-    for (int i = 0; i <= 9; i++) {
-      final t     = i / 9.0;
-      final angle = math.pi * t;
-      final ax    = cx + math.cos(math.pi - angle) * (gateW / 2 - _px * 1.0);
-      final ay    = wallY + (1 - math.sin(angle)) * _px * 5.0;
-      _r(canvas, Paint()..color = cDk, ax - _px * 0.7, ay - _px * 0.7, _px * 1.4, _px * 1.4);
-      if (i % 2 == 0) {
-        _r(canvas, Paint()..color = cLt.withValues(alpha: .28), ax - _px * 0.35, ay - _px * 0.7, _px * 0.35, _px * 0.35);
-      }
-    }
-
-    // Torch brackets — outer sides of pillars
-    // Left torch
-    _r(canvas, Paint()..color = cDk, cx - gateW / 2 - pilW - _px * 3.8, wallY - _px * 7.5, _px * 1.8, _px * 4.5);
-    _r(canvas, Paint()..color = cLt, cx - gateW / 2 - pilW - _px * 3.8, wallY - _px * 8.8, _px * 1.8, _px * 1.4);
-    _r(canvas, Paint()..color = _orange.withValues(alpha: 0.48 + 0.30 * flickerT),
-        cx - gateW / 2 - pilW - _px * 4.0, wallY - _px * 11.5, _px * 2.2, _px * 3.0);
-    _r(canvas, Paint()..color = _copperLt.withValues(alpha: 0.25 + 0.20 * flickerT),
-        cx - gateW / 2 - pilW - _px * 3.6, wallY - _px * 12.5, _px * 1.2, _px * 1.0);
-    // Right torch
-    _r(canvas, Paint()..color = cDk, cx + gateW / 2 + pilW + _px * 2.0, wallY - _px * 7.5, _px * 1.8, _px * 4.5);
-    _r(canvas, Paint()..color = cLt, cx + gateW / 2 + pilW + _px * 2.0, wallY - _px * 8.8, _px * 1.8, _px * 1.4);
-    _r(canvas, Paint()..color = _orange.withValues(alpha: 0.48 + 0.30 * (1 - flickerT)),
-        cx + gateW / 2 + pilW + _px * 1.8, wallY - _px * 11.5, _px * 2.2, _px * 3.0);
-    _r(canvas, Paint()..color = _copperLt.withValues(alpha: 0.25 + 0.20 * (1 - flickerT)),
-        cx + gateW / 2 + pilW + _px * 2.2, wallY - _px * 12.5, _px * 1.2, _px * 1.0);
-
-    // Three ornament dots above lintel
-    for (int i = -1; i <= 1; i++) {
-      _r(canvas, Paint()..color = cDk, cx + i * _px * 3.2 - _px * 0.55, wallY - _px * 5.5, _px * 1.1, _px * 1.1);
-    }
-
-    // Ground threshold line
-    _r(canvas, Paint()..color = cDk, cx - gateW / 2 - _px, floorY, gateW + _px * 2, _px * 1.1);
   }
 
   // ── Greek market compound image ───────────────────────────────────────────
@@ -601,7 +544,7 @@ class _CityMapPainter extends CustomPainter {
     final hot  = hovered == AcropolisZone.agora;
     final side = w * 0.144;
     final dest = Rect.fromCenter(
-      center: Offset(w * 0.17, h * 0.87), width: side, height: side);
+      center: Offset(w * 0.21, h * 0.81), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
 
     if (hot) {
