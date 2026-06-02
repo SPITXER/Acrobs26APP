@@ -60,7 +60,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   }
 
   Future<void> _loadTempleImage() async {
-    final data = await rootBundle.load('assets/images/Sym1.png');
+    final data = await rootBundle.load('assets/images/Sym2.png');
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(),
       targetWidth: 512,

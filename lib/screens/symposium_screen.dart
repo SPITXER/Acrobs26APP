@@ -281,7 +281,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             fit: StackFit.expand,
             children: [
               Image.asset(
-                'assets/images/Sym1.png',
+                'assets/images/Sym2.png',
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
               ),
