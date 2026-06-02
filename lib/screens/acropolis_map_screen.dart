@@ -177,22 +177,6 @@ class _CityMapPainter extends CustomPainter {
     _moon(canvas, w, h);
     _terrain(canvas, w, h);
 
-    final wall = _wallPath(w, h);
-    canvas.drawPath(wall, Paint()..color = _wallFill);
-
-    // Thin wall — shadow then main line then highlight
-    canvas.drawPath(wall, Paint()
-      ..color = _copperDk..style = PaintingStyle.stroke
-      ..strokeWidth = _px * 3.0..strokeJoin = StrokeJoin.round);
-    canvas.drawPath(wall, Paint()
-      ..color = _copper..style = PaintingStyle.stroke
-      ..strokeWidth = _px * 1.1..strokeJoin = StrokeJoin.round);
-    canvas.drawPath(wall, Paint()
-      ..color = _copperLt..style = PaintingStyle.stroke
-      ..strokeWidth = _px * 0.45..strokeJoin = StrokeJoin.round);
-
-    _wallTowers(canvas, w, h);
-    _battlements(canvas, w, h);
     _route(canvas, w, h);
     _gate(canvas, w, h);
     _market(canvas, w, h);
@@ -656,7 +640,7 @@ class _CityMapPainter extends CustomPainter {
   // ── Sym1 image replacing the drawn temple ────────────────────────────────
   void _drawTempleImage(Canvas canvas, double w, double h, ui.Image img) {
     final hot  = hovered == AcropolisZone.acropolis;
-    final side = math.min(w * 0.42, h * 0.36);
+    final side = math.min(w * 0.504, h * 0.432);
     final cx   = w * 0.500;
     final topY = h * 0.03;
     final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
