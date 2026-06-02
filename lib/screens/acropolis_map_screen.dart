@@ -92,7 +92,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final agoraRect     = Rect.fromLTWH(w * 0.40, h * 0.84, w * 0.20, h * 0.09);
-            final _stoaSide     = w * 0.34;
+            final _stoaSide     = w * 0.221;
             final stoaRect      = Rect.fromCenter(
               center: Offset(w * 0.63, h * 0.58),
               width: _stoaSide, height: _stoaSide);
@@ -226,7 +226,7 @@ class _CityMapPainter extends CustomPainter {
     final p = Path();
     p.moveTo(w * 0.448, h * 0.902);
     // Bottom-left — wide natural sweep
-    p.quadraticBezierTo(w * 0.348, h * 0.895, w * 0.245, h * 0.854);
+    p.quadraticBezierTo(w * 0.2218, h * 0.895, w * 0.245, h * 0.854);
     // Left lower — sharp angular notch (dramatically concave)
     p.quadraticBezierTo(w * 0.128, h * 0.812, w * 0.108, h * 0.705);
     p.quadraticBezierTo(w * 0.090, h * 0.615, w * 0.140, h * 0.535);
@@ -565,7 +565,7 @@ class _CityMapPainter extends CustomPainter {
   // ── Greek market compound image ───────────────────────────────────────────
   void _drawStoaImage(Canvas canvas, double w, double h, ui.Image img) {
     final hot  = hovered == AcropolisZone.stoa;
-    final side = w * 0.34;
+    final side = w * 0.221;
     final dest = Rect.fromCenter(
       center: Offset(w * 0.63, h * 0.58), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
