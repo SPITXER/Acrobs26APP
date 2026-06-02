@@ -47,6 +47,7 @@ dependencies:
   # UI & utilities
   google_fonts: ^6.2.1
   timeago: ^3.7.0
+  shared_preferences: ^2.3.2
   uuid: ^4.5.1
 
 dev_dependencies:

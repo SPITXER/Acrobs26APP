@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color, Colors, GlobalKey, NavigatorState, ScaffoldMessengerState, SnackBar, SnackBarAction, Text, TextStyle;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/acro_mode.dart';
 import '../models/user_profile.dart';
@@ -18,6 +20,14 @@ class AppState extends ChangeNotifier {
   final UserProfile profile = UserProfile();
   DebateRoom? currentRoom;
   List<Post> posts = List.from(samplePosts);
+
+  // Firebase Auth
+  User? firebaseUser;
+
+  // 5-minute signup prompt
+  bool _promptShown = false;
+  Timer? _activityTimer;
+  VoidCallback? _signupDialogCallback; // registered by map screen
 
   // Stoa argument rooms (up to 10 active at once)
   final List<String> _myStoaRoomIds = [];
@@ -39,6 +49,110 @@ class AppState extends ChangeNotifier {
   })  : _navigatorKey = navigatorKey,
         _messengerKey = messengerKey {
     profile.uid = _uuid.v4();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadLocalProfile();
+    firebaseUser = FirebaseAuth.instance.currentUser;
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      firebaseUser = user;
+      if (user != null) _activityTimer?.cancel();
+      notifyListeners();
+    });
+    // Start timer if user already has a name (returning user)
+    if (profile.name.isNotEmpty && firebaseUser == null) {
+      _startActivityTimer();
+    }
+  }
+
+  // ── Local storage ────────────────────────────────────────────────────────
+
+  static const _kUid       = 'acro_uid';
+  static const _kName      = 'acro_name';
+  static const _kField     = 'acro_field';
+  static const _kInterests = 'acro_interests';
+  static const _kQuote     = 'acro_quote';
+
+  Future<void> _loadLocalProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_kName) ?? '';
+    if (name.isEmpty) return;
+    profile.uid       = prefs.getString(_kUid) ?? profile.uid;
+    profile.name      = name;
+    profile.field     = prefs.getString(_kField) ?? '';
+    profile.interests = prefs.getStringList(_kInterests) ?? [];
+    profile.quote     = prefs.getString(_kQuote) ?? '';
+    notifyListeners();
+  }
+
+  Future<void> _saveLocalProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.setString(_kUid,  profile.uid),
+      prefs.setString(_kName, profile.name),
+      prefs.setString(_kField, profile.field),
+      prefs.setStringList(_kInterests, profile.interests),
+      prefs.setString(_kQuote, profile.quote),
+    ]);
+  }
+
+  // ── 5-minute signup prompt ───────────────────────────────────────────────
+
+  void registerSignupDialogCallback(VoidCallback cb) {
+    _signupDialogCallback = cb;
+  }
+
+  void _startActivityTimer() {
+    if (_promptShown || firebaseUser != null) return;
+    _activityTimer?.cancel();
+    _activityTimer = Timer(const Duration(minutes: 5), () {
+      if (firebaseUser != null || _promptShown) return;
+      _promptShown = true;
+      _signupDialogCallback?.call();
+    });
+  }
+
+  void dismissSignupPrompt() { /* no-op — dialog closed by caller */ }
+
+  // ── Firebase Auth ────────────────────────────────────────────────────────
+
+  Future<void> signInWithGoogle() async {
+    final cred = await FirebaseAuth.instance
+        .signInWithPopup(GoogleAuthProvider());
+    final user = cred.user;
+    if (user == null) return;
+    if (profile.name.isEmpty && user.displayName != null) {
+      profile.name = user.displayName!;
+    }
+    profile.uid = user.uid;
+    await _saveLocalProfile();
+    await _db.ref('users/${user.uid}').set({
+      'uid':       user.uid,
+      'name':      profile.name,
+      'field':     profile.field,
+      'interests': profile.interests,
+      'ts':        ServerValue.timestamp,
+    });
+    notifyListeners();
+  }
+
+  Future<void> signUpWithEmail(String email, String password) async {
+    final cred = await FirebaseAuth.instance
+        .createUserWithEmailAndPassword(email: email, password: password);
+    final user = cred.user;
+    if (user == null) return;
+    profile.uid = user.uid;
+    await _saveLocalProfile();
+    await _db.ref('users/${user.uid}').set({
+      'uid':       user.uid,
+      'name':      profile.name,
+      'field':     profile.field,
+      'interests': profile.interests,
+      'email':     email,
+      'ts':        ServerValue.timestamp,
+    });
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -55,6 +169,8 @@ class AppState extends ChangeNotifier {
     profile.field = field.isEmpty ? 'Intellectual' : field;
     if (mode != null) profile.mode = mode;
     if (interests.isNotEmpty) profile.interests = interests;
+    _saveLocalProfile();
+    _startActivityTimer();
     notifyListeners();
   }
 
@@ -70,6 +186,7 @@ class AppState extends ChangeNotifier {
     if (location != null) profile.location = location;
     if (quote != null) profile.quote = quote;
     if (interests != null) profile.interests = interests;
+    _saveLocalProfile();
     notifyListeners();
   }
 

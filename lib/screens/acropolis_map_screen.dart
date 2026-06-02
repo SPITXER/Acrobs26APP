@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../widgets/side_menu.dart';
+import '../widgets/signup_dialog.dart';
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
@@ -43,6 +44,17 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     _pulse   = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
     _flicker = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))..repeat(reverse: true);
     _loadTempleImage();
+    // Register the 5-minute signup prompt — fires above any active screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().registerSignupDialogCallback(() {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const SignupPromptDialog(),
+        );
+      });
+    });
   }
 
   Future<void> _loadTempleImage() async {
