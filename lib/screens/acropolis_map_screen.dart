@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
@@ -32,16 +34,29 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   bool _menuOpen = false;
   late AnimationController _pulse;
   late AnimationController _flicker;
+  ui.Image? _templeImg;
 
   @override
   void initState() {
     super.initState();
     _pulse   = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
     _flicker = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))..repeat(reverse: true);
+    _loadTempleImage();
+  }
+
+  Future<void> _loadTempleImage() async {
+    final data = await rootBundle.load('assets/images/Sym1.png');
+    final codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(),
+      targetWidth: 512,
+      targetHeight: 512,
+    );
+    final frame = await codec.getNextFrame();
+    if (mounted) setState(() => _templeImg = frame.image);
   }
 
   @override
-  void dispose() { _pulse.dispose(); _flicker.dispose(); super.dispose(); }
+  void dispose() { _pulse.dispose(); _flicker.dispose(); _templeImg?.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +70,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             final h = constraints.maxHeight;
             final agoraRect     = Rect.fromLTWH(w * 0.40, h * 0.84, w * 0.20, h * 0.09);
             final stoaRect      = Rect.fromLTWH(w * 0.16, h * 0.44, w * 0.68, h * 0.28);
-            final acropolisRect = Rect.fromLTWH(w * 0.30, h * 0.10, w * 0.40, h * 0.28);
+            final acropolisRect = Rect.fromLTWH(w * 0.28, h * 0.04, w * 0.44, h * 0.36);
             return Stack(children: [
               GestureDetector(
                 onTapDown: (d) {
@@ -71,6 +86,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       pulseT: _pulse.value, flickerT: _flicker.value,
                       hovered: _hovered,
                       agoraRect: agoraRect, stoaRect: stoaRect, acropolisRect: acropolisRect,
+                      templeImg: _templeImg,
                     ),
                   ),
                 ),
@@ -145,10 +161,12 @@ class _CityMapPainter extends CustomPainter {
   final double pulseT, flickerT;
   final AcropolisZone? hovered;
   final Rect agoraRect, stoaRect, acropolisRect;
+  final ui.Image? templeImg;
 
-  const _CityMapPainter({required this.pulseT, required this.flickerT,
+  _CityMapPainter({required this.pulseT, required this.flickerT,
       required this.hovered, required this.agoraRect,
-      required this.stoaRect, required this.acropolisRect});
+      required this.stoaRect, required this.acropolisRect,
+      this.templeImg});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -178,7 +196,11 @@ class _CityMapPainter extends CustomPainter {
     _route(canvas, w, h);
     _gate(canvas, w, h);
     _market(canvas, w, h);
-    _temple(canvas, w, h);
+    if (templeImg != null) {
+      _drawTempleImage(canvas, w, h, templeImg!);
+    } else {
+      _temple(canvas, w, h);
+    }
     _hoverGlow(canvas, w, h);
     _labels(canvas, w, h);
   }
@@ -631,6 +653,32 @@ class _CityMapPainter extends CustomPainter {
     _r(canvas, Paint()..color = cLt, cx - _px * 1.8, peakY - _px * 3.5, _px * 3.6, _px * 1.0);
   }
 
+  // ── Sym1 image replacing the drawn temple ────────────────────────────────
+  void _drawTempleImage(Canvas canvas, double w, double h, ui.Image img) {
+    final hot  = hovered == AcropolisZone.acropolis;
+    final side = math.min(w * 0.42, h * 0.36);
+    final cx   = w * 0.500;
+    final topY = h * 0.03;
+    final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
+    final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
+
+    // Pulsing glow behind image when hovered
+    if (hot) {
+      canvas.drawRect(
+        dest.inflate(_px * 4),
+        Paint()
+          ..color = _orange.withValues(alpha: (0.10 + 0.18 * pulseT).clamp(0.0, 1.0))
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+      );
+    }
+
+    // Screen blend makes the black PNG background disappear on the dark map
+    canvas.drawImageRect(img, src, dest,
+        Paint()
+          ..blendMode = BlendMode.screen
+          ..filterQuality = FilterQuality.medium);
+  }
+
   // ── Temple — more depth with shadow + visible side faces ─────────────────
   void _temple(Canvas canvas, double w, double h) {
     final hot  = hovered == AcropolisZone.acropolis;
@@ -845,5 +893,6 @@ class _CityMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CityMapPainter old) =>
-      old.pulseT != pulseT || old.flickerT != flickerT || old.hovered != hovered;
+      old.pulseT != pulseT || old.flickerT != flickerT ||
+      old.hovered != hovered || old.templeImg != templeImg;
 }
