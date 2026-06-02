@@ -35,9 +35,14 @@ class AcropolisMapScreen extends StatefulWidget {
 class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     with TickerProviderStateMixin {
   AcropolisZone? _hovered;
+  AcropolisZone? _tappedZone;
   bool _menuOpen = false;
   late AnimationController _pulse;
   late AnimationController _flicker;
+  late AnimationController _tapFlash;
+  late AnimationController _templeFade;
+  late AnimationController _stoaFade;
+  late AnimationController _agoraFade;
   ui.Image? _templeImg;
   ui.Image? _stoaImg;
   ui.Image? _agoraImg;
@@ -47,6 +52,11 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     super.initState();
     _pulse   = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
     _flicker = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))..repeat(reverse: true);
+    _tapFlash  = AnimationController(vsync: this, duration: const Duration(milliseconds: 180))
+      ..addStatusListener((s) { if (s == AnimationStatus.completed) { _tapFlash.reset(); setState(() => _tappedZone = null); } });
+    _templeFade = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _stoaFade   = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _agoraFade  = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadTempleImage();
     _loadStoaImage();
     _loadAgoraImage();
@@ -68,7 +78,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
     final frame = await codec.getNextFrame();
-    if (mounted) setState(() => _templeImg = frame.image);
+    if (mounted) { setState(() => _templeImg = frame.image); _templeFade.forward(); }
   }
 
   Future<void> _loadStoaImage() async {
@@ -76,7 +86,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
     final frame = await codec.getNextFrame();
-    if (mounted) setState(() => _stoaImg = frame.image);
+    if (mounted) { setState(() => _stoaImg = frame.image); _stoaFade.forward(); }
   }
 
   Future<void> _loadAgoraImage() async {
@@ -84,11 +94,16 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final codec = await ui.instantiateImageCodec(
       data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
     final frame = await codec.getNextFrame();
-    if (mounted) setState(() => _agoraImg = frame.image);
+    if (mounted) { setState(() => _agoraImg = frame.image); _agoraFade.forward(); }
   }
 
   @override
-  void dispose() { _pulse.dispose(); _flicker.dispose(); _templeImg?.dispose(); _stoaImg?.dispose(); _agoraImg?.dispose(); super.dispose(); }
+  void dispose() {
+    _pulse.dispose(); _flicker.dispose();
+    _tapFlash.dispose(); _templeFade.dispose(); _stoaFade.dispose(); _agoraFade.dispose();
+    _templeImg?.dispose(); _stoaImg?.dispose(); _agoraImg?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +111,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       backgroundColor: Colors.black,
       endDrawer: const SideMenu(),
       body: AnimatedBuilder(
-        animation: Listenable.merge([_pulse, _flicker]),
+        animation: Listenable.merge([_pulse, _flicker, _tapFlash, _templeFade, _stoaFade, _agoraFade]),
         builder: (context, _) {
           return LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth;
@@ -124,6 +139,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       hovered: _hovered,
                       agoraRect: agoraRect, stoaRect: stoaRect, acropolisRect: acropolisRect,
                       templeImg: _templeImg, stoaImg: _stoaImg, agoraImg: _agoraImg,
+                      templeAlpha: _templeFade.value, stoaAlpha: _stoaFade.value, agoraAlpha: _agoraFade.value,
+                      tapFlashT: _tapFlash.value, tappedZone: _tappedZone,
                     ),
                   ),
                 ),
@@ -175,6 +192,11 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   Widget _md() => Container(height: 1, color: const Color(0x40B87333));
 
   void _handleTap(Offset pos, Rect agora, Rect stoa, Rect acropolis) {
+    AcropolisZone? zone;
+    if (agora.contains(pos))     zone = AcropolisZone.agora;
+    else if (stoa.contains(pos)) zone = AcropolisZone.stoa;
+    else if (acropolis.contains(pos)) zone = AcropolisZone.acropolis;
+    if (zone != null) { setState(() => _tappedZone = zone); _tapFlash.forward(from: 0); }
     if (agora.contains(pos)) {
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
     } else if (stoa.contains(pos)) {
@@ -202,11 +224,16 @@ class _CityMapPainter extends CustomPainter {
   final ui.Image? templeImg;
   final ui.Image? stoaImg;
   final ui.Image? agoraImg;
+  final double templeAlpha, stoaAlpha, agoraAlpha;
+  final double tapFlashT;
+  final AcropolisZone? tappedZone;
 
   _CityMapPainter({required this.pulseT, required this.flickerT,
       required this.hovered, required this.agoraRect,
       required this.stoaRect, required this.acropolisRect,
-      this.templeImg, this.stoaImg, this.agoraImg});
+      this.templeImg, this.stoaImg, this.agoraImg,
+      this.templeAlpha = 1.0, this.stoaAlpha = 1.0, this.agoraAlpha = 1.0,
+      this.tapFlashT = 0.0, this.tappedZone});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -304,31 +331,43 @@ class _CityMapPainter extends CustomPainter {
     path.quadraticBezierTo(w * 0.08, h * 0.634, 0, h * 0.668);
     path.close();
 
-    // Pitch black at top → deep twilight indigo near horizon. No sunlight.
+    // Pitch black at top → very subtle twilight near horizon. Mostly black.
     canvas.drawPath(path, Paint()
       ..shader = ui.Gradient.linear(
         Offset(w / 2, 0),
         Offset(w / 2, h * 0.690),
         const [
           Color(0xFF000000),   // pitch black
-          Color(0xFF010010),   // near-black, hint of violet
-          Color(0xFF06042A),   // deep indigo
-          Color(0xFF0F073D),   // twilight indigo
-          Color(0xFF190B52),   // rich twilight purple-blue
+          Color(0xFF000000),   // pitch black — hold longer
+          Color(0xFF020208),   // barely-there dark blue-black
+          Color(0xFF060412),   // very dark, faint hint of indigo
+          Color(0xFF0A0618),   // softest twilight, almost black
         ],
-        [0.0, 0.25, 0.55, 0.80, 1.0],
+        [0.0, 0.40, 0.65, 0.85, 1.0],
       ));
+
+    // Feathered horizon — soft black blur band to dissolve the hard edge
+    canvas.drawRect(
+      Rect.fromLTWH(0, h * 0.610, w, h * 0.090),
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(0, h * 0.610), Offset(0, h * 0.700),
+          const [Color(0x00000000), Color(0xFF000000)],
+        )
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
   }
 
-  // ── Stars — top 22% only, mix of dots and cross-shaped ───────────────────
+  // ── Stars — top 32%, staggered twinkle ───────────────────────────────────
   void _stars(Canvas canvas, double w, double h) {
     final rng = math.Random(42);
     for (int i = 0; i < 68; i++) {
       final x     = rng.nextDouble() * w;
-      final y     = rng.nextDouble() * h * 0.22;
+      final y     = rng.nextDouble() * h * 0.32;
       final phase = rng.nextDouble();
+      final speed = 2.0 + rng.nextDouble() * 4.0; // each star flickers at its own rate
       final sz    = 0.5 + rng.nextDouble() * 1.3;
-      final flick = math.sin(flickerT * math.pi * 4 + phase * math.pi * 2);
+      final flick = math.sin(flickerT * math.pi * speed + phase * math.pi * 2);
       final alpha = (0.30 + 0.60 * ((flick + 1) / 2)).clamp(0.0, 1.0);
 
       if (rng.nextDouble() > 0.58) {
@@ -484,44 +523,40 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Greek market compound image ───────────────────────────────────────────
   void _drawStoaImage(Canvas canvas, double w, double h, ui.Image img) {
-    final hot  = hovered == AcropolisZone.stoa;
     final side = w * 0.221;
     final dest = Rect.fromCenter(
       center: Offset(w * 0.63, h * 0.58), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-
-    if (hot) {
-      canvas.drawCircle(dest.center, dest.width * 0.38,
+    // Loading placeholder while fading in
+    if (stoaAlpha < 1.0) {
+      canvas.drawCircle(dest.center, dest.width * 0.32,
         Paint()
-          ..color = _orange.withValues(alpha: (0.10 + 0.16 * pulseT).clamp(0.0, 1.0))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
+          ..color = _copper.withValues(alpha: (0.04 + 0.07 * pulseT) * (1 - stoaAlpha))
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22));
     }
-
+    canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, stoaAlpha));
     canvas.drawImageRect(img, src, dest,
-        Paint()
-          ..blendMode = BlendMode.screen
-          ..filterQuality = FilterQuality.medium);
+        Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+    canvas.restore();
   }
 
   // ── Agora image icon ─────────────────────────────────────────────────────
   void _drawAgoraImage(Canvas canvas, double w, double h, ui.Image img) {
-    final hot  = hovered == AcropolisZone.agora;
     final side = w * 0.144;
     final dest = Rect.fromCenter(
       center: Offset(w * 0.30, h * 0.73), width: side, height: side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-
-    if (hot) {
-      canvas.drawCircle(dest.center, dest.width * 0.38,
+    // Loading placeholder while fading in
+    if (agoraAlpha < 1.0) {
+      canvas.drawCircle(dest.center, dest.width * 0.32,
         Paint()
-          ..color = _orange.withValues(alpha: (0.10 + 0.16 * pulseT).clamp(0.0, 1.0))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
+          ..color = _copper.withValues(alpha: (0.04 + 0.07 * pulseT) * (1 - agoraAlpha))
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
     }
-
+    canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, agoraAlpha));
     canvas.drawImageRect(img, src, dest,
-        Paint()
-          ..blendMode = BlendMode.screen
-          ..filterQuality = FilterQuality.medium);
+        Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+    canvas.restore();
   }
 
   // ── Stoa — 5 mini Greek temples, spread wide ─────────────────────────────
@@ -623,26 +658,22 @@ class _CityMapPainter extends CustomPainter {
 
   // ── Sym1 image replacing the drawn temple ────────────────────────────────
   void _drawTempleImage(Canvas canvas, double w, double h, ui.Image img) {
-    final hot  = hovered == AcropolisZone.acropolis;
     final side = math.min(w * 0.504, h * 0.432);
     final cx   = w * 0.500;
     final topY = h * 0.03;
     final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
     final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-
-    // Pulsing glow behind image when hovered
-    if (hot) {
-      canvas.drawCircle(dest.center, dest.width * 0.40,
+    // Loading placeholder while fading in
+    if (templeAlpha < 1.0) {
+      canvas.drawCircle(dest.center, dest.width * 0.35,
         Paint()
-          ..color = _orange.withValues(alpha: (0.10 + 0.18 * pulseT).clamp(0.0, 1.0))
+          ..color = _copper.withValues(alpha: (0.04 + 0.07 * pulseT) * (1 - templeAlpha))
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28));
     }
-
-    // Screen blend makes the black PNG background disappear on the dark map
+    canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, templeAlpha));
     canvas.drawImageRect(img, src, dest,
-        Paint()
-          ..blendMode = BlendMode.screen
-          ..filterQuality = FilterQuality.medium);
+        Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
+    canvas.restore();
   }
 
   // ── Temple — more depth with shadow + visible side faces ─────────────────
@@ -822,24 +853,37 @@ class _CityMapPainter extends CustomPainter {
   }
 
   void _hoverGlow(Canvas canvas, double w, double h) {
-    if (hovered == null) return;
-    final rect = switch (hovered!) {
+    final zone = tappedZone ?? hovered;
+    if (zone == null) return;
+    final rect = switch (zone) {
       AcropolisZone.agora     => agoraRect,
       AcropolisZone.stoa      => stoaRect,
       AcropolisZone.acropolis => acropolisRect,
     };
-    // Soft radial glow radiating from the building centre
-    canvas.drawCircle(rect.center, rect.shortestSide * 0.42,
+    // Ease the pulse for a smooth breath-like feel
+    final eased = Curves.easeInOut.transform(pulseT);
+    canvas.drawCircle(rect.center, rect.shortestSide * 0.60,
       Paint()
-        ..color = _orange.withValues(alpha: (0.08 + 0.12 * pulseT).clamp(0.0, 1.0))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22));
+        ..color = _orange.withValues(alpha: (0.05 + 0.15 * eased).clamp(0.0, 1.0))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 34));
+    // Tap burst — sharp bright flash that fades quickly
+    if (tapFlashT > 0) {
+      final burst = (tapFlashT * (1 - tapFlashT) * 4.0 * 0.65).clamp(0.0, 1.0);
+      canvas.drawCircle(rect.center, rect.shortestSide * 0.80,
+        Paint()
+          ..color = _orange.withValues(alpha: burst)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 42));
+    }
   }
 
   void _labels(Canvas canvas, double w, double h) {
-    _lbl(canvas, 'AGORA',          w*.50, h*.957, _copper,   _px*2.1);
-    _lbl(canvas, 'STOA',           w*.50, h*.678, _copper,   _px*2.1);
-    _lbl(canvas, 'SYMPOSIUM',      w*.50, h*.118, _copperLt, _px*1.9);
-    _lbl(canvas, 'A · C · R · O', w*.50, h*.022, _copper,   _px*2.3, ls: 7.0);
+    final aHot = hovered == AcropolisZone.agora     || tappedZone == AcropolisZone.agora;
+    final sHot = hovered == AcropolisZone.stoa      || tappedZone == AcropolisZone.stoa;
+    final tHot = hovered == AcropolisZone.acropolis || tappedZone == AcropolisZone.acropolis;
+    _lbl(canvas, 'AGORA',          w*.300, h*.800, aHot ? _orange : _copper,   _px*2.1);
+    _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copper,   _px*2.1);
+    _lbl(canvas, 'SYMPOSIUM',      w*.500, h*.118, tHot ? _orange : _copperLt, _px*1.9);
+    _lbl(canvas, 'A · C · R · O', w*.500, h*.022, _copper,                     _px*2.3, ls: 7.0);
   }
 
   void _lbl(Canvas canvas, String text, double cx, double cy,
@@ -862,6 +906,8 @@ class _CityMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(_CityMapPainter old) =>
       old.pulseT != pulseT || old.flickerT != flickerT ||
-      old.hovered != hovered || old.templeImg != templeImg ||
-      old.stoaImg != stoaImg || old.agoraImg != agoraImg;
+      old.hovered != hovered || old.tappedZone != tappedZone ||
+      old.tapFlashT != tapFlashT ||
+      old.templeImg != templeImg || old.stoaImg != stoaImg || old.agoraImg != agoraImg ||
+      old.templeAlpha != templeAlpha || old.stoaAlpha != stoaAlpha || old.agoraAlpha != agoraAlpha;
 }
