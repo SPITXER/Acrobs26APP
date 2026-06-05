@@ -808,7 +808,6 @@ class _NominateButton extends StatefulWidget {
 
 class _NominateButtonState extends State<_NominateButton> {
   bool _nominated = false;
-  bool _loading   = true;
 
   @override
   void initState() {
@@ -816,13 +815,13 @@ class _NominateButtonState extends State<_NominateButton> {
     _check();
   }
 
+  // Runs in background — button shows immediately, updates if already nominated
   Future<void> _check() async {
     final state  = context.read<AppState>();
+    if (!state.isPermanentAccount) return;
     final roomId = widget.room['roomId'] as String? ?? '';
-    final already = state.isPermanentAccount
-        ? await state.hasNominated(roomId)
-        : false;
-    if (mounted) setState(() { _nominated = already; _loading = false; });
+    final already = await state.hasNominated(roomId);
+    if (mounted && already) setState(() => _nominated = true);
   }
 
   Future<void> _tap() async {
@@ -859,30 +858,43 @@ class _NominateButtonState extends State<_NominateButton> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || widget.isOwnRoom) return const SizedBox.shrink();
+    if (widget.isOwnRoom) return const SizedBox.shrink();
     return GestureDetector(
       onTap: _tap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _nominated ? Icons.stars : Icons.stars_outlined,
-              size: 15,
-              color: _nominated
-                  ? AcroColors.gold.withOpacity(0.65)
-                  : Colors.white.withOpacity(0.18),
-            ),
-            if (_nominated)
-              Text('CANON',
-                  style: GoogleFonts.spaceMono(
-                      fontSize: 7,
-                      color: AcroColors.gold.withOpacity(0.55),
-                      letterSpacing: 1.5)),
-          ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _nominated
+              ? AcroColors.gold.withOpacity(0.12)
+              : Colors.white.withOpacity(0.05),
+          border: Border.all(
+            color: _nominated
+                ? AcroColors.gold.withOpacity(0.50)
+                : Colors.white.withOpacity(0.15),
+          ),
+          borderRadius: BorderRadius.circular(3),
         ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(
+            _nominated ? Icons.stars : Icons.stars_outlined,
+            size: 11,
+            color: _nominated
+                ? AcroColors.gold
+                : Colors.white.withOpacity(0.55),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _nominated ? 'CANON' : 'NOMINATE',
+            style: GoogleFonts.spaceMono(
+              fontSize: 8,
+              letterSpacing: 1,
+              color: _nominated
+                  ? AcroColors.gold
+                  : Colors.white.withOpacity(0.55),
+            ),
+          ),
+        ]),
       ),
     );
   }
