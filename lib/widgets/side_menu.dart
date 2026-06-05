@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
+import '../services/badge_engine.dart';
 import '../theme/acro_theme.dart';
 import 'avatar.dart';
 
@@ -76,36 +77,126 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 8, 14),
-      child: Row(children: [
-        AcroAvatar(
-          initials: state.profile.initials,
-          seed: state.profile.uid,
-          size: 42,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(state.profile.name,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
-            if (state.profile.field.isNotEmpty)
-              Text(state.profile.field,
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withOpacity(0.38))),
-          ]),
-        ),
-        IconButton(
-          icon: const Icon(Icons.close, color: Colors.white30, size: 18),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ]),
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: state.userStatsStream(),
+      builder: (_, snap) {
+        final stats = snap.data ?? {};
+        final badge = BadgeEngine.fromStats(stats);
+        final info  = BadgeEngine.infoFor(badge);
+
+        final nomGiven    = (stats['nominationsGiven']    as int?) ?? 0;
+        final nomReceived = (stats['nominationsReceived'] as int?) ?? 0;
+        final quoteCount  = (stats['quoteCount']          as int?) ?? 0;
+        final minutes     = (stats['totalMinutesActive']  as int?) ?? 0;
+        final hours       = minutes ~/ 60;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Avatar row ──────────────────────────────────────────
+              Row(children: [
+                AcroAvatar(
+                  initials: state.profile.initials,
+                  seed: state.profile.uid,
+                  size: 42,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(state.profile.name,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                    if (state.profile.field.isNotEmpty)
+                      Text(state.profile.field,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.38))),
+                  ]),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close,
+                      color: Colors.white30, size: 18),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ]),
+
+              // ── Badge pill ──────────────────────────────────────────
+              if (badge != AcroBadge.wanderer) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AcroColors.gold.withOpacity(0.08),
+                    border: Border.all(
+                        color: AcroColors.gold.withOpacity(0.30)),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(info.emoji,
+                        style: const TextStyle(fontSize: 13)),
+                    const SizedBox(width: 6),
+                    Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                      Text(info.name,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AcroColors.gold,
+                              letterSpacing: 0.5)),
+                      Text(info.epithet,
+                          style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.white.withOpacity(0.35),
+                              fontStyle: FontStyle.italic)),
+                    ]),
+                  ]),
+                ),
+              ],
+
+              // ── Stats strip ─────────────────────────────────────────
+              if (state.isPermanentAccount) ...[
+                const SizedBox(height: 10),
+                Row(children: [
+                  _stat('${hours}h', 'active'),
+                  const SizedBox(width: 16),
+                  _stat('$quoteCount', 'quotes'),
+                  const SizedBox(width: 16),
+                  _stat('$nomReceived', 'nom. recv'),
+                  const SizedBox(width: 16),
+                  _stat('$nomGiven', 'nom. given'),
+                ]),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
+
+  Widget _stat(String value, String label) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value,
+              style: GoogleFonts.spaceMono(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.60),
+                  fontWeight: FontWeight.w700)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 8,
+                  color: Colors.white.withOpacity(0.25),
+                  letterSpacing: 0.5)),
+        ],
+      );
 }
 
 class _Section extends StatelessWidget {

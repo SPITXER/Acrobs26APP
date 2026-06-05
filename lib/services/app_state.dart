@@ -9,6 +9,7 @@ import '../models/acro_mode.dart';
 import '../models/user_profile.dart';
 import '../models/debate_room.dart';
 import '../models/post.dart';
+import 'badge_engine.dart';
 
 class AppState extends ChangeNotifier {
   final _db = FirebaseDatabase.instance;
@@ -28,6 +29,9 @@ class AppState extends ChangeNotifier {
   bool _promptShown = false;
   Timer? _activityTimer;
   VoidCallback? _signupDialogCallback; // registered by map screen
+
+  // Room session timing — for hours-active stat
+  DateTime? _roomEnterTime;
 
   // Stoa argument rooms (up to 10 active at once)
   final List<String> _myStoaRoomIds = [];
@@ -196,6 +200,7 @@ class AppState extends ChangeNotifier {
 
   void enterRoom(DebateRoom room) {
     currentRoom = room;
+    _roomEnterTime = DateTime.now();
     // Track in active debates ledger
     activeDebates.removeWhere((d) => d['roomId'] == room.id);
     final partner = room.members.where((m) => m.name != profile.name).toList();
@@ -211,6 +216,17 @@ class AppState extends ChangeNotifier {
   void leaveRoom() {
     if (currentRoom != null) {
       activeDebates.removeWhere((d) => d['roomId'] == currentRoom!.id);
+      // Flush session minutes to Firebase for permanent accounts
+      if (_roomEnterTime != null && isPermanentAccount) {
+        final minutes =
+            DateTime.now().difference(_roomEnterTime!).inMinutes;
+        if (minutes > 0) {
+          _db
+              .ref('users/${profile.uid}/totalMinutesActive')
+              .set(ServerValue.increment(minutes));
+        }
+      }
+      _roomEnterTime = null;
     }
     currentRoom = null;
     notifyListeners();
@@ -492,13 +508,23 @@ class AppState extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> publishToSymposiumPool() async {
+    // Compute current badge to include in pool entry (visible to other users)
+    String badgeId = AcroBadge.wanderer.name;
+    if (isPermanentAccount) {
+      final snap = await _db.ref('users/${profile.uid}').get();
+      if (snap.exists) {
+        final stats = Map<String, dynamic>.from(snap.value as Map);
+        badgeId = BadgeEngine.fromStats(stats).name;
+      }
+    }
     await _db.ref('symposium_pool/${profile.uid}').set({
-      'uid': profile.uid,
-      'name': profile.name,
-      'field': profile.field,
+      'uid':     profile.uid,
+      'name':    profile.name,
+      'field':   profile.field,
       'interests': profile.interests,
-      'quote': profile.quote,
-      'ts': ServerValue.timestamp,
+      'quote':   profile.quote,
+      'badgeId': badgeId,
+      'ts':      ServerValue.timestamp,
     });
   }
 
@@ -617,6 +643,11 @@ class AppState extends ChangeNotifier {
       'category': category,
       'ts':       ServerValue.timestamp,
     });
+    // Track topic engagement for badge system
+    if (isPermanentAccount && category.isNotEmpty) {
+      _db.ref('users/${profile.uid}/topicEngagement/$category')
+          .set(ServerValue.increment(1));
+    }
     _ensureGlobalStoaWatch();
     notifyListeners();
   }
@@ -638,11 +669,18 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> joinStoaRoom(Map<String, dynamic> room) async {
-    final stoaRoomId = room['roomId'] as String;
+    final stoaRoomId = room['roomId']   as String;
     final hostUid    = room['hostUid']  as String;
     final hostName   = room['hostName'] as String? ?? 'Anonymous';
     final hostIni    = room['hostIni']  as String? ?? '?';
     final title      = room['title']    as String? ?? 'Argument';
+    final category   = room['category'] as String? ?? '';
+
+    // Track topic engagement for badge system
+    if (isPermanentAccount && category.isNotEmpty) {
+      _db.ref('users/${profile.uid}/topicEngagement/$category')
+          .set(ServerValue.increment(1));
+    }
 
     final debateRoomId = 'r${DateTime.now().millisecondsSinceEpoch}';
     await _db.ref().update({
@@ -741,6 +779,15 @@ class AppState extends ChangeNotifier {
     await _db.ref().update(updates);
   }
 
+  // Live stream of this user's stat node (used by badge system + side menu)
+  Stream<Map<String, dynamic>> userStatsStream() {
+    if (!isPermanentAccount) return Stream.value({});
+    return _db.ref('users/${profile.uid}').onValue.map((event) {
+      if (!event.snapshot.exists) return <String, dynamic>{};
+      return Map<String, dynamic>.from(event.snapshot.value as Map);
+    });
+  }
+
   Future<bool> hasNominated(String roomId) async {
     if (!isPermanentAccount) return false;
     final snap =
@@ -830,6 +877,10 @@ class AppState extends ChangeNotifier {
       'bumps':      0,
       'ts':         ServerValue.timestamp,
     });
+    // Track quote count for badge system
+    if (isPermanentAccount) {
+      _db.ref('users/${profile.uid}/quoteCount').set(ServerValue.increment(1));
+    }
   }
 
   Future<void> bumpStoaQuote(

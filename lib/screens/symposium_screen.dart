@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/acro_mode.dart';
 import '../services/app_state.dart';
+import '../services/badge_engine.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/cloud_corner_box.dart';
@@ -354,6 +355,11 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final ini = _initials(name);
     final sent = _sentTo.contains(uid);
 
+    // Badge from pool entry (computed when user published)
+    final badgeId = card['badgeId'] as String? ?? '';
+    final badge   = BadgeEngine.fromId(badgeId);
+    final badgeInfo = BadgeEngine.infoFor(badge);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: CloudCornerBox(
@@ -385,6 +391,25 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     field,
                     style: TextStyle(fontSize: 12, color: AcroColors.stoneLight),
                   ),
+                ],
+                // Badge pill
+                if (badge != AcroBadge.wanderer) ...[
+                  const SizedBox(height: 6),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(badgeInfo.emoji,
+                        style: const TextStyle(fontSize: 11)),
+                    const SizedBox(width: 4),
+                    Text(badgeInfo.name,
+                        style: GoogleFonts.spaceMono(
+                            fontSize: 9,
+                            color: AcroColors.gold.withOpacity(0.75),
+                            letterSpacing: 1)),
+                    const SizedBox(width: 4),
+                    Text('· ${badgeInfo.domain}',
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.white.withOpacity(0.28))),
+                  ]),
                 ],
                 if (quote.isNotEmpty) ...[
                   const SizedBox(height: 8),
