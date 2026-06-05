@@ -37,6 +37,11 @@ class AppState extends ChangeNotifier {
   // Room session timing — for hours-active stat
   DateTime? _roomEnterTime;
 
+  // Debate room cache — survives leaveRoom() so users can re-enter
+  final Map<String, DebateRoom> _roomCache = {};
+  // stoaRoomId → debateRoomId — lets side menu re-enter from stoa tile
+  final Map<String, String> _stoaToDebateRoom = {};
+
   // Stoa argument rooms (up to 10 active at once)
   final List<String> _myStoaRoomIds = [];
   StreamSubscription? _globalStoaWatcher;
@@ -205,7 +210,7 @@ class AppState extends ChangeNotifier {
   void enterRoom(DebateRoom room) {
     currentRoom = room;
     _roomEnterTime = DateTime.now();
-    // Track in active debates ledger
+    _roomCache[room.id] = room; // cache so user can re-enter after leaving
     activeDebates.removeWhere((d) => d['roomId'] == room.id);
     final partner = room.members.where((m) => m.name != profile.name).toList();
     activeDebates.add({
@@ -217,10 +222,25 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Re-enter a previously joined room from the side menu.
+  // Returns false if the room is no longer cached.
+  bool reenterRoom(String roomId) {
+    final room = _roomCache[roomId];
+    if (room == null) return false;
+    currentRoom = room;
+    _roomEnterTime = DateTime.now();
+    notifyListeners();
+    return true;
+  }
+
+  // Returns the debate room ID for a given stoa argument room ID (host use).
+  String? debateRoomForStoaRoom(String stoaRoomId) =>
+      _stoaToDebateRoom[stoaRoomId];
+
   void leaveRoom() {
     if (currentRoom != null) {
-      activeDebates.removeWhere((d) => d['roomId'] == currentRoom!.id);
-      // Flush session minutes to Firebase for permanent accounts
+      // Flush session minutes — keep room in activeDebates and cache
+      // so the user can re-enter from the side menu.
       if (_roomEnterTime != null && isPermanentAccount) {
         final minutes =
             DateTime.now().difference(_roomEnterTime!).inMinutes;
@@ -721,6 +741,7 @@ class AppState extends ChangeNotifier {
       final partnerName = data['partnerName'] as String? ?? 'Someone';
       final room = buildRoomFromMatch(data);
       enterRoom(room);
+      _stoaToDebateRoom[stoaRoomId] = room.id; // so host can re-enter later
       clearMatch();
       _myStoaRoomIds.remove(stoaRoomId);
       stoaNotifications[stoaRoomId] = partnerName;

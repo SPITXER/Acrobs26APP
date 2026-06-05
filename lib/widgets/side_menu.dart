@@ -287,7 +287,11 @@ class _RoomTile extends StatelessWidget {
   });
 
   void _enterDebate(BuildContext context) {
-    // Capture navigator before popping the drawer
+    final state  = context.read<AppState>();
+    final stoaId = room['roomId'] as String? ?? '';
+    // Restore currentRoom from cache (host path: lookup via stoa→debate map)
+    final debateId = state.debateRoomForStoaRoom(stoaId);
+    if (debateId != null) state.reenterRoom(debateId);
     final nav = Navigator.of(context);
     nav.pop();
     nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
@@ -417,7 +421,9 @@ class _ActiveDebates extends StatelessWidget {
   final AppState state;
   const _ActiveDebates({required this.state});
 
-  void _enterRoom(BuildContext context) {
+  void _enterRoom(BuildContext context, String roomId) {
+    final state = context.read<AppState>();
+    state.reenterRoom(roomId); // restore currentRoom from cache
     final nav = Navigator.of(context);
     nav.pop();
     nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
@@ -454,7 +460,7 @@ class _ActiveDebates extends StatelessWidget {
                     fontSize: 11,
                     color: Colors.white.withOpacity(0.35))),
             trailing: TextButton(
-              onPressed: () => _enterRoom(context),
+              onPressed: () => _enterRoom(context, d['roomId'] ?? ''),
               style: TextButton.styleFrom(
                 foregroundColor: AcroColors.gold,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
