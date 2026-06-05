@@ -286,23 +286,18 @@ class _RoomTile extends StatelessWidget {
     required this.onTerminate,
   });
 
-  void _openCard(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0B0F1A),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
-      builder: (_) => _StoaCardSheet(room: room, onTerminate: onTerminate),
-    );
+  void _enterDebate(BuildContext context) {
+    // Capture navigator before popping the drawer
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _openCard(context),
-      child: Container(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
       decoration: BoxDecoration(
         color: hasNotif
             ? Colors.orange.withOpacity(0.06)
@@ -313,45 +308,76 @@ class _RoomTile extends StatelessWidget {
                 : Colors.white.withOpacity(0.08)),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Row(children: [
-        if (hasNotif)
-          Container(
-            width: 6, height: 6,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: const BoxDecoration(
-                color: Colors.orangeAccent, shape: BoxShape.circle),
-          ),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 13)),
-            Text(
-              hasNotif
-                  ? '${joinerName ?? 'Someone'} joined!'
-                  : 'Waiting for challenger…',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: hasNotif
-                      ? Colors.orangeAccent
-                      : Colors.white.withOpacity(0.30)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title row
+          Row(children: [
+            if (hasNotif)
+              Container(
+                width: 6, height: 6,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: const BoxDecoration(
+                    color: Colors.orangeAccent, shape: BoxShape.circle),
+              ),
+            Expanded(
+              child: Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 13)),
             ),
           ]),
-        ),
-        TextButton(
-          onPressed: onTerminate,
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.redAccent.shade100,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            textStyle: GoogleFonts.dmSans(
-                fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5),
+          const SizedBox(height: 3),
+          Text(
+            hasNotif
+                ? '${joinerName ?? 'Someone'} challenged you!'
+                : 'Waiting for challenger…',
+            style: TextStyle(
+                fontSize: 11,
+                color: hasNotif
+                    ? Colors.orangeAccent
+                    : Colors.white.withOpacity(0.30)),
           ),
-          child: const Text('END'),
-        ),
-      ]),
-    ),   // Container
-    );   // GestureDetector
+          // Action buttons
+          const SizedBox(height: 10),
+          Row(children: [
+            if (hasNotif)
+              Expanded(
+                child: TextButton(
+                  onPressed: () => _enterDebate(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AcroColors.gold,
+                    backgroundColor: AcroColors.gold.withOpacity(0.10),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(2)),
+                    textStyle: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5),
+                  ),
+                  child: const Text('ENTER DEBATE'),
+                ),
+              ),
+            if (hasNotif) const SizedBox(width: 8),
+            TextButton(
+              onPressed: onTerminate,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.redAccent.shade100,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2)),
+                textStyle: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5),
+              ),
+              child: const Text('END'),
+            ),
+          ]),
+        ],
+      ),
+    );
   }
 }
 
@@ -391,11 +417,10 @@ class _ActiveDebates extends StatelessWidget {
   final AppState state;
   const _ActiveDebates({required this.state});
 
-  void _enterRoom(BuildContext context, Map<String, String> d) {
-    // Close the drawer first, then push RoomScreen
-    Navigator.of(context).pop();
-    Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const RoomScreen()));
+  void _enterRoom(BuildContext context) {
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
   }
 
   @override
@@ -429,7 +454,7 @@ class _ActiveDebates extends StatelessWidget {
                     fontSize: 11,
                     color: Colors.white.withOpacity(0.35))),
             trailing: TextButton(
-              onPressed: () => _enterRoom(context, d),
+              onPressed: () => _enterRoom(context),
               style: TextButton.styleFrom(
                 foregroundColor: AcroColors.gold,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
