@@ -46,6 +46,15 @@ class _StoaScreenState extends State<StoaScreen>
       if (mounted) setState(() => _dragOffset = _snapAnim.value);
     });
     if (_onboarded) _listenForMatch();
+    // Register callback so AppState snackbar can navigate here
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AppState>().registerEnterRoomCallback(() {
+        if (!mounted) return;
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const RoomScreen()));
+      });
+    });
   }
 
   @override

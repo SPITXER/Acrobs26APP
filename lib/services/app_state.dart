@@ -30,6 +30,10 @@ class AppState extends ChangeNotifier {
   Timer? _activityTimer;
   VoidCallback? _signupDialogCallback; // registered by map screen
 
+  // Room navigation — registered by StoaScreen / any active screen
+  VoidCallback? _enterRoomCallback;
+  void registerEnterRoomCallback(VoidCallback cb) => _enterRoomCallback = cb;
+
   // Room session timing — for hours-active stat
   DateTime? _roomEnterTime;
 
@@ -733,7 +737,7 @@ class AppState extends ChangeNotifier {
         ),
         action: SnackBarAction(
           label: 'ENTER DEBATE',
-          onPressed: () => _navigatorKey.currentState?.pushNamed('/room'),
+          onPressed: () => _enterRoomCallback?.call(),
         ),
         duration: const Duration(seconds: 20),
         backgroundColor: const Color(0xFF1A1200),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../screens/room_screen.dart';
 import '../services/app_state.dart';
 import '../services/badge_engine.dart';
 import '../theme/acro_theme.dart';
@@ -390,29 +391,56 @@ class _ActiveDebates extends StatelessWidget {
   final AppState state;
   const _ActiveDebates({required this.state});
 
+  void _enterRoom(BuildContext context, Map<String, String> d) {
+    // Close the drawer first, then push RoomScreen
+    Navigator.of(context).pop();
+    Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const RoomScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final debates = state.activeDebates;
     if (debates.isEmpty) return _empty('No active debates.');
     return Column(
       children: debates.map((d) {
-        return ListTile(
-          dense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          leading: AcroAvatar(
-            initials: d['partnerIni'] ?? '?',
-            seed: d['partnerName'] ?? '',
-            size: 36,
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: AcroColors.gold.withOpacity(0.05),
+            border: Border.all(color: AcroColors.gold.withOpacity(0.22)),
+            borderRadius: BorderRadius.circular(4),
           ),
-          title: Text(d['title'] ?? 'Debate',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 13)),
-          subtitle: Text('vs ${d['partnerName'] ?? ''}',
-              style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.35))),
+          child: ListTile(
+            dense: true,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+            leading: AcroAvatar(
+              initials: d['partnerIni'] ?? '?',
+              seed: d['partnerName'] ?? '',
+              size: 36,
+            ),
+            title: Text(d['title'] ?? 'Debate',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 13)),
+            subtitle: Text('vs ${d['partnerName'] ?? ''}',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.35))),
+            trailing: TextButton(
+              onPressed: () => _enterRoom(context, d),
+              style: TextButton.styleFrom(
+                foregroundColor: AcroColors.gold,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                textStyle: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5),
+              ),
+              child: const Text('ENTER'),
+            ),
+          ),
         );
       }).toList(),
     );
