@@ -44,7 +44,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(length: 3, vsync: this);
 
     final profile = context.read<AppState>().profile;
     if (profile.name.isNotEmpty && profile.mode == AcroMode.symposium) {
@@ -155,6 +155,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 tabs: const [
                   Tab(text: 'DISCOVER'),
                   Tab(text: 'INBOX'),
+                  Tab(text: 'CANON'),
                 ],
               )
             : null,
@@ -314,7 +315,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   Widget _buildHome() {
     return TabBarView(
       controller: _tabs,
-      children: [_buildDiscover(), _buildInbox()],
+      children: [_buildDiscover(), _buildInbox(), _buildCanon()],
     );
   }
 
@@ -599,6 +600,104 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             ],
           ),
         ],
+        ),
+      ),
+    );
+  }
+
+  // Canon — permanently nominated arguments from the Stoa
+  Widget _buildCanon() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: context.read<AppState>().nominationsStream(),
+      builder: (context, snap) {
+        final nominations = snap.data ?? [];
+        if (nominations.isEmpty) {
+          return _emptyState(
+            '⭐',
+            'The canon is empty.',
+            'Nominate arguments in the Stoa to send them here forever.',
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          itemCount: nominations.length,
+          itemBuilder: (_, i) => _canonCard(nominations[i]),
+        );
+      },
+    );
+  }
+
+  Widget _canonCard(Map<String, dynamic> nom) {
+    final title           = nom['title']           as String? ?? 'Untitled';
+    final thesis          = nom['thesis']           as String? ?? '';
+    final category        = nom['category']         as String? ?? '';
+    final hostName        = nom['hostName']         as String? ?? 'Anonymous';
+    final nominatedByName = nom['nominatedByName']  as String? ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: CloudCornerBox(
+        backgroundColor: Colors.white.withOpacity(0.03),
+        borderColor: AcroColors.gold.withOpacity(0.20),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              if (category.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AcroColors.gold.withOpacity(0.28)),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text(category,
+                      style: GoogleFonts.spaceMono(
+                          fontSize: 9,
+                          color: AcroColors.gold.withOpacity(0.70),
+                          letterSpacing: 1.5)),
+                ),
+              const Spacer(),
+              const Icon(Icons.stars, size: 11, color: AcroColors.gold),
+              const SizedBox(width: 4),
+              Text('CANON',
+                  style: GoogleFonts.spaceMono(
+                      fontSize: 9,
+                      color: AcroColors.gold.withOpacity(0.60),
+                      letterSpacing: 1.5)),
+            ]),
+            const SizedBox(height: 14),
+            Text(title,
+                style: GoogleFonts.cormorant(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.3)),
+            if (thesis.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('"$thesis"',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.38),
+                      fontStyle: FontStyle.italic,
+                      height: 1.4)),
+            ],
+            const SizedBox(height: 14),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 10),
+            Row(children: [
+              Text(hostName,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.50))),
+              const Spacer(),
+              if (nominatedByName.isNotEmpty)
+                Text('nominated by $nominatedByName',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.22))),
+            ]),
+          ],
         ),
       ),
     );

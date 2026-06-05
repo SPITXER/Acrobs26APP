@@ -704,6 +704,158 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
+  // Nominations — Stoa → Symposium Canon
+  // ---------------------------------------------------------------------------
+
+  bool get isPermanentAccount => firebaseUser != null;
+
+  Future<void> nominateStoaRoom(Map<String, dynamic> room) async {
+    final roomId = room['roomId'] as String? ?? '';
+    if (roomId.isEmpty || !isPermanentAccount) return;
+
+    final nomId = 'nom_${_uuid.v4()}';
+    final hostUid = room['hostUid'] as String? ?? '';
+
+    final updates = <String, dynamic>{
+      'nominations/$nomId': {
+        'nomId':            nomId,
+        'roomId':           roomId,
+        'title':            room['title']    ?? '',
+        'thesis':           room['thesis']   ?? '',
+        'category':         room['category'] ?? '',
+        'hostUid':          hostUid,
+        'hostName':         room['hostName'] ?? 'Anonymous',
+        'nominatedBy':      profile.uid,
+        'nominatedByName':  profile.name,
+        'ts':               ServerValue.timestamp,
+        'originalTs':       room['ts'] ?? 0,
+      },
+      'nomination_index/${profile.uid}/$roomId': nomId,
+      'users/${profile.uid}/nominationsGiven': ServerValue.increment(1),
+    };
+
+    if (hostUid.isNotEmpty && hostUid != profile.uid) {
+      updates['users/$hostUid/nominationsReceived'] = ServerValue.increment(1);
+    }
+
+    await _db.ref().update(updates);
+  }
+
+  Future<bool> hasNominated(String roomId) async {
+    if (!isPermanentAccount) return false;
+    final snap =
+        await _db.ref('nomination_index/${profile.uid}/$roomId').get();
+    return snap.exists;
+  }
+
+  Stream<List<Map<String, dynamic>>> nominationsStream() {
+    return _db.ref('nominations').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      return Map<String, dynamic>.from(raw)
+          .values
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList()
+        ..sort((a, b) =>
+            ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int));
+    });
+  }
+
+  Stream<Map<String, int>> nominationStatsStream() {
+    if (!isPermanentAccount) {
+      return Stream.value({'given': 0, 'received': 0});
+    }
+    return _db.ref('users/${profile.uid}').onValue.map((event) {
+      if (!event.snapshot.exists) return {'given': 0, 'received': 0};
+      final data =
+          Map<String, dynamic>.from(event.snapshot.value as Map);
+      return {
+        'given':    (data['nominationsGiven']    as int?) ?? 0,
+        'received': (data['nominationsReceived'] as int?) ?? 0,
+      };
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stoa viewer presence
+  // ---------------------------------------------------------------------------
+
+  Future<void> joinStoaViewer(String roomId) async {
+    if (roomId.isEmpty) return;
+    final ref = _db.ref('stoa_viewers/$roomId/${profile.uid}');
+    await ref.set(true);
+    await ref.onDisconnect().remove();
+  }
+
+  Future<void> leaveStoaViewer(String roomId) async {
+    if (roomId.isEmpty) return;
+    await _db.ref('stoa_viewers/$roomId/${profile.uid}').remove();
+  }
+
+  Stream<int> stoaViewerCountStream(String roomId) {
+    return _db.ref('stoa_viewers/$roomId').onValue.map((event) {
+      if (!event.snapshot.exists) return 0;
+      final raw = event.snapshot.value;
+      if (raw is! Map) return 0;
+      return raw.length;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stoa quotes
+  // ---------------------------------------------------------------------------
+
+  Stream<List<Map<String, dynamic>>> stoaQuotesStream(String roomId) {
+    return _db.ref('stoa_quotes/$roomId').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      return Map<String, dynamic>.from(raw)
+          .values
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList()
+        ..sort((a, b) =>
+            ((b['bumps'] ?? 0) as int).compareTo((a['bumps'] ?? 0) as int));
+    });
+  }
+
+  Future<void> addStoaQuote(String roomId, String text) async {
+    final qId = 'q_${_uuid.v4()}';
+    await _db.ref('stoa_quotes/$roomId/$qId').set({
+      'quoteId':    qId,
+      'text':       text,
+      'authorUid':  profile.uid,
+      'authorName': profile.name.isNotEmpty ? profile.name : 'Anonymous',
+      'bumps':      0,
+      'ts':         ServerValue.timestamp,
+    });
+  }
+
+  Future<void> bumpStoaQuote(
+      String roomId, String quoteId, bool currentlyBumped) async {
+    final bumpRef =
+        _db.ref('stoa_quote_bumps/$roomId/${profile.uid}/$quoteId');
+    final quoteRef = _db.ref('stoa_quotes/$roomId/$quoteId/bumps');
+    if (currentlyBumped) {
+      await Future.wait([bumpRef.remove(),
+          quoteRef.set(ServerValue.increment(-1))]);
+    } else {
+      await Future.wait([bumpRef.set(true),
+          quoteRef.set(ServerValue.increment(1))]);
+    }
+  }
+
+  Future<Set<String>> getUserBumps(String roomId) async {
+    final snap =
+        await _db.ref('stoa_quote_bumps/$roomId/${profile.uid}').get();
+    if (!snap.exists) return {};
+    final raw = snap.value;
+    if (raw is! Map) return {};
+    return Map<String, dynamic>.from(raw).keys.toSet();
+  }
+
+  // ---------------------------------------------------------------------------
   // Legacy stubs — kept so LobbyScreen (used by AppScreen feed) compiles.
   // LobbyScreen is mothballed; these are no-ops.
   // ---------------------------------------------------------------------------

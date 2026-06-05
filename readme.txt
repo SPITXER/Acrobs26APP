@@ -180,18 +180,27 @@ The terminal approach is the most seamless. The VS Code extension's chat panel i
 
 
 Side room\Open Table addition Our feed version
-subfunctions - thumbs up or down 
-Comments
-Termintate option
-Nominate - take the idea to the Symposium - Premium feature
+subfunctions - thumbs up or down ✓
+Comments ✓
+Termintate option ✓
+Nominate - take the ide✓a to the Symposium - Premium feature ✓
 - Limited supply of tables
 expration date (40 days) in stoa, if you like your debate/argument/chat, and want to keep it for as much as you like , then nominate
-and take it to the
- symposium
+and take it to the 
+ symposium ✓ 
 Ranking system
 - Socartes participant badges (built on a voting system? or Merit - Number of hours on the app) system combo
 Agora - Sohpisticated ideas generally for fun things
 Bcla
+
+
+Hours of active participant 50
+number of qoutes 20
+number of nominations 20
+each badge hints to an area of debate
+variety of topics 10? 
+Socrates (the polymath master), Plato (politics and ethics), Aristotle (science and religion), Pythagoras (science and math) 
+
 
 
 6/1/26

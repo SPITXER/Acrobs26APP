@@ -32,6 +32,7 @@ class _StoaScreenState extends State<StoaScreen>
   int    _cardIndex  = 0;
   double _dragOffset = 0;
   StreamSubscription? _matchSub;
+  String? _currentCardRoomId;
 
   bool get _onboarded => context.read<AppState>().profile.name.isNotEmpty;
 
@@ -52,6 +53,9 @@ class _StoaScreenState extends State<StoaScreen>
     _snapCtrl.dispose();
     _nameCtrl.dispose();
     _matchSub?.cancel();
+    if (_currentCardRoomId != null) {
+      context.read<AppState>().leaveStoaViewer(_currentCardRoomId!);
+    }
     super.dispose();
   }
 
@@ -239,6 +243,17 @@ class _StoaScreenState extends State<StoaScreen>
     final idx  = _cardIndex % rooms.length;
     final room = rooms[idx];
 
+    // Viewer presence — fire after frame to avoid side effects during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final newId = room['roomId'] as String? ?? '';
+      if (newId == _currentCardRoomId) return;
+      final state = context.read<AppState>();
+      if (_currentCardRoomId != null) state.leaveStoaViewer(_currentCardRoomId!);
+      if (newId.isNotEmpty) state.joinStoaViewer(newId);
+      _currentCardRoomId = newId;
+    });
+
     return Column(children: [
       // Counter
       Padding(
@@ -339,6 +354,7 @@ class _StoaScreenState extends State<StoaScreen>
     final hostName = room['hostName'] as String? ?? 'Anonymous';
     final category = room['category'] as String? ?? '';
     final ts       = room['ts']       as int?    ?? 0;
+    final roomId   = room['roomId']   as String? ?? '';
 
     return CloudCornerBox(
       width: 320,
@@ -349,6 +365,7 @@ class _StoaScreenState extends State<StoaScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Top row: category / viewers / countdown ──────────────────
           Row(children: [
             if (category.isNotEmpty)
               Container(
@@ -364,12 +381,29 @@ class _StoaScreenState extends State<StoaScreen>
                         letterSpacing: 1.5)),
               ),
             const Spacer(),
-            Text(_timeAgo(ts),
+            // Live viewer count
+            StreamBuilder<int>(
+              stream: context.read<AppState>().stoaViewerCountStream(roomId),
+              builder: (_, snap) {
+                final n = snap.data ?? 0;
+                if (n <= 1) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text('$n here',
+                      style: GoogleFonts.spaceMono(
+                          fontSize: 9,
+                          color: Colors.white.withOpacity(0.18))),
+                );
+              },
+            ),
+            Text(_countdown(ts),
                 style: GoogleFonts.spaceMono(
                     fontSize: 9,
                     color: Colors.white.withOpacity(0.22))),
           ]),
           const SizedBox(height: 18),
+
+          // ── Title + thesis ────────────────────────────────────────────
           Text(title,
               style: GoogleFonts.cormorant(
                   fontSize: 22,
@@ -388,6 +422,8 @@ class _StoaScreenState extends State<StoaScreen>
           const SizedBox(height: 22),
           const Divider(color: Colors.white10),
           const SizedBox(height: 12),
+
+          // ── Host + nominate ───────────────────────────────────────────
           Row(children: [
             AcroAvatar(
               initials: hostName.isNotEmpty ? hostName[0].toUpperCase() : '?',
@@ -395,11 +431,24 @@ class _StoaScreenState extends State<StoaScreen>
               size: 36,
             ),
             const SizedBox(width: 10),
-            Text(hostName,
-                style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.60))),
+            Expanded(
+              child: Text(hostName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.60))),
+            ),
+            _NominateButton(
+              room: room,
+              isOwnRoom: room['hostUid'] ==
+                  context.read<AppState>().profile.uid,
+            ),
           ]),
+
+          // ── Quote peek ────────────────────────────────────────────────
+          Divider(height: 20, color: Colors.white.withOpacity(0.05)),
+          _QuotePeek(roomId: roomId, room: room),
         ],
       ),
     );
@@ -553,15 +602,17 @@ class _StoaScreenState extends State<StoaScreen>
         ),
       );
 
-  String _timeAgo(int ts) {
+  String _countdown(int ts) {
     if (ts == 0) return '';
-    final d =
-        DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ts));
-    if (d.inMinutes < 1) return 'just now';
-    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
-    if (d.inHours < 24) return '${d.inHours}h ago';
-    return '${d.inDays}d ago';
+    final expiry = DateTime.fromMillisecondsSinceEpoch(ts)
+        .add(const Duration(days: 40));
+    final remaining = expiry.difference(DateTime.now());
+    if (remaining.isNegative) return 'expired';
+    if (remaining.inDays >= 1) return '${remaining.inDays}d left';
+    if (remaining.inHours >= 1) return '${remaining.inHours}h left';
+    return '${remaining.inMinutes}m left';
   }
+
 }
 
 // ── Post argument bottom sheet ─────────────────────────────────────────────
@@ -742,4 +793,468 @@ class _PostSheetState extends State<_PostSheet> {
           ),
         ),
       );
+}
+
+// ── Nominate button ─────────────────────────────────────────────────────────
+
+class _NominateButton extends StatefulWidget {
+  final Map<String, dynamic> room;
+  final bool isOwnRoom;
+  const _NominateButton({required this.room, required this.isOwnRoom});
+
+  @override
+  State<_NominateButton> createState() => _NominateButtonState();
+}
+
+class _NominateButtonState extends State<_NominateButton> {
+  bool _nominated = false;
+  bool _loading   = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final state  = context.read<AppState>();
+    final roomId = widget.room['roomId'] as String? ?? '';
+    final already = state.isPermanentAccount
+        ? await state.hasNominated(roomId)
+        : false;
+    if (mounted) setState(() { _nominated = already; _loading = false; });
+  }
+
+  Future<void> _tap() async {
+    final state = context.read<AppState>();
+    if (!state.isPermanentAccount) {
+      _showSignupSheet();
+      return;
+    }
+    if (_nominated) return;
+    setState(() => _nominated = true);
+    try {
+      await state.nominateStoaRoom(widget.room);
+    } catch (_) {
+      if (mounted) setState(() => _nominated = false);
+    }
+  }
+
+  void _showSignupSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0B0F1A),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (_) => _NominateSignupSheet(
+        onGoogleSignIn: () async {
+          Navigator.pop(context);
+          try {
+            await context.read<AppState>().signInWithGoogle();
+          } catch (_) {}
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading || widget.isOwnRoom) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: _tap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _nominated ? Icons.stars : Icons.stars_outlined,
+              size: 15,
+              color: _nominated
+                  ? AcroColors.gold.withOpacity(0.65)
+                  : Colors.white.withOpacity(0.18),
+            ),
+            if (_nominated)
+              Text('CANON',
+                  style: GoogleFonts.spaceMono(
+                      fontSize: 7,
+                      color: AcroColors.gold.withOpacity(0.55),
+                      letterSpacing: 1.5)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Signup prompt for temp users ─────────────────────────────────────────────
+
+class _NominateSignupSheet extends StatelessWidget {
+  final VoidCallback onGoogleSignIn;
+  const _NominateSignupSheet({required this.onGoogleSignIn});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('NOMINATE TO THE CANON',
+              style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AcroColors.stoneLight,
+                  letterSpacing: 3)),
+          const SizedBox(height: 8),
+          Text(
+            'Nominations are permanent — they send the argument to the Symposium for all time. A free account is required.',
+            style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.38),
+                height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onGoogleSignIn,
+              icon: const Icon(Icons.account_circle_outlined, size: 18),
+              label: Text('CONTINUE WITH GOOGLE',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AcroColors.gold,
+                foregroundColor: AcroColors.stone,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Quote peek (card footer) ─────────────────────────────────────────────────
+
+class _QuotePeek extends StatelessWidget {
+  final String roomId;
+  final Map<String, dynamic> room;
+  const _QuotePeek({required this.roomId, required this.room});
+
+  void _open(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0B0F1A),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (_) => _QuoteSheet(
+        roomId: roomId,
+        roomTitle: room['title'] as String? ?? 'Argument',
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: context.read<AppState>().stoaQuotesStream(roomId),
+      builder: (ctx, snap) {
+        final count = snap.data?.length ?? 0;
+        return GestureDetector(
+          onTap: () => _open(context),
+          behavior: HitTestBehavior.opaque,
+          child: Row(children: [
+            const Text('👁', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 6),
+            Text('QUOTE',
+                style: GoogleFonts.spaceMono(
+                    fontSize: 9,
+                    color: Colors.white.withOpacity(0.28),
+                    letterSpacing: 2)),
+            if (count > 0) ...[
+              const SizedBox(width: 6),
+              Text('· $count',
+                  style: GoogleFonts.spaceMono(
+                      fontSize: 9,
+                      color: Colors.white.withOpacity(0.18))),
+            ],
+            const Spacer(),
+            Icon(Icons.chevron_right,
+                size: 13, color: Colors.white.withOpacity(0.14)),
+          ]),
+        );
+      },
+    );
+  }
+}
+
+// ── Quote thread bottom sheet ────────────────────────────────────────────────
+
+class _QuoteSheet extends StatefulWidget {
+  final String roomId;
+  final String roomTitle;
+  const _QuoteSheet({required this.roomId, required this.roomTitle});
+
+  @override
+  State<_QuoteSheet> createState() => _QuoteSheetState();
+}
+
+class _QuoteSheetState extends State<_QuoteSheet> {
+  final _ctrl = TextEditingController();
+  Set<String> _myBumps  = {};
+  bool _loadingBumps    = true;
+  bool _submitting      = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBumps();
+  }
+
+  Future<void> _loadBumps() async {
+    final bumps =
+        await context.read<AppState>().getUserBumps(widget.roomId);
+    if (mounted) setState(() { _myBumps = bumps; _loadingBumps = false; });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _submitting = true);
+    await context.read<AppState>().addStoaQuote(widget.roomId, text);
+    _ctrl.clear();
+    if (mounted) setState(() => _submitting = false);
+  }
+
+  Future<void> _toggleBump(String quoteId) async {
+    final bumped = _myBumps.contains(quoteId);
+    setState(() => bumped ? _myBumps.remove(quoteId) : _myBumps.add(quoteId));
+    await context.read<AppState>()
+        .bumpStoaQuote(widget.roomId, quoteId, bumped);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B0F1A),
+          border: Border(
+              top: BorderSide(color: AcroColors.gold.withOpacity(0.30))),
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(12)),
+        ),
+        child: Column(children: [
+          // ── Handle ────────────────────────────────────────────────────
+          const SizedBox(height: 12),
+          Center(child: Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2)),
+          )),
+          const SizedBox(height: 16),
+
+          // ── Header ────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(children: [
+              const Text('👁', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 8),
+              Text('QUOTE',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AcroColors.stoneLight,
+                      letterSpacing: 3)),
+            ]),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(widget.roomTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.28))),
+          ),
+          const SizedBox(height: 14),
+          const Divider(color: Colors.white10, height: 1),
+
+          // ── Quotes list ───────────────────────────────────────────────
+          Flexible(
+            child: _loadingBumps
+                ? const SizedBox.shrink()
+                : StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: context
+                        .read<AppState>()
+                        .stoaQuotesStream(widget.roomId),
+                    builder: (_, snap) {
+                      final quotes = snap.data ?? [];
+                      if (quotes.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text('No quotes yet. Be the first.',
+                                style: GoogleFonts.spaceMono(
+                                    fontSize: 12,
+                                    color: Colors.white.withOpacity(0.25))),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        itemCount: quotes.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(color: Colors.white10, height: 24),
+                        itemBuilder: (_, i) {
+                          final q   = quotes[i];
+                          final qId = q['quoteId'] as String? ?? '';
+                          return _quoteRow(q, _myBumps.contains(qId));
+                        },
+                      );
+                    },
+                  ),
+          ),
+
+          // ── Input ─────────────────────────────────────────────────────
+          const Divider(color: Colors.white10, height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _ctrl,
+                  style: GoogleFonts.spaceMono(
+                      color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Add a quote or thought…',
+                    hintStyle: GoogleFonts.spaceMono(
+                        color: Colors.white.withOpacity(0.22),
+                        fontSize: 12),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.04),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(2),
+                        borderSide: BorderSide(
+                            color: AcroColors.gold.withOpacity(0.2))),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(2),
+                        borderSide: BorderSide(
+                            color: AcroColors.gold.withOpacity(0.2))),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(2),
+                        borderSide: const BorderSide(color: AcroColors.gold)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _submitting ? null : _submit,
+                child: Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: _submitting
+                        ? AcroColors.gold.withOpacity(0.40)
+                        : AcroColors.gold,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: const Icon(Icons.arrow_upward,
+                      size: 18, color: Color(0xFF0B0F1A)),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _quoteRow(Map<String, dynamic> q, bool bumped) {
+    final text       = q['text']       as String? ?? '';
+    final authorName = q['authorName'] as String? ?? 'Anonymous';
+    final bumps      = (q['bumps']     as int?)   ?? 0;
+    final qId        = q['quoteId']    as String? ?? '';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(authorName,
+                  style: GoogleFonts.spaceMono(
+                      fontSize: 9,
+                      color: Colors.white.withOpacity(0.28),
+                      letterSpacing: 1.5)),
+              const SizedBox(height: 5),
+              Text('"$text"',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.75),
+                      fontStyle: FontStyle.italic,
+                      height: 1.45)),
+            ],
+          ),
+        ),
+        const SizedBox(width: 14),
+        GestureDetector(
+          onTap: () => _toggleBump(qId),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_upward,
+                    size: 14,
+                    color: bumped
+                        ? AcroColors.gold.withOpacity(0.80)
+                        : Colors.white.withOpacity(0.20)),
+                if (bumps > 0)
+                  Text('$bumps',
+                      style: GoogleFonts.spaceMono(
+                          fontSize: 8,
+                          color: bumped
+                              ? AcroColors.gold.withOpacity(0.60)
+                              : Colors.white.withOpacity(0.20))),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
