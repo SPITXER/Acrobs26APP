@@ -576,7 +576,6 @@ class _ActiveDebates extends StatelessWidget {
         ),
           ),
         );
-        );
       }).toList(),
     );
   }
