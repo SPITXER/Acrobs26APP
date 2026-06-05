@@ -251,10 +251,11 @@ class _StoaRooms extends StatelessWidget {
           }),
           // Active open rooms
           ...myRooms.map((room) {
-            final roomId = room['roomId'] as String;
-            final title  = room['title']  as String? ?? 'Untitled';
+            final roomId   = room['roomId'] as String;
+            final title    = room['title']  as String? ?? 'Untitled';
             final hasNotif = state.stoaNotifications.containsKey(roomId);
             return _RoomTile(
+              room: room,
               title: title,
               hasNotif: hasNotif,
               joinerName: state.stoaNotifications[roomId],
@@ -271,20 +272,34 @@ class _StoaRooms extends StatelessWidget {
 }
 
 class _RoomTile extends StatelessWidget {
+  final Map<String, dynamic> room;
   final String title;
   final bool hasNotif;
   final String? joinerName;
   final VoidCallback onTerminate;
   const _RoomTile({
+    required this.room,
     required this.title,
     required this.hasNotif,
     required this.joinerName,
     required this.onTerminate,
   });
 
+  void _openCard(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0B0F1A),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (_) => _StoaCardSheet(room: room, onTerminate: onTerminate),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => _openCard(context),
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -334,7 +349,8 @@ class _RoomTile extends StatelessWidget {
           child: const Text('END'),
         ),
       ]),
-    );
+    ),   // Container
+    );   // GestureDetector
   }
 }
 
@@ -409,3 +425,132 @@ Widget _empty(String msg) => Padding(
           style: TextStyle(
               fontSize: 12, color: Colors.white.withOpacity(0.25))),
     );
+
+// ── Full card view sheet (opened from side menu room tile) ────────────────────
+
+class _StoaCardSheet extends StatelessWidget {
+  final Map<String, dynamic> room;
+  final VoidCallback onTerminate;
+  const _StoaCardSheet({required this.room, required this.onTerminate});
+
+  String _timeLeft(int ts) {
+    if (ts == 0) return '';
+    final expiry = DateTime.fromMillisecondsSinceEpoch(ts)
+        .add(const Duration(days: 40));
+    final remaining = expiry.difference(DateTime.now());
+    if (remaining.isNegative) return 'expired';
+    if (remaining.inDays >= 1) return '${remaining.inDays}d left';
+    if (remaining.inHours >= 1) return '${remaining.inHours}h left';
+    return '${remaining.inMinutes}m left';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title    = room['title']    as String? ?? 'Untitled';
+    final thesis   = room['thesis']   as String? ?? '';
+    final category = room['category'] as String? ?? '';
+    final ts       = room['ts']       as int?    ?? 0;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B0F1A),
+        border: Border(
+            top: BorderSide(color: AcroColors.gold.withOpacity(0.30))),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(child: Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2)),
+          )),
+          const SizedBox(height: 20),
+
+          // Meta row
+          Row(children: [
+            if (category.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                      color: AcroColors.gold.withOpacity(0.28)),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text(category,
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 9,
+                        color: AcroColors.gold.withOpacity(0.70),
+                        letterSpacing: 1.5)),
+              ),
+            const Spacer(),
+            Container(
+              width: 5, height: 5,
+              decoration: const BoxDecoration(
+                  color: Colors.greenAccent, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text('LIVE  ·  ${_timeLeft(ts)}',
+                style: GoogleFonts.spaceMono(
+                    fontSize: 9,
+                    color: AcroColors.gold.withOpacity(0.60),
+                    letterSpacing: 1.5)),
+          ]),
+          const SizedBox(height: 18),
+
+          // Title
+          Text(title,
+              style: GoogleFonts.cormorant(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.3)),
+
+          // Thesis
+          if (thesis.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('"$thesis"',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.42),
+                    fontStyle: FontStyle.italic,
+                    height: 1.4)),
+          ],
+
+          const SizedBox(height: 28),
+          const Divider(color: Colors.white10),
+          const SizedBox(height: 16),
+
+          // End argument button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onTerminate();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent.shade100,
+                side: BorderSide(
+                    color: Colors.redAccent.withOpacity(0.40)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2)),
+                textStyle: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2),
+              ),
+              child: const Text('END ARGUMENT'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

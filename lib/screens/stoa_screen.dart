@@ -176,20 +176,15 @@ class _StoaScreenState extends State<StoaScreen>
               .where((r) => r['hostUid'] == state.profile.uid)
               .toList();
 
-          // Others' rooms → swipe stack
-          final others = all
-              .where((r) => r['hostUid'] != state.profile.uid)
-              .toList();
-
           return Column(children: [
             // ── Your live room(s) indicator ───────────────────────────
             if (myRooms.isNotEmpty) _myRoomsBanner(myRooms, state),
 
-            // ── Swipe cards ───────────────────────────────────────────
+            // ── Swipe cards — ALL rooms incl. own ────────────────────
             Expanded(
-              child: others.isEmpty
-                  ? _emptyFloor(myRooms.isNotEmpty)
-                  : _swipeArea(others),
+              child: all.isEmpty
+                  ? _emptyFloor(false)
+                  : _swipeArea(all),
             ),
           ]);
         },
@@ -240,8 +235,9 @@ class _StoaScreenState extends State<StoaScreen>
   }
 
   Widget _swipeArea(List<Map<String, dynamic>> rooms) {
-    final idx  = _cardIndex % rooms.length;
-    final room = rooms[idx];
+    final idx   = _cardIndex % rooms.length;
+    final room  = rooms[idx];
+    final isOwn = room['hostUid'] == context.read<AppState>().profile.uid;
 
     // Viewer presence — fire after frame to avoid side effects during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -279,7 +275,7 @@ class _StoaScreenState extends State<StoaScreen>
               final vel = d.velocity.pixelsPerSecond.dx;
               if (_dragOffset > 80 || vel > 500) {
                 _animateOff(500, () => _skip(rooms.length));
-              } else if (_dragOffset < -80 || vel < -500) {
+              } else if (!isOwn && (_dragOffset < -80 || vel < -500)) {
                 _animateOff(-500, () => _challenge(room));
               } else {
                 _snapBack();
@@ -294,7 +290,7 @@ class _StoaScreenState extends State<StoaScreen>
                   if (_dragOffset > 28)
                     Positioned(top: 24, left: 24,
                         child: _badge('SKIP', Colors.white54)),
-                  if (_dragOffset < -28)
+                  if (!isOwn && _dragOffset < -28)
                     Positioned(top: 24, right: 24,
                         child: _badge('CHALLENGE', AcroColors.gold)),
                 ]),
@@ -307,46 +303,71 @@ class _StoaScreenState extends State<StoaScreen>
       // Buttons — 80 pt above FAB
       Padding(
         padding: const EdgeInsets.fromLTRB(28, 0, 28, 100),
-        child: Row(children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => _skip(rooms.length),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AcroColors.stoneLight,
-                side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              child: Text('SKIP',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2)),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _challenge(room),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AcroColors.gold,
-                foregroundColor: AcroColors.stone,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2)),
-                textStyle: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2),
-              ),
-              child: const Text('CHALLENGE'),
-            ),
-          ),
-        ]),
+        child: isOwn
+            ? _ownCardFooter()
+            : Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _skip(rooms.length),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AcroColors.stoneLight,
+                      side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2)),
+                    ),
+                    child: Text('SKIP',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _challenge(room),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AcroColors.gold,
+                      foregroundColor: AcroColors.stone,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(2)),
+                      textStyle: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2),
+                    ),
+                    child: const Text('CHALLENGE'),
+                  ),
+                ),
+              ]),
       ),
     ]);
   }
+
+  Widget _ownCardFooter() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: AcroColors.gold.withOpacity(0.06),
+          border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(
+            width: 6, height: 6,
+            decoration: const BoxDecoration(
+                color: Colors.greenAccent, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Text('YOUR ARGUMENT  ·  LIVE',
+              style: GoogleFonts.spaceMono(
+                  fontSize: 10,
+                  color: AcroColors.gold.withOpacity(0.65),
+                  letterSpacing: 2)),
+        ]),
+      );
 
   Widget _roomCard(Map<String, dynamic> room) {
     final title    = room['title']    as String? ?? 'Untitled';
