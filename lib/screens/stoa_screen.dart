@@ -70,15 +70,16 @@ class _StoaScreenState extends State<StoaScreen>
 
   void _listenForMatch() {
     _matchSub = context.read<AppState>().matchStream().listen((data) {
-      if (data != null && mounted) {
-        final state = context.read<AppState>();
-        if (state.myStoaRoomIds.isEmpty) {
-          state.enterRoom(state.buildRoomFromMatch(data));
-          state.clearMatch();
-          Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const RoomScreen()));
-        }
-      }
+      if (data == null || !mounted) return;
+      // isHost: true  → we are the argument host; _globalStoaWatcher handles entry
+      // isHost: false → we are the challenger; navigate here
+      final isHost = data['isHost'] as bool? ?? false;
+      if (isHost) return;
+      final state = context.read<AppState>();
+      state.enterRoom(state.buildRoomFromMatch(data));
+      state.clearMatch();
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const RoomScreen()));
     });
   }
 
