@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>The Agora Road</title>
+<meta name="description" content="An ancient-Greek pixel-art road homepage. Three buildings, three paths." />
+<!-- Distinctive type: Cinzel (inscriptional) + Pixelify Sans (pixel UI) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <main class="scene" id="scene">
+    <!-- warm light haze -->
+    <div class="haze" aria-hidden="true"></div>
+
+    <!-- the paved road band -->
+    <div class="road" aria-hidden="true"></div>
+
+    <!-- decorative scenery (built by JS) -->
+    <div class="layer scenery back" id="scenery-back" aria-hidden="true"></div>
+
+    <!-- the three building stops (built by JS from CONFIG in main.js) -->
+    <nav class="layer stops" id="stops" aria-label="Choose a destination"></nav>
+
+    <!-- foreground props, drawn in front of the buildings -->
+    <div class="layer scenery front" id="scenery-front" aria-hidden="true"></div>
+
+    <!-- atmosphere -->
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <!-- title -->
+    <header class="hero">
+      <p class="kicker">ΑΓΟΡΑ &nbsp;·&nbsp; est. antiquity</p>
+      <h1 class="title">The Agora Road</h1>
+      <p class="subtitle">Three buildings stand along the old stone way. Choose your path.</p>
+    </header>
+
+    <footer class="hint">tap a building to enter</footer>
+  </main>
+
+  <script src="src/main.js"></script>
+</body>
+</html>
