@@ -232,12 +232,13 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                   child: Opacity(
                     opacity: Curves.easeOut.transform(entT),
                     child: Text(
-                      'tap a building to enter',
+                      'TAP A BUILDING TO ENTER',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.cinzel(
-                        fontSize: 11,
-                        color: _stoneDk.withValues(alpha: 0.70),
-                        letterSpacing: 2.0,
+                      style: GoogleFonts.pixelifySans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFE9D6AC).withValues(alpha: 0.85),
+                        letterSpacing: 2.5,
                       ),
                     ),
                   ),
@@ -312,58 +313,110 @@ class _Stop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedScale(
-          scale: hot ? 1.05 : 1.0,
+    // Template hover: stop shifts up 4px, art shifts up 8px, plaque lifts to 0 from 4px
+    return AnimatedSlide(
+      offset: Offset(0, hot ? -4 / (bw > 0 ? bw : 1) : 0),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSlide(
+            offset: Offset(0, hot ? -8 / (bw > 0 ? bw : 1) : 0),
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            child: Stack(alignment: Alignment.center, children: [
+              if (hot)
+                Container(
+                  width: bw * 1.1, height: bw * 1.1,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _terraHi.withValues(alpha: 0.10 + 0.12 * pulseT),
+                        blurRadius: 30, spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                ),
+              ColorFiltered(
+                colorFilter: hot
+                    ? const ColorFilter.matrix(<double>[
+                        1.06, 0, 0, 0, 0,
+                        0, 1.06, 0, 0, 0,
+                        0, 0, 1.06, 0, 0,
+                        0, 0, 0, 1,    0,
+                      ])
+                    : const ColorFilter.matrix(<double>[
+                        1, 0, 0, 0, 0,
+                        0, 1, 0, 0, 0,
+                        0, 0, 1, 0, 0,
+                        0, 0, 0, 1, 0,
+                      ]),
+                child: img != null
+                    ? RawImage(
+                        image: img, width: bw, height: bw,
+                        filterQuality: FilterQuality.none,
+                        fit: BoxFit.contain,
+                      )
+                    : SizedBox(width: bw, height: bw),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 4),
+        // Marble plaque — styled to match the template's .plaque
+        AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          child: Stack(alignment: Alignment.center, children: [
-            if (hot)
-              Container(
-                width: bw * 1.1, height: bw * 1.1,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: _terraHi.withValues(alpha: 0.10 + 0.12 * pulseT),
-                      blurRadius: 30, spreadRadius: 10,
-                    ),
-                  ],
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFFCF0D8), Color(0xFFECDAB0)],
+            ),
+            border: Border.all(color: const Color(0xFF5E462C), width: 2),
+            borderRadius: BorderRadius.circular(3),
+            boxShadow: [
+              const BoxShadow(
+                color: Color(0xFF5E462C),
+                offset: Offset(0, 3),
+              ),
+              BoxShadow(
+                color: const Color(0xFF3A2A1C).withValues(alpha: 0.35),
+                offset: const Offset(0, 6),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.pixelifySans(
+                  fontSize: (bw * 0.09).clamp(11.0, 15.0),
+                  fontWeight: FontWeight.w600,
+                  color: _ink,
+                  letterSpacing: 1.0,
                 ),
               ),
-            img != null
-                ? RawImage(
-                    image: img, width: bw, height: bw,
-                    filterQuality: FilterQuality.none,
-                    fit: BoxFit.contain,
-                  )
-                : SizedBox(width: bw, height: bw),
-          ]),
-        ),
-        const SizedBox(height: 6),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 180),
-          style: GoogleFonts.cinzel(
-            fontSize: (bw * 0.085).clamp(8.0, 13.0),
-            fontWeight: FontWeight.w700,
-            color: hot ? _marbleHi : _marble,
-            letterSpacing: 1.5,
-            shadows: const [Shadow(color: _earthDk, blurRadius: 4)],
+              Text(
+                sub,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.pixelifySans(
+                  fontSize: (bw * 0.07).clamp(8.0, 11.0),
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF7A5A3A),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
           ),
-          child: Text(title, textAlign: TextAlign.center),
-        ),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 180),
-          style: GoogleFonts.cinzel(
-            fontSize: (bw * 0.065).clamp(6.5, 10.0),
-            color: hot ? _gold : _stone,
-            letterSpacing: 0.8,
-          ),
-          child: Text(sub, textAlign: TextAlign.center),
         ),
       ],
-    );
+    ),
+  );
   }
 }
 
@@ -374,32 +427,51 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final titleSize = (w * 0.07).clamp(34.0, 84.0);
+    final subSize   = (w * 0.019).clamp(13.0, 20.0);
     return Opacity(
       opacity: alpha,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
-            'ΑΓΟΡΑ  ·  est. antiquity',
-            style: GoogleFonts.cinzel(
-              fontSize: 10, color: _terra, letterSpacing: 3.5),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'A · C · R · O',
-            style: GoogleFonts.cinzel(
-              fontSize: 22, fontWeight: FontWeight.w700,
-              color: _ink, letterSpacing: 7.0,
+            'ΑΓΟΡΑ  ·  EST. ANTIQUITY',
+            style: GoogleFonts.pixelifySans(
+              fontSize: (w * 0.014).clamp(10.0, 13.0),
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF6B4A30),
+              letterSpacing: (w * 0.014).clamp(10.0, 13.0) * 0.35,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
-            'Three buildings stand along the old stone way.',
+            'A · C · R · O',
+            textAlign: TextAlign.center,
             style: GoogleFonts.cinzel(
-              fontSize: 10,
-              color: _stoneDk.withValues(alpha: 0.85),
-              letterSpacing: 0.5,
+              fontSize: titleSize,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFFCF0D8), // --marble-hi
+              letterSpacing: titleSize * 0.02,
+              shadows: const [
+                Shadow(color: Color(0xFFB89368), offset: Offset(0, 2)),
+                Shadow(color: Color(0xFF7A5A3A), offset: Offset(0, 4)),
+                Shadow(color: Color(0x8C281A0E), offset: Offset(0, 10), blurRadius: 22),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Three buildings stand along the old stone way. Choose your path.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzel(
+              fontSize: subSize,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF5A3F28),
+              shadows: const [
+                Shadow(color: Color(0x7FFCF0D8), offset: Offset(0, 1)),
+              ],
             ),
           ),
         ],
@@ -512,20 +584,20 @@ class _HazePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    // Top-left sun bloom
+    // Top-left warm sun bloom — rgba(255,244,214, 0.55) matching template
     canvas.drawRect(
       Rect.fromLTWH(0, 0, w, h),
       Paint()..shader = ui.Gradient.radial(
         Offset(w * 0.22, -h * 0.10), w * 1.2,
-        [const Color(0x0DFFF4D6), Colors.transparent], [0.0, 0.55],
+        [const Color(0x8CFFF4D6), Colors.transparent], [0.0, 0.55],
       ),
     );
-    // Bottom-right cool shadow
+    // Bottom-right warm shadow — rgba(74,51,32, 0.45) matching template
     canvas.drawRect(
       Rect.fromLTWH(0, 0, w, h),
       Paint()..shader = ui.Gradient.radial(
         Offset(w * 0.80, h * 1.20), w * 1.2,
-        [const Color(0x124A3320), Colors.transparent], [0.0, 0.55],
+        [const Color(0x734A3320), Colors.transparent], [0.0, 0.55],
       ),
     );
   }
