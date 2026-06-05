@@ -11,21 +11,21 @@ import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
 
+// ── Agora-road palette ────────────────────────────────────────────────────────
+const _marble   = Color(0xFFF4E8CC);
+const _marbleHi = Color(0xFFFCF0D8);
+const _terra    = Color(0xFFB66C4A);
+const _terraHi  = Color(0xFFD99B7A);
+const _stone    = Color(0xFFA48A60);
+const _stoneDk  = Color(0xFF5E462C);
+const _earthDk  = Color(0xFF4A3320);
+const _earthBg  = Color(0xFF6F5034);
+const _ink      = Color(0xFF3A2A1C);
+const _gold     = Color(0xFFCC9C54);
+
 enum AcropolisZone { agora, stoa, acropolis }
 
-const _copper   = Color(0xFFB87333);
-const _copperLt = Color(0xFFD4956A);
-const _copperDk = Color(0xFF7A4520);
-const _orange   = Color(0xFFFF8C42);
-const _gold     = Color(0xFFCA8A04);  // UI/UX Pro Max luxury gold — star highlights & moon rim
-const _wallFill = Color(0xFF0F0500);
-const _treeDk   = Color(0xFF3D1800);
-const _treeLt   = Color(0xFF7A4520);
-const _sandLt   = Color(0xFFF0DDB8);
-const _sand     = Color(0xFFD4B87A);
-const _sandMd   = Color(0xFFBE9A60);
-const _sandDk   = Color(0xFF7A5030);
-
+// ── Screen ────────────────────────────────────────────────────────────────────
 class AcropolisMapScreen extends StatefulWidget {
   const AcropolisMapScreen({super.key});
   @override
@@ -34,37 +34,46 @@ class AcropolisMapScreen extends StatefulWidget {
 
 class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     with TickerProviderStateMixin {
+
   AcropolisZone? _hovered;
   AcropolisZone? _tappedZone;
-  bool _menuOpen = false;
+
   late AnimationController _pulse;
-  late AnimationController _flicker;
   late AnimationController _tapFlash;
-  late AnimationController _templeFade;
-  late AnimationController _stoaFade;
-  late AnimationController _agoraFade;
-  late AnimationController _shimmer;
   late AnimationController _entrance;
+
+  // Parallax (normalised −1..1)
+  double _nX = 0.0;
+  double _nY = 0.0;
+
+  // Sprites
   ui.Image? _templeImg;
   ui.Image? _stoaImg;
   ui.Image? _agoraImg;
+  ui.Image? _earthTile;
+  ui.Image? _roadTile;
+  ui.Image? _cypress;
+  ui.Image? _statue;
+  ui.Image? _brokenCol;
+  ui.Image? _olive;
+  ui.Image? _amphora;
+  ui.Image? _brazier;
 
   @override
   void initState() {
     super.initState();
-    _pulse   = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
-    _flicker = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))..repeat(reverse: true);
-    _tapFlash  = AnimationController(vsync: this, duration: const Duration(milliseconds: 180))
-      ..addStatusListener((s) { if (s == AnimationStatus.completed) { _tapFlash.reset(); setState(() => _tappedZone = null); } });
-    _templeFade = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _stoaFade   = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _agoraFade  = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _shimmer  = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
-    _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..forward();
-    _loadTempleImage();
-    _loadStoaImage();
-    _loadAgoraImage();
-    // Register the 5-minute signup prompt — fires above any active screen
+    _pulse    = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+    _tapFlash = AnimationController(vsync: this, duration: const Duration(milliseconds: 180))
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed) {
+          _tapFlash.reset();
+          if (mounted) setState(() => _tappedZone = null);
+        }
+      });
+    _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+      ..forward();
+    _loadImages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppState>().registerSignupDialogCallback(() {
         if (!mounted) return;
@@ -77,939 +86,523 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     });
   }
 
-  Future<void> _loadTempleImage() async {
-    final data = await rootBundle.load('assets/images/Sym2.png');
-    final codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
-    final frame = await codec.getNextFrame();
-    if (mounted) { setState(() => _templeImg = frame.image); _templeFade.forward(); }
+  Future<void> _loadImages() async {
+    await Future.wait([
+      _loadImg('assets/images/Sym2.png',          512, (v) => _templeImg  = v),
+      _loadImg('assets/images/Stoa1.png',         512, (v) => _stoaImg    = v),
+      _loadImg('assets/images/AgoraF2i.png',      512, (v) => _agoraImg   = v),
+      _loadImg('assets/images/earth_tile.png',    256, (v) => _earthTile  = v),
+      _loadImg('assets/images/road_tile.png',     256, (v) => _roadTile   = v),
+      _loadImg('assets/images/cypress.png',       256, (v) => _cypress    = v),
+      _loadImg('assets/images/statue.png',        256, (v) => _statue     = v),
+      _loadImg('assets/images/broken_column.png', 256, (v) => _brokenCol  = v),
+      _loadImg('assets/images/olive_bush.png',    256, (v) => _olive      = v),
+      _loadImg('assets/images/amphora.png',       256, (v) => _amphora    = v),
+      _loadImg('assets/images/brazier.png',       256, (v) => _brazier    = v),
+    ]);
   }
 
-  Future<void> _loadStoaImage() async {
-    final data = await rootBundle.load('assets/images/Stoa1.png');
-    final codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
-    final frame = await codec.getNextFrame();
-    if (mounted) { setState(() => _stoaImg = frame.image); _stoaFade.forward(); }
-  }
-
-  Future<void> _loadAgoraImage() async {
-    final data = await rootBundle.load('assets/images/AgoraF2i.png');
-    final codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(), targetWidth: 512, targetHeight: 512);
-    final frame = await codec.getNextFrame();
-    if (mounted) { setState(() => _agoraImg = frame.image); _agoraFade.forward(); }
+  Future<void> _loadImg(String path, int maxPx, void Function(ui.Image) set) async {
+    try {
+      final data  = await rootBundle.load(path);
+      final codec = await ui.instantiateImageCodec(
+          data.buffer.asUint8List(), targetWidth: maxPx, targetHeight: maxPx);
+      final frame = await codec.getNextFrame();
+      if (mounted) setState(() => set(frame.image));
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _pulse.dispose(); _flicker.dispose();
-    _tapFlash.dispose(); _templeFade.dispose(); _stoaFade.dispose(); _agoraFade.dispose();
-    _shimmer.dispose(); _entrance.dispose();
-    _templeImg?.dispose(); _stoaImg?.dispose(); _agoraImg?.dispose();
+    _pulse.dispose(); _tapFlash.dispose(); _entrance.dispose();
+    for (final img in [
+      _templeImg, _stoaImg, _agoraImg, _earthTile, _roadTile,
+      _cypress, _statue, _brokenCol, _olive, _amphora, _brazier,
+    ]) { img?.dispose(); }
     super.dispose();
   }
 
+  // ── Hit testing ───────────────────────────────────────────────────────────
+  Rect _imgRect(double w, double h, double xF, double baseF, double wF) {
+    final bw = (w * wF).clamp(80.0, 280.0);
+    return Rect.fromLTWH(w * xF - bw / 2, h * baseF - bw, bw, bw);
+  }
+
+  AcropolisZone? _zoneAt(Offset p, double w, double h) {
+    if (_imgRect(w, h, 0.19, 0.57, 0.23).inflate(12).contains(p)) return AcropolisZone.agora;
+    if (_imgRect(w, h, 0.50, 0.56, 0.20).inflate(12).contains(p)) return AcropolisZone.acropolis;
+    if (_imgRect(w, h, 0.81, 0.58, 0.22).inflate(12).contains(p)) return AcropolisZone.stoa;
+    return null;
+  }
+
+  void _onTap(Offset pos, double w, double h) {
+    final zone = _zoneAt(pos, w, h);
+    if (zone == null) return;
+    setState(() => _tappedZone = zone);
+    _tapFlash.forward(from: 0);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
+      switch (zone) {
+        case AcropolisZone.agora:
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
+        case AcropolisZone.stoa:
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StoaScreen()));
+        case AcropolisZone.acropolis:
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SymposiumScreen()));
+      }
+    });
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: _earthBg,
       endDrawer: const SideMenu(),
       body: AnimatedBuilder(
-        animation: Listenable.merge([_pulse, _flicker, _tapFlash, _templeFade, _stoaFade, _agoraFade, _shimmer, _entrance]),
-        builder: (context, _) {
-          final reducedMotion = MediaQuery.of(context).disableAnimations;
-          return LayoutBuilder(builder: (context, constraints) {
-            final w = constraints.maxWidth;
-            final h = constraints.maxHeight;
-            final isMobile = w < 600;
-            final iconMult = isMobile ? 1.3 : 1.0;
-            final _agoraSide    = w * 0.144 * iconMult;
-            final agoraRect     = Rect.fromCenter(center: Offset(w * 0.44, h * 0.73), width: _agoraSide, height: _agoraSide);
-            final _stoaSide     = w * 0.221 * iconMult;
-            final stoaRect      = Rect.fromCenter(
-              center: Offset(w * 0.63, h * 0.58),
-              width: _stoaSide, height: _stoaSide);
-            final symTopFrac    = isMobile ? 0.12 : 0.07;
-            final acropolisRect = Rect.fromLTWH(w * 0.28, h * symTopFrac, w * 0.44, h * 0.36);
-            return Stack(children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (d) {
-                  if (_menuOpen) { setState(() => _menuOpen = false); return; }
-                  _handleTap(d.localPosition, agoraRect, stoaRect, acropolisRect);
-                },
-                child: MouseRegion(
-                  onHover: (e) => _handleHover(e.localPosition, agoraRect, stoaRect, acropolisRect),
-                  onExit: (_) => setState(() => _hovered = null),
+        animation: Listenable.merge([_pulse, _tapFlash, _entrance]),
+        builder: (_, __) => LayoutBuilder(builder: (_, box) {
+          final w = box.maxWidth;
+          final h = box.maxHeight;
+          final isMobile = w < 600;
+          final roadY = h * 0.56;
+          final bandH = (h * 0.27).clamp(150.0, 320.0);
+          final entT  = _entrance.value;
+
+          return MouseRegion(
+            cursor:  _hovered != null ? SystemMouseCursors.click : MouseCursor.defer,
+            onHover: (e) {
+              final nx = (e.localPosition.dx / w - 0.5) * 2;
+              final ny = (e.localPosition.dy / h - 0.5) * 2;
+              final zone = _zoneAt(e.localPosition, w, h);
+              if (nx != _nX || ny != _nY || zone != _hovered) {
+                setState(() { _nX = nx; _nY = ny; _hovered = zone; });
+              }
+            },
+            onExit: (_) => setState(() { _hovered = null; _nX = 0; _nY = 0; }),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (d) => _onTap(d.localPosition, w, h),
+              child: Stack(clipBehavior: Clip.hardEdge, children: [
+                // ① Earth tiles + road band
+                CustomPaint(
+                  size: Size(w, h),
+                  painter: _BgPainter(
+                    earthTile: _earthTile, roadTile: _roadTile,
+                    roadY: roadY, bandH: bandH,
+                  ),
+                ),
+                // ② Warm sun haze
+                Positioned.fill(child: CustomPaint(painter: _HazePainter())),
+                // ③ Back scenery (parallax layer 1)
+                Transform.translate(
+                  offset: Offset(_nX * 6, _nY * 4),
                   child: CustomPaint(
                     size: Size(w, h),
-                    painter: _CityMapPainter(
-                      pulseT: _pulse.value, flickerT: _flicker.value,
-                      hovered: _hovered,
-                      agoraRect: agoraRect, stoaRect: stoaRect, acropolisRect: acropolisRect,
-                      templeImg: _templeImg, stoaImg: _stoaImg, agoraImg: _agoraImg,
-                      templeAlpha: _templeFade.value, stoaAlpha: _stoaFade.value, agoraAlpha: _agoraFade.value,
-                      tapFlashT: _tapFlash.value, tappedZone: _tappedZone,
-                      shimmerT: _shimmer.value, entranceT: _entrance.value,
-                      reducedMotion: reducedMotion, isMobile: isMobile,
+                    painter: _SceneryPainter(
+                      w: w, h: h, isMobile: isMobile, front: false,
+                      cypress: _cypress, statue: _statue,
+                      brokenCol: _brokenCol, olive: _olive,
                     ),
                   ),
                 ),
-              ),
-              Positioned(top: 6, right: 60, child: const SideMenuButton()),
-              Positioned(top: 14, right: 16, child: _buildDropdown()),
-            ]);
-          });
-        },
+                // ④ Building stops
+                ..._buildStops(w, h, entT),
+                // ⑤ Front scenery (parallax layer 2, counter-direction for depth)
+                Transform.translate(
+                  offset: Offset(_nX * -14, _nY * -8),
+                  child: CustomPaint(
+                    size: Size(w, h),
+                    painter: _SceneryPainter(
+                      w: w, h: h, isMobile: isMobile, front: true,
+                      amphora: _amphora, olive: _olive, brazier: _brazier,
+                    ),
+                  ),
+                ),
+                // ⑥ Vignette
+                Positioned.fill(child: CustomPaint(painter: _VignettePainter())),
+                // ⑦ Title block
+                Positioned(
+                  top: 0, left: 44, right: 44,
+                  child: _Header(alpha: Curves.easeOut.transform(entT)),
+                ),
+                // ⑧ Hint
+                Positioned(
+                  bottom: 20, left: 0, right: 0,
+                  child: Opacity(
+                    opacity: Curves.easeOut.transform(entT),
+                    child: Text(
+                      'tap a building to enter',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.cinzel(
+                        fontSize: 11,
+                        color: _stoneDk.withValues(alpha: 0.70),
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                  ),
+                ),
+                // ⑨ Side-menu
+                Positioned(top: 6, right: 16, child: const SideMenuButton()),
+              ]),
+            ),
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildDropdown() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      GestureDetector(
-        onTap: () => setState(() => _menuOpen = !_menuOpen),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(color: Colors.black, border: Border.all(color: _copper, width: 1.5)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('MENU', style: GoogleFonts.spaceMono(fontSize: 11,
-                color: _copper, letterSpacing: 2.5, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 7),
-            Text(_menuOpen ? '▲' : '▼', style: GoogleFonts.spaceMono(color: _copper, fontSize: 9)),
-          ]),
-        ),
+  List<Widget> _buildStops(double w, double h, double entT) {
+    final data = [
+      (
+        zone: AcropolisZone.agora,
+        xF: 0.19, baseF: 0.57, wF: 0.23,
+        title: 'THE AGORA', sub: 'marketplace & forum',
+        img: _agoraImg, delay: 0.0,
       ),
-      if (_menuOpen) ...[
-        const SizedBox(height: 2),
-        Container(
-          width: 140,
-          decoration: BoxDecoration(color: Colors.black, border: Border.all(color: _copper, width: 1.5)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _mi('◈  PROFILE'), _md(), _mi('\u{1F4DC}  RULES'),
-            _md(), _mi('⚙  SETTINGS'), _md(), _mi('⬡  EXIT'),
-          ]),
+      (
+        zone: AcropolisZone.acropolis,
+        xF: 0.50, baseF: 0.56, wF: 0.20,
+        title: 'SYMPOSIUM', sub: 'sanctuary',
+        img: _templeImg, delay: 0.18,
+      ),
+      (
+        zone: AcropolisZone.stoa,
+        xF: 0.81, baseF: 0.58, wF: 0.22,
+        title: 'THE STOA', sub: 'the long colonnade',
+        img: _stoaImg, delay: 0.36,
+      ),
+    ];
+
+    return data.map((s) {
+      final bw  = (w * s.wF).clamp(80.0, 280.0);
+      final cx  = w * s.xF;
+      final top = h * s.baseF - bw;
+      final hot = _hovered == s.zone || _tappedZone == s.zone;
+      final a   = Curves.easeOut.transform(
+          ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
+
+      return Positioned(
+        left: cx - bw / 2, top: top, width: bw,
+        child: Opacity(
+          opacity: a,
+          child: _Stop(
+            title: s.title, sub: s.sub,
+            img: s.img, bw: bw,
+            hot: hot, pulseT: _pulse.value,
+          ),
         ),
-      ],
-    ]);
-  }
-
-  Widget _mi(String label) => InkWell(
-    onTap: () => setState(() => _menuOpen = false),
-    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(label, style: GoogleFonts.spaceMono(
-            fontSize: 11, color: _copperLt, letterSpacing: 1.5))),
-  );
-  Widget _md() => Container(height: 1, color: const Color(0x40B87333));
-
-  void _handleTap(Offset pos, Rect agora, Rect stoa, Rect acropolis) {
-    AcropolisZone? zone;
-    if (agora.contains(pos))     zone = AcropolisZone.agora;
-    else if (stoa.contains(pos)) zone = AcropolisZone.stoa;
-    else if (acropolis.contains(pos)) zone = AcropolisZone.acropolis;
-    if (zone != null) { setState(() => _tappedZone = zone); _tapFlash.forward(from: 0); }
-    if (agora.contains(pos)) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
-    } else if (stoa.contains(pos)) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StoaScreen()));
-    } else if (acropolis.contains(pos)) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SymposiumScreen()));
-    }
-  }
-
-  void _handleHover(Offset pos, Rect agora, Rect stoa, Rect acropolis) {
-    AcropolisZone? zone;
-    if (agora.contains(pos)) zone = AcropolisZone.agora;
-    else if (stoa.contains(pos)) zone = AcropolisZone.stoa;
-    else if (acropolis.contains(pos)) zone = AcropolisZone.acropolis;
-    if (zone != _hovered) setState(() => _hovered = zone);
+      );
+    }).toList();
   }
 }
 
-// ---------------------------------------------------------------------------
+// ── Building stop ─────────────────────────────────────────────────────────────
+class _Stop extends StatelessWidget {
+  final String title, sub;
+  final ui.Image? img;
+  final double bw, pulseT;
+  final bool hot;
 
-class _CityMapPainter extends CustomPainter {
-  final double pulseT, flickerT;
-  final AcropolisZone? hovered;
-  final Rect agoraRect, stoaRect, acropolisRect;
-  final ui.Image? templeImg;
-  final ui.Image? stoaImg;
-  final ui.Image? agoraImg;
-  final double templeAlpha, stoaAlpha, agoraAlpha;
-  final double tapFlashT;
-  final AcropolisZone? tappedZone;
-  final double shimmerT;
-  final double entranceT;
-  final bool reducedMotion;
-  final bool isMobile;
+  const _Stop({
+    required this.title, required this.sub,
+    required this.img, required this.bw,
+    required this.hot, required this.pulseT,
+  });
 
-  _CityMapPainter({required this.pulseT, required this.flickerT,
-      required this.hovered, required this.agoraRect,
-      required this.stoaRect, required this.acropolisRect,
-      this.templeImg, this.stoaImg, this.agoraImg,
-      this.templeAlpha = 1.0, this.stoaAlpha = 1.0, this.agoraAlpha = 1.0,
-      this.tapFlashT = 0.0, this.tappedZone,
-      this.shimmerT = 0.0, this.entranceT = 1.0,
-      this.reducedMotion = false, this.isMobile = false});
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedScale(
+          scale: hot ? 1.05 : 1.0,
+          duration: const Duration(milliseconds: 180),
+          child: Stack(alignment: Alignment.center, children: [
+            if (hot)
+              Container(
+                width: bw * 1.1, height: bw * 1.1,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _terraHi.withValues(alpha: 0.10 + 0.12 * pulseT),
+                      blurRadius: 30, spreadRadius: 10,
+                    ),
+                  ],
+                ),
+              ),
+            img != null
+                ? RawImage(
+                    image: img, width: bw, height: bw,
+                    filterQuality: FilterQuality.none,
+                    fit: BoxFit.contain,
+                  )
+                : SizedBox(width: bw, height: bw),
+          ]),
+        ),
+        const SizedBox(height: 6),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 180),
+          style: GoogleFonts.cinzel(
+            fontSize: (bw * 0.085).clamp(8.0, 13.0),
+            fontWeight: FontWeight.w700,
+            color: hot ? _marbleHi : _marble,
+            letterSpacing: 1.5,
+            shadows: const [Shadow(color: _earthDk, blurRadius: 4)],
+          ),
+          child: Text(title, textAlign: TextAlign.center),
+        ),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 180),
+          style: GoogleFonts.cinzel(
+            fontSize: (bw * 0.065).clamp(6.5, 10.0),
+            color: hot ? _gold : _stone,
+            letterSpacing: 0.8,
+          ),
+          child: Text(sub, textAlign: TextAlign.center),
+        ),
+      ],
+    );
+  }
+}
 
-  // Scales with screen width so pixel art looks consistent on all phones
-  double _px = 2.0;
+// ── Header ────────────────────────────────────────────────────────────────────
+class _Header extends StatelessWidget {
+  final double alpha;
+  const _Header({required this.alpha});
 
-  // Eased alpha for staggered entrance — start 0→1 over a 0.22-wide window
-  double _eAlpha(double start) =>
-    Curves.easeOut.transform(((entranceT - start) / 0.22).clamp(0.0, 1.0));
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: alpha,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 16),
+          Text(
+            'ΑΓΟΡΑ  ·  est. antiquity',
+            style: GoogleFonts.cinzel(
+              fontSize: 10, color: _terra, letterSpacing: 3.5),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'A · C · R · O',
+            style: GoogleFonts.cinzel(
+              fontSize: 22, fontWeight: FontWeight.w700,
+              color: _ink, letterSpacing: 7.0,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'Three buildings stand along the old stone way.',
+            style: GoogleFonts.cinzel(
+              fontSize: 10,
+              color: _stoneDk.withValues(alpha: 0.85),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Background painter — earth tiles + road band ──────────────────────────────
+class _BgPainter extends CustomPainter {
+  final ui.Image? earthTile, roadTile;
+  final double roadY, bandH;
+
+  const _BgPainter({
+    this.earthTile, this.roadTile,
+    required this.roadY, required this.bandH,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width; final h = size.height;
-    _px = w / 195.0; // ~2.0 on 390dp phones, scales up on tablets
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = Colors.black);
-    _groundPlane(canvas, w, h);
-    _sky(canvas, w, h);
+    final w = size.width;
+    final h = size.height;
 
-    _stars(canvas, w, h);
-    _moon(canvas, w, h);
-    _terrain(canvas, w, h);
-    _atmosphericHaze(canvas, w, h);
+    // Base fill
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h),
+        Paint()..color = const Color(0xFF7A5838));
 
-    if (agoraImg != null) _drawAgoraImage(canvas, w, h, agoraImg!);
-    if (stoaImg != null) {
-      _drawStoaImage(canvas, w, h, stoaImg!);
-    } else {
-      _market(canvas, w, h);
-    }
-    if (templeImg != null) {
-      _drawTempleImage(canvas, w, h, templeImg!);
-    } else {
-      _temple(canvas, w, h);
-    }
-    _hoverGlow(canvas, w, h);
-    _labels(canvas, w, h);
-  }
-
-  // ── Asymmetric wall — left is more angular/concave, right more convex ────
-  Path _wallPath(double w, double h) {
-    final p = Path();
-    p.moveTo(w * 0.448, h * 0.902);
-    // Bottom-left — wide natural sweep
-    p.quadraticBezierTo(w * 0.2218, h * 0.895, w * 0.245, h * 0.854);
-    // Left lower — sharp angular notch (dramatically concave)
-    p.quadraticBezierTo(w * 0.128, h * 0.812, w * 0.108, h * 0.705);
-    p.quadraticBezierTo(w * 0.090, h * 0.615, w * 0.140, h * 0.535);
-    // Left mid — tight inward then sharp out
-    p.quadraticBezierTo(w * 0.222, h * 0.456, w * 0.125, h * 0.368);
-    p.quadraticBezierTo(w * 0.062, h * 0.282, w * 0.148, h * 0.195);
-    p.quadraticBezierTo(w * 0.235, h * 0.108, w * 0.322, h * 0.072);
-    // Top arc — noticeably left-offset
-    p.quadraticBezierTo(w * 0.408, h * 0.044, w * 0.514, h * 0.042);
-    p.quadraticBezierTo(w * 0.622, h * 0.048, w * 0.714, h * 0.105);
-    // Right upper — rounder, gentler than left
-    p.quadraticBezierTo(w * 0.785, h * 0.165, w * 0.822, h * 0.252);
-    p.quadraticBezierTo(w * 0.860, h * 0.342, w * 0.832, h * 0.435);
-    // Right mid — smoother bulge (different rhythm from left)
-    p.quadraticBezierTo(w * 0.806, h * 0.512, w * 0.848, h * 0.602);
-    p.quadraticBezierTo(w * 0.882, h * 0.692, w * 0.832, h * 0.760);
-    // Right lower — tighter, less dramatic
-    p.quadraticBezierTo(w * 0.780, h * 0.838, w * 0.678, h * 0.865);
-    p.quadraticBezierTo(w * 0.615, h * 0.895, w * 0.552, h * 0.902);
-    // Gate notch
-    p.lineTo(w * 0.552, h * 0.960);
-    p.lineTo(w * 0.448, h * 0.960);
-    p.lineTo(w * 0.448, h * 0.902);
-    p.close();
-    return p;
-  }
-
-  // ── Tower marks at wall bends ─────────────────────────────────────────────
-  void _wallTowers(Canvas canvas, double w, double h) {
-    void twrMark(double fx, double fy, double sz) {
-      _r(canvas, Paint()..color = _copperDk, fx*w-sz*1.6, fy*h-sz*1.6, sz*3.2, sz*3.2);
-      _r(canvas, Paint()..color = _copper,   fx*w-sz*1.2, fy*h-sz*1.2, sz*2.4, sz*2.4);
-      _r(canvas, Paint()..color = _copperLt, fx*w-sz*1.2, fy*h-sz*1.2, sz*0.8, sz*0.8);
-    }
-    twrMark(0.108, 0.700, _px * 2.6);
-    twrMark(0.130, 0.445, _px * 2.2);
-    twrMark(0.840, 0.602, _px * 2.2);
-    twrMark(0.832, 0.435, _px * 2.0);
-    twrMark(0.514, 0.050, _px * 1.8);
-  }
-
-  // ── Battlements ──────────────────────────────────────────────────────────
-  void _battlements(Canvas canvas, double w, double h) {
-    final p = Paint()..color = _copper;
-    void m(double fx, double fy) =>
-        _r(canvas, p, fx*w-_px*1.4, fy*h-_px*3.0, _px*2.8, _px*3.0);
-    for (final pt in [[0.40,0.054],[0.46,0.046],[0.51,0.044],[0.56,0.047],[0.62,0.058]]) { m(pt[0],pt[1]); }
-    for (final pt in [[0.168,0.248],[0.140,0.372],[0.148,0.498],[0.148,0.622],[0.158,0.750]]) { m(pt[0],pt[1]); }
-    for (final pt in [[0.802,0.244],[0.826,0.374],[0.816,0.500],[0.836,0.628],[0.812,0.752]]) { m(pt[0],pt[1]); }
-  }
-
-  // ── Warm ground plane — separates city floor from pure-black void ─────────
-  void _groundPlane(Canvas canvas, double w, double h) {
-    canvas.drawRect(
-      Rect.fromLTWH(0, h * 0.72, w, h * 0.28),
-      Paint()..shader = ui.Gradient.linear(
-        Offset(0, h), Offset(0, h * 0.72),
-        const [Color(0xFF0A0500), Color(0x000A0500)],
-      ),
-    );
-  }
-
-  // ── Atmospheric perspective — cool haze recedes distant temple, ───────────
-  // ── warm closeness pulls the agora zone forward ───────────────────────────
-  void _atmosphericHaze(Canvas canvas, double w, double h) {
-    // Cool/dark haze over the upper city (temple is far away/high up)
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, w, h * 0.42),
-      Paint()..shader = ui.Gradient.linear(
-        Offset(w / 2, 0), Offset(w / 2, h * 0.42),
-        const [Color(0x1A04020E), Color(0x00000000)],
-      ),
-    );
-    // Faint warm bloom over lower city (agora feels closer/warmer)
-    canvas.drawRect(
-      Rect.fromLTWH(0, h * 0.62, w, h * 0.30),
-      Paint()..shader = ui.Gradient.linear(
-        Offset(w / 2, h * 0.92), Offset(w / 2, h * 0.62),
-        const [Color(0x0E120600), Color(0x00000000)],
-      ),
-    );
-  }
-
-  // ── Sky gradient + curvy horizon just above treeline ─────────────────────
-  void _sky(Canvas canvas, double w, double h) {
-    // Horizon curve sits just above the tallest trees (~h*0.66).
-    // Wavy, organic — rises and dips gently left to right.
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(w, 0)
-      ..lineTo(w, h * 0.705);
-    // Horizon wave: right edge → sweeps left with gentle undulation
-    path.quadraticBezierTo(w * 0.82, h * 0.652, w * 0.62, h * 0.662);
-    path.quadraticBezierTo(w * 0.42, h * 0.672, w * 0.22, h * 0.648);
-    path.quadraticBezierTo(w * 0.08, h * 0.634, 0, h * 0.668);
-    path.close();
-
-    // Pitch black at top → very subtle twilight near horizon. Mostly black.
-    canvas.drawPath(path, Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(w / 2, 0),
-        Offset(w / 2, h * 0.690),
-        const [
-          Color(0xFF000000),   // pitch black
-          Color(0xFF000000),   // pitch black — hold longer
-          Color(0xFF020208),   // barely-there dark blue-black
-          Color(0xFF060412),   // very dark, faint hint of indigo
-          Color(0xFF0A0618),   // softest twilight, almost black
-        ],
-        [0.0, 0.40, 0.65, 0.85, 1.0],
-      ));
-
-    // Feathered horizon — soft black blur band to dissolve the hard edge
-    canvas.drawRect(
-      Rect.fromLTWH(0, h * 0.610, w, h * 0.090),
-      Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(0, h * 0.610), Offset(0, h * 0.700),
-          const [Color(0x00000000), Color(0xFF000000)],
-        )
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
-  }
-
-  // ── Stars — top 32%, staggered twinkle ───────────────────────────────────
-  void _stars(Canvas canvas, double w, double h) {
-    final starEntrance = _eAlpha(0.14);
-    if (starEntrance == 0) return;
-    final rng = math.Random(42);
-    for (int i = 0; i < 45; i++) {  // 45 stars — OLED-optimised (was 68)
-      final x     = rng.nextDouble() * w;
-      final y     = rng.nextDouble() * h * 0.32;
-      final phase = rng.nextDouble();
-      final speed = 2.0 + rng.nextDouble() * 4.0;
-      final sz    = 0.5 + rng.nextDouble() * 1.3;
-      // reducedMotion: static brightness, no flicker
-      final flick = reducedMotion ? 0.0 : math.sin(flickerT * math.pi * speed + phase * math.pi * 2);
-      final alpha = ((0.22 + 0.50 * ((flick + 1) / 2)) * starEntrance).clamp(0.0, 0.72);
-
-      if (rng.nextDouble() > 0.58) {
-        final ca = _copper.withValues(alpha: alpha * 0.82);
-        _r(canvas, Paint()..color = ca, x - sz*0.28, y - sz*1.5, sz*0.56, sz*3.0);
-        _r(canvas, Paint()..color = ca, x - sz*1.5,  y - sz*0.28, sz*3.0,  sz*0.56);
-        // Gold centre pixel — richer than plain copperLt
-        _r(canvas, Paint()..color = _gold.withValues(alpha: alpha),
-            x - sz*0.18, y - sz*0.18, sz*0.36, sz*0.36);
-      } else {
-        canvas.drawRect(Rect.fromLTWH(x - sz/2, y - sz/2, sz, sz),
-            Paint()..color = _copper.withValues(alpha: alpha));
+    // Earth tile repeat
+    if (earthTile != null) {
+      final displayPx = 64.0;
+      final sx = displayPx / earthTile!.width;
+      final sy = displayPx / earthTile!.height;
+      canvas.save();
+      canvas.scale(sx, sy);
+      final cols = (w / displayPx).ceil() + 1;
+      final rows = (h / displayPx).ceil() + 1;
+      final p = Paint()
+        ..filterQuality = FilterQuality.none
+        ..color = const Color(0xBBFFFFFF);
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          canvas.drawImage(
+            earthTile!,
+            Offset(c * earthTile!.width.toDouble(), r * earthTile!.height.toDouble()),
+            p,
+          );
+        }
       }
+      canvas.restore();
     }
-  }
 
-  // ── Smooth crescent moon ──────────────────────────────────────────────────
-  void _moon(Canvas canvas, double w, double h) {
-    final moonEntrance = _eAlpha(0.28);
-    if (moonEntrance == 0) return;
-    final cx = w * 0.82;
-    final cy = h * 0.10;
-    final r  = _px * 7.8;
-    canvas.saveLayer(Rect.fromCircle(center: Offset(cx, cy), radius: r * 3),
-        Paint()..color = Color.fromRGBO(255, 255, 255, moonEntrance));
-
-    // Soft pulsing ambient glow — static when reducedMotion
-    final moonGlow = reducedMotion ? 0.028 : 0.022 + 0.014 * pulseT;
-    canvas.drawCircle(Offset(cx, cy), r * 1.9,
-      Paint()
-        ..color = _gold.withValues(alpha: moonGlow)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
-
-    // Tilt counter-clockwise ~38° so the crescent leans to the left
+    // Road band — rotated −1.2°, bleeds past edges
     canvas.save();
-    canvas.translate(cx, cy);
-    canvas.rotate(-0.66);
-    final outer = Path()
-      ..addOval(Rect.fromCircle(center: Offset.zero, radius: r));
-    final inner = Path()
-      ..addOval(Rect.fromCircle(
-          center: Offset(r * 0.36, 0), radius: r * 0.80));
-    final crescent = Path.combine(PathOperation.difference, outer, inner);
+    canvas.translate(w / 2, roadY);
+    canvas.rotate(-1.2 * math.pi / 180);
+    final bw = w * 1.5;
 
-    canvas.drawPath(crescent,
-        Paint()..color = _copper.withValues(alpha: 0.92));
-    canvas.drawPath(crescent,
-        Paint()
-          ..color = _gold.withValues(alpha: 0.75)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = _px * 0.55
-          ..strokeCap = StrokeCap.round);
-    canvas.restore(); // crescent rotation
-    canvas.restore(); // entrance layer
-  }
+    if (roadTile != null) {
+      final tW = roadTile!.width.toDouble();
+      final tH = roadTile!.height.toDouble();
+      final drawH = bandH;
+      final drawW = tW * (drawH / tH); // maintain tile aspect
+      final cols  = (bw / drawW).ceil() + 1;
+      final startX = -bw / 2;
+      for (var c = 0; c < cols; c++) {
+        canvas.drawImageRect(
+          roadTile!,
+          Rect.fromLTWH(0, 0, tW, tH),
+          Rect.fromLTWH(startX + c * drawW, -bandH / 2, drawW, drawH),
+          Paint()..filterQuality = FilterQuality.none,
+        );
+      }
+    } else {
+      canvas.drawRect(
+        Rect.fromLTWH(-bw / 2, -bandH / 2, bw, bandH),
+        Paint()..color = const Color(0xFFD4C4A0),
+      );
+    }
 
-  // ── Terrain: artisanal trees + rocks outside wall, denser at bottom ───────
-  void _terrain(Canvas canvas, double w, double h) {
-    // Left exterior trees
-    _tree(canvas, w * 0.082, h * 0.712);
-    _tree(canvas, w * 0.055, h * 0.796);
-    _tree(canvas, w * 0.092, h * 0.858);
-    _treeSmall(canvas, w * 0.036, h * 0.748);
-    _treeSmall(canvas, w * 0.065, h * 0.832);
-    _treeSmall(canvas, w * 0.025, h * 0.870);
+    // Edge lines
+    final edge = Paint()..color = const Color(0xFF8A7A5A)..strokeWidth = 2;
+    canvas.drawLine(Offset(-bw / 2, -bandH / 2), Offset(bw / 2, -bandH / 2), edge);
+    canvas.drawLine(Offset(-bw / 2,  bandH / 2), Offset(bw / 2,  bandH / 2), edge);
 
-    // Right exterior trees
-    _tree(canvas, w * 0.914, h * 0.720);
-    _tree(canvas, w * 0.940, h * 0.806);
-    _tree(canvas, w * 0.904, h * 0.868);
-    _treeSmall(canvas, w * 0.958, h * 0.755);
-    _treeSmall(canvas, w * 0.930, h * 0.842);
-    _treeSmall(canvas, w * 0.972, h * 0.872);
-
-    // Bottom corners
-    _tree(canvas, w * 0.170, h * 0.938);
-    _tree(canvas, w * 0.828, h * 0.942);
-    _treeSmall(canvas, w * 0.132, h * 0.966);
-    _treeSmall(canvas, w * 0.862, h * 0.968);
-    _treeSmall(canvas, w * 0.195, h * 0.970);
-    _treeSmall(canvas, w * 0.808, h * 0.974);
-
-    // Left exterior rocks
-    _rock(canvas, w * 0.066, h * 0.750);
-    _rock(canvas, w * 0.040, h * 0.838);
-    _rock(canvas, w * 0.106, h * 0.896);
-    _rockSmall(canvas, w * 0.026, h * 0.805);
-    _rockSmall(canvas, w * 0.078, h * 0.925);
-    _rockSmall(canvas, w * 0.048, h * 0.872);
-
-    // Right exterior rocks
-    _rock(canvas, w * 0.934, h * 0.760);
-    _rock(canvas, w * 0.960, h * 0.846);
-    _rock(canvas, w * 0.888, h * 0.916);
-    _rockSmall(canvas, w * 0.975, h * 0.812);
-    _rockSmall(canvas, w * 0.918, h * 0.946);
-    _rockSmall(canvas, w * 0.950, h * 0.878);
-
-    // Bottom rocks
-    _rock(canvas, w * 0.236, h * 0.966);
-    _rock(canvas, w * 0.764, h * 0.970);
-    _rockSmall(canvas, w * 0.208, h * 0.986);
-    _rockSmall(canvas, w * 0.792, h * 0.988);
-    _rockSmall(canvas, w * 0.252, h * 0.980);
-    _rockSmall(canvas, w * 0.748, h * 0.982);
-
-    // Ground tufts (fine brush details)
-    _tuft(canvas, w * 0.045, h * 0.876);
-    _tuft(canvas, w * 0.118, h * 0.918);
-    _tuft(canvas, w * 0.148, h * 0.952);
-    _tuft(canvas, w * 0.878, h * 0.886);
-    _tuft(canvas, w * 0.952, h * 0.898);
-    _tuft(canvas, w * 0.845, h * 0.955);
-    _tuft(canvas, w * 0.215, h * 0.958);
-    _tuft(canvas, w * 0.784, h * 0.962);
-  }
-
-  void _tree(Canvas canvas, double cx, double cy) {
-    _r(canvas, Paint()..color = _copperDk, cx-_px,    cy,        _px*2,   _px*3);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px*4,  cy-_px*4,  _px*8,   _px*3);
-    _r(canvas, Paint()..color = _treeLt,   cx-_px*3,  cy-_px*4,  _px*2,   _px*2);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px*3,  cy-_px*7,  _px*6,   _px*3);
-    _r(canvas, Paint()..color = _treeLt,   cx-_px*2,  cy-_px*7,  _px*2,   _px*1.5);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px*2,  cy-_px*10, _px*4,   _px*3);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px,    cy-_px*13, _px*2,   _px*2.5);
-    _r(canvas, Paint()..color = _copperDk, cx-_px*.5, cy-_px*15, _px,     _px*2);
-  }
-
-  void _treeSmall(Canvas canvas, double cx, double cy) {
-    _r(canvas, Paint()..color = _copperDk, cx-_px*.5, cy,        _px,     _px*2);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px*2.5,cy-_px*2.5,_px*5,   _px*2.5);
-    _r(canvas, Paint()..color = _treeLt,   cx-_px*1.5,cy-_px*2.5,_px*1.5, _px*1.5);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px*2,  cy-_px*5,  _px*4,   _px*2.5);
-    _r(canvas, Paint()..color = _treeDk,   cx-_px,    cy-_px*7.5,_px*2,   _px*2);
-    _r(canvas, Paint()..color = _copperDk, cx-_px*.5, cy-_px*9.5,_px,     _px*1.5);
-  }
-
-  void _rock(Canvas canvas, double cx, double cy) {
-    _r(canvas, Paint()..color = _copperDk, cx-_px*3,   cy-_px,    _px*7,   _px*2);
-    _r(canvas, Paint()..color = _copperDk, cx-_px*2,   cy-_px*2.5,_px*5,   _px*2);
-    _r(canvas, Paint()..color = _copperDk, cx-_px*1.5, cy-_px*3.5,_px*3,   _px*1.5);
-    _r(canvas, Paint()..color = _copper,   cx-_px*2,   cy-_px,    _px*1.5, _px*0.8);
-  }
-
-  void _rockSmall(Canvas canvas, double cx, double cy) {
-    _r(canvas, Paint()..color = _copperDk, cx-_px*2,   cy-_px*.5, _px*4.5, _px*1.5);
-    _r(canvas, Paint()..color = _copperDk, cx-_px*1.5, cy-_px*2,  _px*3.5, _px*1.5);
-    _r(canvas, Paint()..color = _copper,   cx-_px*1.5, cy-_px*.5, _px,     _px*0.7);
-  }
-
-  void _tuft(Canvas canvas, double cx, double cy) {
-    _r(canvas, Paint()..color = _treeDk, cx-_px*1.5, cy-_px*2,   _px,     _px*2);
-    _r(canvas, Paint()..color = _treeDk, cx,          cy-_px*2.5, _px,     _px*2.5);
-    _r(canvas, Paint()..color = _treeDk, cx+_px*1.5,  cy-_px*1.5, _px,     _px*1.5);
-    _r(canvas, Paint()..color = _treeLt, cx,           cy-_px*3,   _px*0.6, _px*0.6);
-  }
-
-  // ── Shimmer sweep placeholder shown while an image loads ─────────────────
-  void _shimmerPlaceholder(Canvas canvas, Rect dest, double intensity) {
-    // Dim base glow
-    canvas.drawCircle(dest.center, dest.width * 0.30,
-      Paint()
-        ..color = _copperDk.withValues(alpha: 0.18 * intensity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
-    // Sweeping highlight — travels left to right across the placeholder
-    final sweep = dest.left - dest.width * 0.3 + dest.width * 1.6 * shimmerT;
-    canvas.save();
-    canvas.clipRect(dest.inflate(dest.width * 0.12));
+    // Soft shadows at road edges
     canvas.drawRect(
-      Rect.fromLTWH(sweep - dest.width * 0.22, dest.top, dest.width * 0.44, dest.height),
-      Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(sweep - dest.width * 0.22, 0), Offset(sweep + dest.width * 0.22, 0),
-          [Colors.transparent, _copper.withValues(alpha: 0.28 * intensity), Colors.transparent],
-        ),
+      Rect.fromLTWH(-bw / 2, -bandH / 2 - 10, bw, 10),
+      Paint()..shader = ui.Gradient.linear(
+        Offset(0, -bandH / 2 - 10), Offset(0, -bandH / 2),
+        [Colors.transparent, const Color(0x33000000)]),
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(-bw / 2, bandH / 2, bw, 14),
+      Paint()..shader = ui.Gradient.linear(
+        Offset(0, bandH / 2), Offset(0, bandH / 2 + 14),
+        [const Color(0x33000000), Colors.transparent]),
     );
     canvas.restore();
   }
 
-  // ── Greek market compound image ───────────────────────────────────────────
-  void _drawStoaImage(Canvas canvas, double w, double h, ui.Image img) {
-    final side = w * 0.221 * (isMobile ? 1.3 : 1.0);
-    final dest = Rect.fromCenter(
-      center: Offset(w * 0.63, h * 0.58), width: side, height: side);
-    final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    // Shimmer placeholder while loading
-    if (stoaAlpha < 1.0) {
-      _shimmerPlaceholder(canvas, dest, 1 - stoaAlpha);
-      canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, stoaAlpha));
-      canvas.drawImageRect(img, src, dest,
-          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-      canvas.restore();
-    } else {
-      canvas.drawImageRect(img, src, dest,
-          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-    }
-  }
+  @override
+  bool shouldRepaint(_BgPainter o) =>
+      o.earthTile != earthTile || o.roadTile != roadTile ||
+      o.roadY != roadY || o.bandH != bandH;
+}
 
-  // ── Agora image icon ─────────────────────────────────────────────────────
-  void _drawAgoraImage(Canvas canvas, double w, double h, ui.Image img) {
-    final side = w * 0.144 * (isMobile ? 1.3 : 1.0);
-    final dest = Rect.fromCenter(
-      center: Offset(w * 0.44, h * 0.73), width: side, height: side);
-    final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    if (agoraAlpha < 1.0) {
-      _shimmerPlaceholder(canvas, dest, 1 - agoraAlpha);
-      canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, agoraAlpha));
-      canvas.drawImageRect(img, src, dest,
-          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-      canvas.restore();
-    } else {
-      canvas.drawImageRect(img, src, dest,
-          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-    }
-  }
-
-  // ── Stoa — 5 mini Greek temples, spread wide ─────────────────────────────
-  void _market(Canvas canvas, double w, double h) {
-    final hot = hovered == AcropolisZone.stoa;
-    final c   = hot ? _orange              : _sand;
-    final cLt = hot ? const Color(0xFFFFD090) : _sandLt;
-    final cDk = hot ? _copper              : _sandDk;
-    final cMd = hot ? _copperLt            : _sandMd;
-
-    const positions = [
-      [0.238, 0.648],  // far left — low
-      [0.352, 0.538],  // left-centre — high
-      [0.500, 0.612],  // centre — mid
-      [0.650, 0.552],  // right-centre — high
-      [0.775, 0.638],  // far right — low
-    ];
-    for (final p in positions) {
-      _miniTemple(canvas, p[0] * w, p[1] * h, c, cLt, cDk, cMd);
-    }
-  }
-
-  void _miniTemple(Canvas canvas, double cx, double baseY,
-      Color c, Color cLt, Color cDk, Color cMd) {
-    final tw    = _px * 22.0;
-    final colH  = _px * 14.0;
-    const nCols = 4;
-
-    // ── 3 steps — widest at bottom ────────────────────────────────────────
-    for (int s = 0; s < 3; s++) {
-      final sw = tw + (2 - s) * _px * 4.5;
-      final sy = baseY - (s + 1) * _px * 2.5;
-      _r(canvas, Paint()..color = s == 0 ? c : cLt, cx - sw / 2, sy, sw, _px * 2.5);
-      _r(canvas, Paint()..color = cDk, cx - sw / 2, sy + _px * 2.0, sw, _px * 0.5);
-    }
-
-    // ── Stylobate (platform) ───────────────────────────────────────────────
-    final platTop = baseY - _px * 7.5;
-    _r(canvas, Paint()..color = cLt, cx - tw / 2, platTop - _px * 2.0, tw, _px * 2.0);
-    _r(canvas, Paint()..color = cDk.withValues(alpha: 0.38),
-        cx - tw / 2, platTop - _px * 0.5, tw, _px * 0.5);
-
-    // ── Dark interior void behind columns ──────────────────────────────────
-    final colBase = platTop - _px * 2.0;
-    final colTop  = colBase - colH;
-    _r(canvas, Paint()..color = _wallFill.withValues(alpha: 0.90),
-        cx - tw / 2 + _px * 1.8, colTop, tw - _px * 3.6, colH + _px * 2.0);
-
-    // ── Columns ────────────────────────────────────────────────────────────
-    final colArea = tw - _px * 4.0;
-    final colSp   = colArea / (nCols - 1);
-    for (int i = 0; i < nCols; i++) {
-      final colX = cx - colArea / 2 + i * colSp;
-      // Abacus (flat cap slab)
-      _r(canvas, Paint()..color = cLt, colX - _px * 2.2, colTop, _px * 4.4, _px * 1.4);
-      // Echinus (curved cap — faked with a narrower layer)
-      _r(canvas, Paint()..color = cMd, colX - _px * 1.8, colTop + _px * 1.0, _px * 3.6, _px * 1.0);
-      // Shaft
-      _r(canvas, Paint()..color = c, colX - _px * 1.4, colTop + _px * 2.0, _px * 2.8, colH - _px * 4.5);
-      // Flute shadow
-      _r(canvas, Paint()..color = cDk.withValues(alpha: 0.40),
-          colX + _px * 0.5, colTop + _px * 2.0, _px * 0.5, colH - _px * 4.5);
-      // Highlight
-      _r(canvas, Paint()..color = cLt.withValues(alpha: 0.30),
-          colX - _px * 1.4, colTop + _px * 2.0, _px * 0.45, colH - _px * 4.5);
-      // Column base
-      _r(canvas, Paint()..color = cLt, colX - _px * 2.0, colBase - _px * 2.0, _px * 4.0, _px * 2.0);
-    }
-
-    // ── Entablature ────────────────────────────────────────────────────────
-    final entY = colTop - _px * 5.0;
-    // Architrave
-    _r(canvas, Paint()..color = c,   cx - tw / 2, entY + _px * 2.5, tw, _px * 2.5);
-    _r(canvas, Paint()..color = cLt, cx - tw / 2, entY + _px * 2.5, tw, _px * 0.6);
-    // Frieze
-    _r(canvas, Paint()..color = cMd, cx - tw / 2, entY, tw, _px * 2.5);
-    // Triglyphs (3 pairs of slots)
-    for (int t = 0; t < 3; t++) {
-      final tx = cx - tw / 2 + _px * 2.5 + t * (tw - _px * 5.0) / 2 - _px * 0.9;
-      _r(canvas, Paint()..color = cDk, tx,           entY + _px * 0.3, _px * 0.8, _px * 2.2);
-      _r(canvas, Paint()..color = cDk, tx + _px * 1.5, entY + _px * 0.3, _px * 0.8, _px * 2.2);
-    }
-    // Cornice
-    _r(canvas, Paint()..color = cLt, cx - tw / 2 - _px * 0.5, entY - _px * 0.5, tw + _px, _px * 1.0);
-
-    // ── Pediment ──────────────────────────────────────────────────────────
-    const pedRows = 7;
-    final pedBaseY = entY - _px * 0.5;
-    for (int i = 0; i < pedRows; i++) {
-      final rowW = (tw + _px) * (1.0 - i / pedRows) + _px;
-      _r(canvas, Paint()..color = i == 0 ? cLt : c,
-          cx - rowW / 2, pedBaseY - i * _px * 1.6, rowW, _px * 1.9);
-    }
-    // Acroterion at peak
-    final peakY = pedBaseY - pedRows * _px * 1.6;
-    _r(canvas, Paint()..color = cLt, cx - _px * 1.0, peakY - _px * 2.5, _px * 2.0, _px * 2.5);
-    _r(canvas, Paint()..color = cLt, cx - _px * 1.8, peakY - _px * 3.5, _px * 3.6, _px * 1.0);
-  }
-
-  // ── Sym1 image replacing the drawn temple ────────────────────────────────
-  void _drawTempleImage(Canvas canvas, double w, double h, ui.Image img) {
-    final side = math.min(w * 0.504, h * 0.432);
-    final cx   = w * 0.500;
-    final topY = isMobile ? h * 0.12 : h * 0.07;
-    final dest = Rect.fromLTWH(cx - side / 2, topY, side, side);
-    final src  = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
-    if (templeAlpha < 1.0) {
-      _shimmerPlaceholder(canvas, dest, 1 - templeAlpha);
-      canvas.saveLayer(dest, Paint()..color = Color.fromRGBO(255, 255, 255, templeAlpha));
-      canvas.drawImageRect(img, src, dest,
-          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-      canvas.restore();
-    } else {
-      canvas.drawImageRect(img, src, dest,
-          Paint()..blendMode = BlendMode.screen..filterQuality = FilterQuality.medium);
-    }
-  }
-
-  // ── Temple — more depth with shadow + visible side faces ─────────────────
-  void _temple(Canvas canvas, double w, double h) {
-    final hot  = hovered == AcropolisZone.acropolis;
-    final c    = hot ? _orange   : _copper;
-    final cLt  = hot ? const Color(0xFFFFD090) : _copperLt;
-    final cDk  = hot ? _copper   : _copperDk;
-    final vDk  = cDk.withValues(alpha: 0.92);
-    final cx   = w * 0.500;
-    final baseY = h * 0.368;
-    final tW   = _px * 50.0;
-    final colH = _px * 20.0;
-    // Deeper 3-D offset
-    final dX   = _px * 9.0;
-    final dY   = -_px * 5.0;
-
-    // Drop shadow beneath temple (blurred)
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx - tW / 2 + dX, baseY + _px * 3 + dY)
-        ..lineTo(cx + tW / 2 + dX * 1.4, baseY + _px * 3 + dY)
-        ..lineTo(cx + tW / 2,  baseY + _px * 3)
-        ..lineTo(cx - tW / 2,  baseY + _px * 3)
-        ..close(),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.50)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+// ── Warm sun haze ─────────────────────────────────────────────────────────────
+class _HazePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    // Top-left sun bloom
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, w, h),
+      Paint()..shader = ui.Gradient.radial(
+        Offset(w * 0.22, -h * 0.10), w * 1.2,
+        [const Color(0x0DFFF4D6), Colors.transparent], [0.0, 0.55],
+      ),
     );
-
-    // ── Back (depth) step faces ──
-    for (int s = 0; s < 3; s++) {
-      final sw = tW + s * _px * 7;
-      final sy = baseY - s * _px * 2.5;
-      _r(canvas, Paint()..color = vDk, cx - sw / 2 + dX, sy + dY, sw, _px * 2.5);
-    }
-    final platY = baseY - _px * 7.5;
-    final platW = tW - _px * 4;
-    final entY  = platY - colH - _px * 4.5;
-    _r(canvas, Paint()..color = vDk, cx - tW / 2 + dX, entY + dY, tW, _px * 5);
-
-    // Rear cella wall visible through columns
-    _r(canvas, Paint()..color = _wallFill.withValues(alpha: .82),
-        cx - tW / 2 + dX + _px * 2, entY + _px * 5 + dY, tW - _px * 4, colH - _px * 2);
-
-    // ── Right side face helper ──
-    void sideQuad(double x, double y, double ht, Color col) {
-      final path = Path()
-        ..moveTo(x,    y)       ..lineTo(x + dX, y + dY)
-        ..lineTo(x + dX, y + dY + ht) ..lineTo(x, y + ht) ..close();
-      canvas.drawPath(path, Paint()..color = col);
-    }
-
-    // Step right faces
-    for (int s = 0; s < 3; s++) {
-      final sw = tW + s * _px * 7;
-      final sy = baseY - s * _px * 2.5;
-      sideQuad(cx + sw / 2, sy, _px * 2.5, vDk);
-    }
-    sideQuad(cx + tW / 2, entY, _px * 5, vDk);
-    // Side of column row (right outer face)
-    for (int i = 0; i < 2; i++) {
-      sideQuad(cx + tW / 2 - _px * (2 + i * 5), platY - colH, colH, vDk.withValues(alpha: .60));
-    }
-
-    // ── Front steps ──
-    for (int s = 0; s < 3; s++) {
-      final sw = tW + s * _px * 7;
-      final sy = baseY - s * _px * 2.5;
-      _r(canvas, Paint()..color = s == 0 ? cLt : c, cx - sw / 2, sy, sw, _px * 2.5);
-      _r(canvas, Paint()..color = cDk, cx - sw / 2, sy + _px * 2, sw, _px * 0.5);
-      final tp = Path()
-        ..moveTo(cx - sw / 2, sy) ..lineTo(cx - sw / 2 + dX, sy + dY)
-        ..lineTo(cx + sw / 2 + dX, sy + dY) ..lineTo(cx + sw / 2, sy) ..close();
-      canvas.drawPath(tp, Paint()..color = cLt.withValues(alpha: 0.55));
-    }
-
-    // Platform
-    _r(canvas, Paint()..color = cLt, cx - platW / 2, platY, platW, _px * 2.5);
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx - platW / 2, platY) ..lineTo(cx - platW / 2 + dX, platY + dY)
-        ..lineTo(cx + platW / 2 + dX, platY + dY) ..lineTo(cx + platW / 2, platY) ..close(),
-      Paint()..color = cLt.withValues(alpha: 0.50),
+    // Bottom-right cool shadow
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, w, h),
+      Paint()..shader = ui.Gradient.radial(
+        Offset(w * 0.80, h * 1.20), w * 1.2,
+        [const Color(0x124A3320), Colors.transparent], [0.0, 0.55],
+      ),
     );
-
-    // Columns (8)
-    const nC = 8;
-    final colArea = platW - _px * 4;
-    final colSp   = colArea / (nC - 1);
-    final colBase = platY - colH;
-    for (int i = 0; i < nC; i++) {
-      final colX = cx - colArea / 2 + i * colSp;
-      // Capital top face
-      canvas.drawPath(
-        Path()
-          ..moveTo(colX - _px * 2.5, colBase)
-          ..lineTo(colX - _px * 2.5 + dX, colBase + dY)
-          ..lineTo(colX + _px * 2.5 + dX, colBase + dY)
-          ..lineTo(colX + _px * 2.5, colBase) ..close(),
-        Paint()..color = cLt.withValues(alpha: 0.48),
-      );
-      // Capital
-      _r(canvas, Paint()..color = cLt, colX - _px * 2.5, colBase, _px * 5, _px * 2.5);
-      // Shaft with fluting
-      _r(canvas, Paint()..color = c,   colX - _px * 1.5, colBase + _px * 2.5, _px * 3, colH - _px * 5);
-      _r(canvas, Paint()..color = cDk, colX + _px * 0.8, colBase + _px * 2.5, _px * 0.8, colH - _px * 5);
-      _r(canvas, Paint()..color = cLt.withValues(alpha: .38), colX - _px * 1.5, colBase + _px * 2.5, _px * 0.55, colH - _px * 5);
-      // Column right side face
-      canvas.drawPath(
-        Path()
-          ..moveTo(colX + _px * 1.5, colBase + _px * 2.5)
-          ..lineTo(colX + _px * 1.5 + dX * .28, colBase + _px * 2.5 + dY * .28)
-          ..lineTo(colX + _px * 1.5 + dX * .28, colBase + _px * 2.5 + (colH - _px * 5) + dY * .28)
-          ..lineTo(colX + _px * 1.5, colBase + _px * 2.5 + (colH - _px * 5)) ..close(),
-        Paint()..color = vDk.withValues(alpha: .45),
-      );
-      // Base
-      _r(canvas, Paint()..color = cLt, colX - _px * 2.5, platY - _px * 2.5, _px * 5, _px * 2.5);
-    }
-
-    // Entablature
-    _r(canvas, Paint()..color = cLt, cx - tW / 2, entY, tW, _px * 2.5);
-    _r(canvas, Paint()..color = c,   cx - tW / 2, entY + _px * 2.5, tW, _px * 2.5);
-    // Triglyphs
-    for (int t = 0; t < 7; t++) {
-      final tx = cx - tW / 2 + _px * 5 + t * (tW - _px * 10) / 6;
-      _r(canvas, Paint()..color = cDk, tx,         entY + _px * 2.5, _px * 1.5, _px * 2.5);
-      _r(canvas, Paint()..color = cDk, tx + _px*3, entY + _px * 2.5, _px * 1.5, _px * 2.5);
-    }
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx - tW / 2, entY) ..lineTo(cx - tW / 2 + dX, entY + dY)
-        ..lineTo(cx + tW / 2 + dX,  entY + dY) ..lineTo(cx + tW / 2, entY) ..close(),
-      Paint()..color = cLt.withValues(alpha: 0.44),
-    );
-    sideQuad(cx + tW / 2, entY, _px * 5, vDk);
-
-    // Pediment (stepped triangle)
-    final pedBase = entY - _px * 0.5;
-    const pedS    = 12;
-    for (int i = 0; i < pedS; i++) {
-      final rowW = tW * (1 - i / pedS) + _px * 2;
-      _r(canvas, Paint()..color = i == 0 ? cLt : c, cx - rowW / 2, pedBase - i * _px * 1.8, rowW, _px * 2.1);
-    }
-    final peakY = pedBase - pedS * _px * 1.8;
-
-    // Pediment right side face
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx + tW / 2, pedBase)
-        ..lineTo(cx + tW / 2 + dX, pedBase + dY)
-        ..lineTo(cx + dX, peakY + dY)
-        ..lineTo(cx, peakY) ..close(),
-      Paint()..color = vDk,
-    );
-    // Ridge
-    _r(canvas, Paint()..color = cDk, cx - _px, peakY, dX + _px * 2, _px);
-
-    // Pulsing peak star
-    final ga = (0.22 + 0.42 * pulseT).clamp(0.0, 1.0);
-    canvas.drawCircle(Offset(cx, peakY - _px * 7), _px * 6,
-        Paint()..color = (hot ? _orange : _copper).withValues(alpha: ga)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9));
-    _star4(canvas, cx, peakY - _px * 7, hot ? _orange : cLt, _px * 2.8);
-  }
-
-  void _star4(Canvas canvas, double cx, double cy, Color c, double s) {
-    final p = Paint()..color = c;
-    _r(canvas, p, cx-s*.22, cy-s,    s*.44, s*2  );
-    _r(canvas, p, cx-s,     cy-s*.22, s*2,   s*.44);
-    _r(canvas, p, cx-s*.60, cy-s*.60, s*.30, s*.30);
-    _r(canvas, p, cx+s*.30, cy-s*.60, s*.30, s*.30);
-    _r(canvas, p, cx-s*.60, cy+s*.30, s*.30, s*.30);
-    _r(canvas, p, cx+s*.30, cy+s*.30, s*.30, s*.30);
-    _r(canvas, p, cx-s*.35, cy-s*.35, s*.70, s*.70);
-  }
-
-  void _hoverGlow(Canvas canvas, double w, double h) {
-    final zone = tappedZone ?? hovered;
-    if (zone == null) return;
-    final center = switch (zone) {
-      AcropolisZone.agora     => agoraRect.center,
-      AcropolisZone.stoa      => stoaRect.center,
-      AcropolisZone.acropolis => acropolisRect.center,
-    };
-    final glowMult = isMobile ? 1.3 : 1.0;
-    final glowR = switch (zone) {
-      AcropolisZone.agora     => w * 0.144 * 0.56 * glowMult,
-      AcropolisZone.stoa      => w * 0.221 * 0.56 * glowMult,
-      AcropolisZone.acropolis => math.min(w * 0.504, h * 0.432) * 0.44,
-    };
-    final eased = reducedMotion ? 0.5 : Curves.easeInOut.transform(pulseT);
-    canvas.drawCircle(center, glowR,
-      Paint()
-        ..color = _orange.withValues(alpha: (0.05 + 0.15 * eased).clamp(0.0, 1.0))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 34));
-    if (tapFlashT > 0) {
-      final burst = (tapFlashT * (1 - tapFlashT) * 4.0 * 0.65).clamp(0.0, 1.0);
-      canvas.drawCircle(center, glowR * 1.35,
-        Paint()
-          ..color = _orange.withValues(alpha: burst)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 42));
-    }
-  }
-
-  void _labels(Canvas canvas, double w, double h) {
-    final labelEntrance = _eAlpha(0.62);
-    if (labelEntrance == 0) return;
-    final aHot = hovered == AcropolisZone.agora     || tappedZone == AcropolisZone.agora;
-    final sHot = hovered == AcropolisZone.stoa      || tappedZone == AcropolisZone.stoa;
-    final tHot = hovered == AcropolisZone.acropolis || tappedZone == AcropolisZone.acropolis;
-    // Responsive font sizes — readable on all phone widths, scale with screen
-    final fsZone  = (w * 0.028).clamp(10.0, 15.0);
-    final fsSub   = (w * 0.025).clamp(9.0,  13.0);
-    final fsTitle = (w * 0.030).clamp(10.0, 16.0);
-    _lbl(canvas, 'AGORA',          w*.440, h*.800, aHot ? _orange : _copperLt, fsZone,  op: labelEntrance);
-    _lbl(canvas, 'STOA',           w*.630, h*.665, sHot ? _orange : _copperLt, fsZone,  op: labelEntrance);
-    // SYMPOSIUM sits below the temple image (mobile: bottom ≈ h*0.36, desktop: bottom ≈ h*0.30)
-    final symLblY = isMobile ? h * 0.385 : h * 0.330;
-    _lbl(canvas, 'SYMPOSIUM',      w*.500, symLblY, tHot ? _orange : _copperLt, fsSub,   op: labelEntrance);
-    _lbl(canvas, 'A · C · R · O', w*.500, h*.026, _copperLt,                   fsTitle, ls: 7.0, op: labelEntrance);
-  }
-
-  void _lbl(Canvas canvas, String text, double cx, double cy,
-      Color color, double fs, {double ls = 2.0, double op = 1.0}) {
-    final tp = TextPainter(
-      text: TextSpan(text: text, style: GoogleFonts.spaceMono(
-          fontSize: fs, fontWeight: FontWeight.bold,
-          color: color.withValues(alpha: op),
-          letterSpacing: ls,
-          shadows: const [Shadow(color: Colors.black, blurRadius: 5)])),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
-  }
-
-  void _r(Canvas canvas, Paint paint, double x, double y, double w, double h) {
-    if (w <= 0 || h <= 0) return;
-    canvas.drawRect(Rect.fromLTWH(x, y, w, h), paint);
   }
 
   @override
-  bool shouldRepaint(_CityMapPainter old) =>
-      old.pulseT != pulseT || old.flickerT != flickerT ||
-      old.hovered != hovered || old.tappedZone != tappedZone ||
-      old.tapFlashT != tapFlashT ||
-      old.templeImg != templeImg || old.stoaImg != stoaImg || old.agoraImg != agoraImg ||
-      old.templeAlpha != templeAlpha || old.stoaAlpha != stoaAlpha || old.agoraAlpha != agoraAlpha ||
-      old.shimmerT != shimmerT || old.entranceT != entranceT ||
-      old.reducedMotion != reducedMotion;
+  bool shouldRepaint(_HazePainter _) => false;
+}
+
+// ── Scenery painter ───────────────────────────────────────────────────────────
+class _SceneryPainter extends CustomPainter {
+  final double w, h;
+  final bool isMobile, front;
+  final ui.Image? cypress, statue, brokenCol, olive, amphora, brazier;
+
+  const _SceneryPainter({
+    required this.w, required this.h,
+    required this.isMobile, required this.front,
+    this.cypress, this.statue, this.brokenCol, this.olive,
+    this.amphora, this.brazier,
+  });
+
+  // Draws a sprite with its BASE at (cx, baseY), width = spriteW.
+  void _sp(Canvas canvas, ui.Image? img, double cx, double baseY, double spriteW,
+      {bool hideMobile = false}) {
+    if (img == null || (hideMobile && isMobile)) return;
+    final sw = spriteW.clamp(20.0, 110.0);
+    final sh = sw * img.height / img.width;
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      Rect.fromLTWH(cx - sw / 2, baseY - sh, sw, sh),
+      Paint()..filterQuality = FilterQuality.none,
+    );
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!front) {
+      // Back layer — behind buildings
+      _sp(canvas, cypress,   w * 0.07, h * 0.70, w * 0.070);
+      _sp(canvas, statue,    w * 0.33, h * 0.68, w * 0.055, hideMobile: true);
+      _sp(canvas, brokenCol, w * 0.66, h * 0.68, w * 0.050, hideMobile: true);
+      _sp(canvas, cypress,   w * 0.93, h * 0.68, w * 0.070);
+      _sp(canvas, olive,     w * 0.42, h * 0.70, w * 0.050, hideMobile: true);
+    } else {
+      // Front layer — in front of buildings (lower on screen = closer)
+      _sp(canvas, amphora, w * 0.11, h * 0.88, w * 0.042);
+      _sp(canvas, olive,   w * 0.27, h * 0.90, w * 0.070);
+      _sp(canvas, brazier, w * 0.50, h * 0.86, w * 0.038, hideMobile: true);
+      _sp(canvas, olive,   w * 0.73, h * 0.91, w * 0.070);
+      _sp(canvas, amphora, w * 0.90, h * 0.89, w * 0.042, hideMobile: true);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SceneryPainter o) =>
+      o.w != w || o.h != h || o.front != front ||
+      o.cypress != cypress || o.statue != statue ||
+      o.brokenCol != brokenCol || o.olive != olive ||
+      o.amphora != amphora || o.brazier != brazier;
+}
+
+// ── Vignette ──────────────────────────────────────────────────────────────────
+class _VignettePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..shader = ui.Gradient.radial(
+        Offset(size.width / 2, size.height / 2),
+        size.width * 0.80,
+        [Colors.transparent, const Color(0x1A000000), const Color(0x44000000)],
+        [0.0, 0.70, 1.0],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_VignettePainter _) => false;
 }
