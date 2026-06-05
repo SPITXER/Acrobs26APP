@@ -201,7 +201,7 @@ class _Header extends StatelessWidget {
               ]),
 
               // ── Badge pill ──────────────────────────────────────────
-              if (badge != AcroBadge.wanderer) ...[
+              ...[
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(

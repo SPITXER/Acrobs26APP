@@ -393,7 +393,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                   ),
                 ],
                 // Badge pill
-                if (badge != AcroBadge.wanderer) ...[
+                ...[
                   const SizedBox(height: 6),
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     Text(badgeInfo.emoji,
