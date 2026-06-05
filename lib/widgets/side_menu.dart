@@ -21,6 +21,8 @@ class SideMenu extends StatelessWidget {
           child: Column(children: [
             _Header(state: state),
             const Divider(color: Colors.white10, height: 1),
+            if (state.activeDebates.isNotEmpty)
+              _JumpBackIn(state: state),
             Expanded(
               child: ListView(padding: EdgeInsets.zero, children: [
                 _Section(label: 'YOUR STOA ROOMS'),
@@ -71,6 +73,77 @@ class SideMenuButton extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal widgets
 // ─────────────────────────────────────────────────────────────────────────────
+
+class _JumpBackIn extends StatelessWidget {
+  final AppState state;
+  const _JumpBackIn({required this.state});
+
+  void _jump(BuildContext context) {
+    final d   = state.activeDebates.first;
+    state.reenterRoom(
+      d['roomId']     ?? '',
+      title:       d['title']       ?? 'Debate',
+      partnerName: d['partnerName'] ?? '',
+      partnerIni:  d['partnerIni']  ?? '?',
+    );
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d           = state.activeDebates.first;
+    final partnerName = d['partnerName'] ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: () => _jump(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AcroColors.gold.withOpacity(0.10),
+              border: Border.all(color: AcroColors.gold.withOpacity(0.55)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(children: [
+              Container(
+                width: 8, height: 8,
+                decoration: const BoxDecoration(
+                    color: Colors.greenAccent, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('JUMP BACK IN!',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AcroColors.gold,
+                            letterSpacing: 1.5)),
+                    if (partnerName.isNotEmpty)
+                      Text('vs $partnerName',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.40))),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios,
+                  size: 14, color: AcroColors.gold.withOpacity(0.60)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _Header extends StatelessWidget {
   final AppState state;
