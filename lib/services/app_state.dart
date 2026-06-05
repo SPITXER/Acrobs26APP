@@ -223,14 +223,33 @@ class AppState extends ChangeNotifier {
   }
 
   // Re-enter a previously joined room from the side menu.
-  // Returns false if the room is no longer cached.
-  bool reenterRoom(String roomId) {
-    final room = _roomCache[roomId];
-    if (room == null) return false;
-    currentRoom = room;
+  // Falls back to reconstructing a minimal DebateRoom when cache is cold
+  // (e.g. after a page refresh) so RoomScreen can still connect via Firebase.
+  void reenterRoom(String roomId, {
+    String title = 'Debate',
+    String partnerName = '',
+    String partnerIni = '?',
+  }) {
+    final cached = _roomCache[roomId];
+    if (cached != null) {
+      currentRoom = cached;
+    } else {
+      // Reconstruct from the data we have — enough for RoomScreen to reconnect
+      currentRoom = DebateRoom(
+        id: roomId,
+        title: title,
+        host: partnerName.isNotEmpty ? partnerName : profile.name,
+        hostInitials: partnerName.isNotEmpty ? partnerIni : profile.initials,
+        isHost: false,
+        members: [
+          RoomMember(name: profile.name, initials: profile.initials),
+          if (partnerName.isNotEmpty)
+            RoomMember(name: partnerName, initials: partnerIni, isHost: true),
+        ],
+      );
+    }
     _roomEnterTime = DateTime.now();
     notifyListeners();
-    return true;
   }
 
   // Returns the debate room ID for a given stoa argument room ID (host use).

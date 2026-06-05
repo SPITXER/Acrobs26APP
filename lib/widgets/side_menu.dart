@@ -287,11 +287,14 @@ class _RoomTile extends StatelessWidget {
   });
 
   void _enterDebate(BuildContext context) {
-    final state  = context.read<AppState>();
-    final stoaId = room['roomId'] as String? ?? '';
-    // Restore currentRoom from cache (host path: lookup via stoa→debate map)
+    final state   = context.read<AppState>();
+    final stoaId  = room['roomId'] as String? ?? '';
     final debateId = state.debateRoomForStoaRoom(stoaId);
-    if (debateId != null) state.reenterRoom(debateId);
+    if (debateId != null) {
+      state.reenterRoom(debateId,
+          partnerName: joinerName ?? '',
+          title: title);
+    }
     final nav = Navigator.of(context);
     nav.pop();
     nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
@@ -299,24 +302,31 @@ class _RoomTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: hasNotif
-            ? Colors.orange.withOpacity(0.06)
-            : Colors.white.withOpacity(0.03),
-        border: Border.all(
-            color: hasNotif
-                ? Colors.orangeAccent.withOpacity(0.40)
-                : Colors.white.withOpacity(0.08)),
+    final state   = context.read<AppState>();
+    final stoaId  = room['roomId'] as String? ?? '';
+    final hasRoom = state.debateRoomForStoaRoom(stoaId) != null;
+    final canEnter = hasNotif || hasRoom;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row
-          Row(children: [
+        onTap: canEnter ? () => _enterDebate(context) : null,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+          decoration: BoxDecoration(
+            color: hasNotif
+                ? Colors.orange.withOpacity(0.06)
+                : Colors.white.withOpacity(0.03),
+            border: Border.all(
+                color: hasNotif
+                    ? Colors.orangeAccent.withOpacity(0.40)
+                    : Colors.white.withOpacity(0.08)),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            // Status dot
             if (hasNotif)
               Container(
                 width: 6, height: 6,
@@ -324,51 +334,60 @@ class _RoomTile extends StatelessWidget {
                 decoration: const BoxDecoration(
                     color: Colors.orangeAccent, shape: BoxShape.circle),
               ),
+
+            // Title + subtitle
             Expanded(
-              child: Text(title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ),
-          ]),
-          const SizedBox(height: 3),
-          Text(
-            hasNotif
-                ? '${joinerName ?? 'Someone'} challenged you!'
-                : 'Waiting for challenger…',
-            style: TextStyle(
-                fontSize: 11,
-                color: hasNotif
-                    ? Colors.orangeAccent
-                    : Colors.white.withOpacity(0.30)),
-          ),
-          // Action buttons
-          const SizedBox(height: 10),
-          Row(children: [
-            if (hasNotif)
-              Expanded(
-                child: TextButton(
-                  onPressed: () => _enterDebate(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AcroColors.gold,
-                    backgroundColor: AcroColors.gold.withOpacity(0.10),
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(2)),
-                    textStyle: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13)),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasNotif
+                        ? '${joinerName ?? 'Someone'} challenged you!'
+                        : 'Waiting for challenger…',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: hasNotif
+                            ? Colors.orangeAccent
+                            : Colors.white.withOpacity(0.30)),
                   ),
-                  child: const Text('ENTER DEBATE'),
-                ),
+                ],
               ),
-            if (hasNotif) const SizedBox(width: 8),
+            ),
+
+            // ENTER button (visible when challenged or debate room cached)
+            if (canEnter) ...[
+              const SizedBox(width: 6),
+              TextButton(
+                onPressed: () => _enterDebate(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: AcroColors.gold,
+                  backgroundColor: AcroColors.gold.withOpacity(0.10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2)),
+                  textStyle: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5),
+                ),
+                child: const Text('ENTER'),
+              ),
+            ],
+
+            // END button — always visible
             TextButton(
               onPressed: onTerminate,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.redAccent.shade100,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 6),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(2)),
                 textStyle: GoogleFonts.dmSans(
@@ -379,7 +398,7 @@ class _RoomTile extends StatelessWidget {
               child: const Text('END'),
             ),
           ]),
-        ],
+        ),
       ),
     );
   }
@@ -421,9 +440,13 @@ class _ActiveDebates extends StatelessWidget {
   final AppState state;
   const _ActiveDebates({required this.state});
 
-  void _enterRoom(BuildContext context, String roomId) {
-    final state = context.read<AppState>();
-    state.reenterRoom(roomId); // restore currentRoom from cache
+  void _enterRoom(BuildContext context, Map<String, String> d) {
+    context.read<AppState>().reenterRoom(
+      d['roomId'] ?? '',
+      title:       d['title']       ?? 'Debate',
+      partnerName: d['partnerName'] ?? '',
+      partnerIni:  d['partnerIni']  ?? '?',
+    );
     final nav = Navigator.of(context);
     nav.pop();
     nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
@@ -435,7 +458,12 @@ class _ActiveDebates extends StatelessWidget {
     if (debates.isEmpty) return _empty('No active debates.');
     return Column(
       children: debates.map((d) {
-        return Container(
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () => _enterRoom(context, d),
+            child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: AcroColors.gold.withOpacity(0.05),
@@ -460,7 +488,7 @@ class _ActiveDebates extends StatelessWidget {
                     fontSize: 11,
                     color: Colors.white.withOpacity(0.35))),
             trailing: TextButton(
-              onPressed: () => _enterRoom(context, d['roomId'] ?? ''),
+              onPressed: () => _enterRoom(context, d),
               style: TextButton.styleFrom(
                 foregroundColor: AcroColors.gold,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -472,6 +500,9 @@ class _ActiveDebates extends StatelessWidget {
               child: const Text('ENTER'),
             ),
           ),
+        ),
+          ),
+        );
         );
       }).toList(),
     );
