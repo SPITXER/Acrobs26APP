@@ -1011,7 +1011,7 @@ class _MobileSceneryPainter extends CustomPainter {
       _sp(canvas, flowerBush,      0.80, 0.38, 0.15, 48, 98);
       _sp(canvas, landmarkThinker, 0.90, 0.60, 0.20, 60, 100);
       _sp(canvas, herm,            0.25, 0.67, 0.12, 40, 80);
-      _sp(canvas, cypress,         0.84, 0.65, 0.18, 58, 120);
+      _sp(canvas, cypress,         0.85, 0.37, 0.18, 58, 120);
     } else {
       _sp(canvas, amphora,        0.12, 0.96, 0.12, 40, 74);
       _sp(canvas, flowerBush,     0.78, 0.94, 0.20, 62, 112);
