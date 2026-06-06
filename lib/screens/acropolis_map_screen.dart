@@ -407,7 +407,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           final hot = _tappedZone == s.zone;
           return Positioned(
             left:  w * s.xF - bw / 2,
-            top:   h * s.yF - h * s.rPx / 1440.0 + h * 0.03,
+            top:   h * s.yF - h * s.rPx / 1440.0 + h * 0.03 - 45,
             width: bw,
             child: Opacity(
               opacity: a,
