@@ -40923,7 +40923,7 @@ $.a6.k3$.push(new A.alo(q))},
 xH(){var s=0,r=A.w(t.H),q=this
 var $async$xH=A.q(function(a,b){if(a===1)return A.t(b,r)
 while(true)switch(s){case 0:s=2
-return A.x(A.fO(A.b([q.eB("assets/images/Sym2.png",512,new A.akR(q)),q.eB("assets/images/Stoa1.png",512,new A.akS(q)),q.eB("assets/images/AgoraF2i.png",512,new A.akT(q)),q.eB("assets/images/earth_tile.png",256,new A.akX(q)),q.eB("assets/images/road_tile.png",256,new A.akY(q)),q.eB("assets/images/cypress.png",256,new A.akZ(q)),q.eB("assets/images/statue.png",256,new A.al_(q)),q.eB("assets/images/broken_column.png",256,new A.al0(q)),q.eB("assets/images/olive_bush.png",256,new A.al1(q)),q.eB("assets/images/amphora.png",256,new A.al2(q)),q.eB("assets/images/brazier.png",256,new A.al3(q)),q.eB("assets/images/road_vertical.png",1024,new A.akU(q)),q.eB("assets/images/flower_bush.png",256,new A.akV(q)),q.eB("assets/images/herm.png",256,new A.akW(q))],t.mo),t.H),$async$xH)
+return A.x(A.fO(A.b([q.eB("assets/images/Sym2.png",512,new A.akR(q)),q.eB("assets/images/Stoa2.png",512,new A.akS(q)),q.eB("assets/images/AgoraF2i.png",512,new A.akT(q)),q.eB("assets/images/earth_tile.png",256,new A.akX(q)),q.eB("assets/images/road_tile.png",256,new A.akY(q)),q.eB("assets/images/cypress.png",256,new A.akZ(q)),q.eB("assets/images/statue.png",256,new A.al_(q)),q.eB("assets/images/broken_column.png",256,new A.al0(q)),q.eB("assets/images/olive_bush.png",256,new A.al1(q)),q.eB("assets/images/amphora.png",256,new A.al2(q)),q.eB("assets/images/brazier.png",256,new A.al3(q)),q.eB("assets/images/road_vertical.png",1024,new A.akU(q)),q.eB("assets/images/flower_bush.png",256,new A.akV(q)),q.eB("assets/images/herm.png",256,new A.akW(q))],t.mo),t.H),$async$xH)
 case 2:return A.u(null,r)}})
 return A.v($async$xH,r)},
 eB(a,b,c){return this.adb(a,b,c)},
@@ -40995,7 +40995,7 @@ return A.v9(o,B.F0,A.iC(new A.ok(A.b([n,s,r,q],t.bA)),new A.alh(p),o),o,B.ij,o)}
 a5v(a,b,c,d){var s=this,r=d?0.25:0.196,q=d?82:78,p=d?122:238,o=s.ay,n=d?0.29:0.23,m=d?96:99,l=d?140:288,k=s.ax,j=d?0.24:0.22,i=d?82:92,h=d?122:280,g=t.pv
 r=A.X(new A.a2(A.b([new A.wT([0.58,0,o,p,q,"Browse","THE AGORA",r,0.19,B.jb]),new A.wT([0.57,0.18,k,l,m,"Forum","THE STOA",n,0.5,B.jc]),new A.wT([0.59,0.36,s.at,h,i,"The Assembly","SYMPOSIUM",j,0.81,B.jd])],t.Ki),new A.akQ(s,a,b,c),g),g.i("aq.E"))
 return r},
-a5k(a,b,c){var s=this,r=null,q=B.bg.ac(c),p=A.b([new A.wU([0.1525,165,90,0.28,s.at,0.574,"The Assembly","SYMPOSIUM",0.45,0.22,B.jd]),new A.wU([0.2832,275,180,0.14,s.ax,0.599,"Forum","THE STOA",0.63,0.52,B.jc]),new A.wU([0.3137,310,200,0,s.ay,0.562,"Browse","THE AGORA",0.4,0.82,B.jb])],t.FC),o=A.b([A.fT(A.e3(r,r,r,new A.Ee(s.ch,r,0,0,!0,!1,r),new A.K(a,b),!1),!0,r),A.uR(0,A.fT(A.e3(r,r,r,new A.Fe(r),B.E,!1),!0,r))],t.p),n=s.fx
+a5k(a,b,c){var s=this,r=null,q=B.bg.ac(c),p=A.b([new A.wU([0.1525,165,90,0.28,s.at,0.574,"The Assembly","SYMPOSIUM",0.45,0.22,B.jd]),new A.wU([0.282,275,180,0.14,s.ax,0.554,"Forum","THE STOA",0.63,0.52,B.jc]),new A.wU([0.3137,310,200,0,s.ay,0.562,"Browse","THE AGORA",0.4,0.82,B.jb])],t.FC),o=A.b([A.fT(A.e3(r,r,r,new A.Ee(s.ch,r,0,0,!0,!1,r),new A.K(a,b),!1),!0,r),A.uR(0,A.fT(A.e3(r,r,r,new A.Fe(r),B.E,!1),!0,r))],t.p),n=s.fx
 if(n!=null)o.push(A.uR(0,A.fT(A.ae7(B.T,r,r,r,r,B.b7,B.CJ,r,n,!1,!1,!1,r,B.cw,1,r),!0,r)))
 n=s.y
 o.push(A.vS(A.fT(A.e3(r,r,r,new A.FJ(a,b,!1,s.cx,s.cy,s.fy,s.go,s.dy,s.dx,r),new A.K(a,b),!1),!0,r),new A.h(0,n*0.3)))
