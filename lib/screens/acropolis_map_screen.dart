@@ -336,16 +336,17 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   Widget _buildMobileVertical(double w, double h, double entT) {
     final alpha = Curves.easeOut.transform(entT);
 
-    // contentMidFrac = vertical centre of visible art as fraction of image height
-    // (measured from alpha bounds: Sym 20–94.7%, Stoa 34.4–85.4%, Agora 28.7–83.7%)
-    // top = h*yF - contentMidFrac*bw  →  visible art centred on plaza circle
+    // bwH = fraction of screen HEIGHT so content exactly fills the plaza circle.
+    // Formula: bwH = 2*r_img / (1440 * (botFrac-topFrac))  →  device-independent.
+    // mid = (topFrac+botFrac)/2, measured from alpha-channel bounds of each 4000×4000 PNG.
+    // top = h*yF - mid*bw  →  visible art centred on plaza circle centre.
     final stops = [
       (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, xF: 0.45, yF: 0.22, bwF: 0.35, bwMin: 124.0, bwMax: 208.0, mid: 0.574, delay: 0.28),
+       img: _templeImg, xF: 0.45, yF: 0.22, bwH: 0.1525, bwMin: 90.0,  bwMax: 165.0, mid: 0.574, delay: 0.28),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   xF: 0.63, yF: 0.52, bwF: 0.44, bwMin: 156.0, bwMax: 260.0, mid: 0.599, delay: 0.14),
+       img: _stoaImg,   xF: 0.63, yF: 0.52, bwH: 0.2832, bwMin: 180.0, bwMax: 275.0, mid: 0.599, delay: 0.14),
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
-       img: _agoraImg,  xF: 0.40, yF: 0.82, bwF: 0.42, bwMin: 150.0, bwMax: 250.0, mid: 0.562, delay: 0.0),
+       img: _agoraImg,  xF: 0.40, yF: 0.82, bwH: 0.3137, bwMin: 200.0, bwMax: 310.0, mid: 0.562, delay: 0.0),
     ];
 
     return GestureDetector(
@@ -402,7 +403,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
         ),
         // ⑤ Buildings — absolutely positioned, back-to-front (Stoa → Sym → Agora)
         ...stops.map((s) {
-          final bw  = (w * s.bwF).clamp(s.bwMin, s.bwMax);
+          final bw  = (h * s.bwH).clamp(s.bwMin, s.bwMax);
           final a   = Curves.easeOut.transform(
               ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
           final hot = _tappedZone == s.zone;
