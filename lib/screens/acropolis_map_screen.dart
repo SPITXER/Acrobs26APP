@@ -41,6 +41,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   late AnimationController _pulse;
   late AnimationController _tapFlash;
   late AnimationController _entrance;
+  late AnimationController _artSpring;
+  double _mobileDragY   = 0.0;
+  double _artSpringFrom = 0.0;
 
   // Parallax (normalised −1..1)
   double _nX = 0.0;
@@ -73,6 +76,11 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       });
     _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
       ..forward();
+    _artSpring = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))
+      ..addListener(() {
+        final t = Curves.easeOut.transform(_artSpring.value);
+        if (mounted) setState(() => _mobileDragY = _artSpringFrom * (1.0 - t));
+      });
     _loadImages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppState>().registerSignupDialogCallback(() {
@@ -114,7 +122,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
 
   @override
   void dispose() {
-    _pulse.dispose(); _tapFlash.dispose(); _entrance.dispose();
+    _pulse.dispose(); _tapFlash.dispose(); _entrance.dispose(); _artSpring.dispose();
     for (final img in [
       _templeImg, _stoaImg, _agoraImg, _earthTile, _roadTile,
       _cypress, _statue, _brokenCol, _olive, _amphora, _brazier,
@@ -166,7 +174,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       backgroundColor: _earthBg,
       endDrawer: const SideMenu(),
       body: AnimatedBuilder(
-        animation: Listenable.merge([_pulse, _tapFlash, _entrance]),
+        animation: Listenable.merge([_pulse, _tapFlash, _entrance, _artSpring]),
         builder: (_, __) => LayoutBuilder(builder: (_, box) {
           final w = box.maxWidth;
           final h = box.maxHeight;
@@ -332,7 +340,18 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
        img: _agoraImg,  delay: 0.30),
     ];
 
-    return Stack(clipBehavior: Clip.hardEdge, children: [
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragUpdate: (d) {
+        _artSpring.stop();
+        setState(() =>
+            _mobileDragY = (_mobileDragY + d.delta.dy * 0.45).clamp(-65.0, 65.0));
+      },
+      onVerticalDragEnd: (_) {
+        _artSpringFrom = _mobileDragY;
+        _artSpring.forward(from: 0);
+      },
+      child: Stack(clipBehavior: Clip.hardEdge, children: [
       // ① Earth tiles — IgnorePointer so touches pass through to buildings
       IgnorePointer(
         child: CustomPaint(
@@ -346,16 +365,17 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       // ② Warm haze
       Positioned.fill(child: IgnorePointer(
           child: CustomPaint(painter: _HazePainter()))),
-      // ③ Vertical stone path running top-to-bottom
+      // ③ Vertical road — real road tile rotated 90°
       Positioned.fill(child: IgnorePointer(
-          child: CustomPaint(painter: _VertPathPainter()))),
-      // ④ Side artifacts (cypress, olive, amphora)
+          child: CustomPaint(painter: _VertPathPainter(roadTile: _roadTile)))),
+      // ④ Side artifacts — ON the road, bob with drag
       IgnorePointer(
         child: CustomPaint(
           size: Size(w, h),
           painter: _MobileSidePainter(
             w: w, h: h,
             cypress: _cypress, olive: _olive, amphora: _amphora,
+            dragY: _mobileDragY, pulseT: _pulse.value,
           ),
         ),
       ),
@@ -507,7 +527,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           child: CustomPaint(painter: _VignettePainter()))),
       // ⑦ Side menu
       Positioned(top: 6, right: 16, child: const SideMenuButton()),
-    ]);
+    ]),
+    );
   }
 }
 
@@ -882,65 +903,72 @@ class _SceneryPainter extends CustomPainter {
       o.amphora != amphora || o.brazier != brazier;
 }
 
-// ── Mobile vertical stone path ────────────────────────────────────────────────
+// ── Mobile vertical road — original road tile rotated 90° ────────────────────
 class _VertPathPainter extends CustomPainter {
+  final ui.Image? roadTile;
+  const _VertPathPainter({this.roadTile});
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final cx = w / 2;
-    final pathW = (w * 0.36).clamp(80.0, 160.0);
+    // Visual road width on screen
+    final bandW = (w * 0.42).clamp(100.0, 190.0);
 
-    // Stone path band — faint warm fill
-    final pathPaint = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(cx - pathW / 2, 0), Offset(cx + pathW / 2, 0),
-        [
-          Colors.transparent,
-          const Color(0x33D4C4A0),
-          const Color(0x55D4C4A0),
-          const Color(0x33D4C4A0),
-          Colors.transparent,
-        ],
-        [0.0, 0.15, 0.50, 0.85, 1.0],
+    canvas.save();
+    // Rotate canvas so the horizontal road becomes vertical
+    canvas.translate(w / 2, h / 2);
+    canvas.rotate(math.pi / 2);
+    // Now: local x-axis = screen down, local y-axis = screen right
+    // Road runs along local x; bandW is road thickness along local y
+    final roadLen = h * 1.1; // bleed past top and bottom edges
+
+    if (roadTile != null) {
+      final tW = roadTile!.width.toDouble();
+      final tH = roadTile!.height.toDouble();
+      final drawH = bandW;
+      final drawW = tW * (drawH / tH);
+      final cols  = (roadLen / drawW).ceil() + 1;
+      final startX = -roadLen / 2;
+      for (var c = 0; c < cols; c++) {
+        canvas.drawImageRect(
+          roadTile!,
+          Rect.fromLTWH(0, 0, tW, tH),
+          Rect.fromLTWH(startX + c * drawW, -bandW / 2, drawW, drawH),
+          Paint()..filterQuality = FilterQuality.none,
+        );
+      }
+    } else {
+      canvas.drawRect(
+        Rect.fromLTWH(-roadLen / 2, -bandW / 2, roadLen, bandW),
+        Paint()..color = const Color(0xFFD4C4A0),
       );
-    canvas.drawRect(Rect.fromLTWH(cx - pathW / 2, 0, pathW, h), pathPaint);
-
-    // Edge lines
-    final edge = Paint()
-      ..color = const Color(0x448A7A5A)
-      ..strokeWidth = 1.5;
-    canvas.drawLine(Offset(cx - pathW / 2, 0), Offset(cx - pathW / 2, h), edge);
-    canvas.drawLine(Offset(cx + pathW / 2, 0), Offset(cx + pathW / 2, h), edge);
-
-    // Dashed centre line
-    final dash = Paint()
-      ..color = const Color(0x228A7A5A)
-      ..strokeWidth = 1.0;
-    const segLen = 18.0;
-    const gapLen = 10.0;
-    var y = 0.0;
-    while (y < h) {
-      canvas.drawLine(Offset(cx, y), Offset(cx, (y + segLen).clamp(0, h)), dash);
-      y += segLen + gapLen;
     }
+
+    // Edge shadow lines
+    final edge = Paint()..color = const Color(0x888A7A5A)..strokeWidth = 1.5;
+    canvas.drawLine(Offset(-roadLen / 2, -bandW / 2), Offset(roadLen / 2, -bandW / 2), edge);
+    canvas.drawLine(Offset(-roadLen / 2,  bandW / 2), Offset(roadLen / 2,  bandW / 2), edge);
+
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_VertPathPainter _) => false;
+  bool shouldRepaint(_VertPathPainter o) => o.roadTile != roadTile;
 }
 
-// ── Mobile side artifacts ─────────────────────────────────────────────────────
+// ── Mobile side artifacts — on-road, bob with drag + idle pulse ───────────────
 class _MobileSidePainter extends CustomPainter {
-  final double w, h;
+  final double w, h, dragY, pulseT;
   final ui.Image? cypress, olive, amphora;
 
   const _MobileSidePainter({
     required this.w, required this.h,
+    required this.dragY, required this.pulseT,
     this.cypress, this.olive, this.amphora,
   });
 
-  void _sp(Canvas canvas, ui.Image? img, double cx, double cy, double spriteW,
+  void _sp(Canvas canvas, ui.Image? img, double cx, double baseY, double spriteW,
       {double minW = 20.0, double maxW = 80.0}) {
     if (img == null) return;
     final sw = spriteW.clamp(minW, maxW);
@@ -948,34 +976,33 @@ class _MobileSidePainter extends CustomPainter {
     canvas.drawImageRect(
       img,
       Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
-      Rect.fromLTWH(cx - sw / 2, cy - sh, sw, sh),
+      Rect.fromLTWH(cx - sw / 2, baseY - sh, sw, sh),
       Paint()..filterQuality = FilterQuality.none,
     );
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Divide screen into 3 zones; place artifacts at zone boundaries
-    final leftX  = w * 0.12;
-    final rightX = w * 0.88;
-    final sz     = (w * 0.13).clamp(28.0, 60.0);
+    final roadW = (w * 0.42).clamp(100.0, 190.0);
+    // Place inside road band, offset slightly left/right of centre
+    final leftX  = w / 2 - roadW * 0.26;
+    final rightX = w / 2 + roadW * 0.26;
+    final sz = (w * 0.10).clamp(22.0, 48.0);
 
-    // Cypress trees flanking top
-    _sp(canvas, cypress, leftX,  h * 0.24, sz, minW: 22, maxW: 52);
-    _sp(canvas, cypress, rightX, h * 0.22, sz, minW: 22, maxW: 52);
+    // Idle bob + drag parallax (each artifact reacts at a slightly different rate)
+    final bob = math.sin(pulseT * 2 * math.pi) * 3.5;
 
-    // Olive bushes at mid-screen
-    _sp(canvas, olive,   leftX,  h * 0.52, sz * 1.1, minW: 26, maxW: 60);
-    _sp(canvas, olive,   rightX, h * 0.55, sz * 1.1, minW: 26, maxW: 60);
-
-    // Amphoras near bottom
-    _sp(canvas, amphora, leftX,  h * 0.80, sz * 0.8, minW: 18, maxW: 44);
-    _sp(canvas, amphora, rightX, h * 0.82, sz * 0.8, minW: 18, maxW: 44);
+    _sp(canvas, cypress, leftX,  h * 0.24 + bob * 0.9 + dragY * 0.5,  sz * 1.2, minW: 22, maxW: 50);
+    _sp(canvas, cypress, rightX, h * 0.21 + bob * 1.1 + dragY * 0.45, sz * 1.1, minW: 22, maxW: 46);
+    _sp(canvas, olive,   leftX,  h * 0.50 + bob       + dragY * 0.6,  sz * 1.3, minW: 26, maxW: 58);
+    _sp(canvas, olive,   rightX, h * 0.53 + bob * 0.8 + dragY * 0.55, sz * 1.2, minW: 26, maxW: 54);
+    _sp(canvas, amphora, leftX,  h * 0.78 + bob * 1.2 + dragY * 0.7,  sz,       minW: 18, maxW: 40);
+    _sp(canvas, amphora, rightX, h * 0.80 + bob * 0.9 + dragY * 0.65, sz,       minW: 18, maxW: 40);
   }
 
   @override
   bool shouldRepaint(_MobileSidePainter o) =>
-      o.w != w || o.h != h ||
+      o.w != w || o.h != h || o.dragY != dragY || o.pulseT != pulseT ||
       o.cypress != cypress || o.olive != olive || o.amphora != amphora;
 }
 
