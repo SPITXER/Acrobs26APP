@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -19,10 +20,14 @@ class _SearchingScreenState extends State<SearchingScreen>
   StreamSubscription? _queueWatcher;
   StreamSubscription? _matchListener;
   bool _matched = false;
+  late final String _loadingWord;
+
+  static const _words = ['Wandering', 'Contemplating', 'Questioning'];
 
   @override
   void initState() {
     super.initState();
+    _loadingWord = _words[Random().nextInt(_words.length)];
     _pulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -105,12 +110,8 @@ class _SearchingScreenState extends State<SearchingScreen>
 
             const SizedBox(height: 52),
 
-            // 3 pulsing terms — staggered phase
-            const _TermWidget(word: 'Wandering',     delayMs: 0),
-            const SizedBox(height: 22),
-            const _TermWidget(word: 'Contemplating', delayMs: 600),
-            const SizedBox(height: 22),
-            const _TermWidget(word: 'Questioning',   delayMs: 1200),
+            // one randomly chosen term per session
+            _TermWidget(word: _loadingWord, delayMs: 0),
 
             const SizedBox(height: 52),
 
