@@ -338,10 +338,10 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
 
     // Back→front depth order; x%/y% from reference mobile.js (bottom-centre anchored)
     final stops = [
-      (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   xF: 0.45, yF: 0.22, bwF: 0.27, bwMin: 95.0,  bwMax: 160.0, delay: 0.28),
       (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, xF: 0.63, yF: 0.52, bwF: 0.34, bwMin: 120.0, bwMax: 200.0, delay: 0.14),
+       img: _templeImg, xF: 0.45, yF: 0.22, bwF: 0.27, bwMin: 95.0,  bwMax: 160.0, delay: 0.28),
+      (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
+       img: _stoaImg,   xF: 0.63, yF: 0.52, bwF: 0.34, bwMin: 120.0, bwMax: 200.0, delay: 0.14),
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
        img: _agoraImg,  xF: 0.40, yF: 0.82, bwF: 0.42, bwMin: 150.0, bwMax: 250.0, delay: 0.0),
     ];
