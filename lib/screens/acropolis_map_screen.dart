@@ -186,7 +186,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           final w = box.maxWidth;
           final h = box.maxHeight;
           final isMobile = w < 600;
-          final roadY = h * 0.56;
+          final roadY = h * 0.52;
           final bandH = isMobile
               ? (h * 0.20).clamp(110.0, 170.0)
               : (h * 0.27).clamp(150.0, 320.0);
@@ -300,7 +300,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       ),
       (
         zone: AcropolisZone.acropolis,
-        xF: 0.81, baseF: 0.59,
+        xF: 0.81, baseF: 0.54,
         wF:   isMobile ? 0.24  : 0.22,
         minW: isMobile ? 82.0  : 92.0,
         maxW: isMobile ? 122.0 : 280.0,
