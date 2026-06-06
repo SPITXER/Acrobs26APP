@@ -100,7 +100,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   Future<void> _loadImages() async {
     await Future.wait([
       _loadImg('assets/images/Sym2.png',          512, (v) => _templeImg  = v),
-      _loadImg('assets/images/Stoa1.png',         512, (v) => _stoaImg    = v),
+      _loadImg('assets/images/Stoa2.png',         512, (v) => _stoaImg    = v),
       _loadImg('assets/images/AgoraF2i.png',      512, (v) => _agoraImg   = v),
       _loadImg('assets/images/earth_tile.png',    256, (v) => _earthTile  = v),
       _loadImg('assets/images/road_tile.png',     256, (v) => _roadTile   = v),
@@ -344,7 +344,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
        img: _templeImg, xF: 0.45, yF: 0.22, bwH: 0.1525, bwMin: 90.0,  bwMax: 165.0, mid: 0.574, delay: 0.28),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   xF: 0.63, yF: 0.52, bwH: 0.2832, bwMin: 180.0, bwMax: 275.0, mid: 0.599, delay: 0.14),
+       img: _stoaImg,   xF: 0.63, yF: 0.52, bwH: 0.2820, bwMin: 180.0, bwMax: 275.0, mid: 0.554, delay: 0.14),
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
        img: _agoraImg,  xF: 0.40, yF: 0.82, bwH: 0.3137, bwMin: 200.0, bwMax: 310.0, mid: 0.562, delay: 0.0),
     ];
