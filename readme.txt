@@ -188,9 +188,9 @@ Nominate - take the ide✓a to the Symposium - Premium feature ✓
 expration date (40 days) in stoa, if you like your debate/argument/chat, and want to keep it for as much as you like , then nominate
 and take it to the 
  symposium ✓ 
-Ranking system
+Ranking system ✓
 - Socartes participant badges (built on a voting system? or Merit - Number of hours on the app) system combo
-Agora - Sohpisticated ideas generally for fun things
+Agora - Sohpisticated ideas generally for fun things ✓
 Bcla
 
 
@@ -202,7 +202,14 @@ variety of topics 10?
 Socrates (the polymath master), Plato (politics and ethics), Aristotle (science and religion), Pythagoras (science and math) 
 
 
+ Symposium: Unique story line 
 
+ -expand to a bigger room. 
+ - Stat bar for new sym cards
+ - idea in chats ( stick, up vote.etc)
+ Ai features dedicated sym  by rasie hand
+ Share screen in symposion
+ ledger book / notebook i s
 6/1/26
 Safety notes:
 -Stress Test 

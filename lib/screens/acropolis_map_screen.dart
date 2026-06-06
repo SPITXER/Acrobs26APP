@@ -320,30 +320,47 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   // ── Mobile vertical layout ───────────────────────────────────────────────
   Widget _buildMobileVertical(double w, double h, double entT) {
     final alpha   = Curves.easeOut.transform(entT);
-    // Size buildings relative to height so they always fit their section
     final imgSize = (h * 0.18).clamp(80.0, 170.0);
 
+    // Order: Agora (top) → Stoa (middle) → Symposium (bottom)
     final stops = [
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
        img: _agoraImg,  delay: 0.0),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   delay: 0.18),
+       img: _stoaImg,   delay: 0.15),
       (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, delay: 0.36),
+       img: _templeImg, delay: 0.30),
     ];
 
     return Stack(clipBehavior: Clip.hardEdge, children: [
-      // Earth background only — no road on vertical layout
-      CustomPaint(
-        size: Size(w, h),
-        painter: _BgPainter(
-          earthTile: _earthTile, roadTile: null,
-          roadY: 0, bandH: 0, isMobile: true, showRoad: false,
+      // ① Earth tiles — IgnorePointer so touches pass through to buildings
+      IgnorePointer(
+        child: CustomPaint(
+          size: Size(w, h),
+          painter: _BgPainter(
+            earthTile: _earthTile, roadTile: null,
+            roadY: 0, bandH: 0, isMobile: true, showRoad: false,
+          ),
         ),
       ),
-      Positioned.fill(child: CustomPaint(painter: _HazePainter())),
+      // ② Warm haze
+      Positioned.fill(child: IgnorePointer(
+          child: CustomPaint(painter: _HazePainter()))),
+      // ③ Vertical stone path running top-to-bottom
+      Positioned.fill(child: IgnorePointer(
+          child: CustomPaint(painter: _VertPathPainter()))),
+      // ④ Side artifacts (cypress, olive, amphora)
+      IgnorePointer(
+        child: CustomPaint(
+          size: Size(w, h),
+          painter: _MobileSidePainter(
+            w: w, h: h,
+            cypress: _cypress, olive: _olive, amphora: _amphora,
+          ),
+        ),
+      ),
 
-      // Vertical column of stops
+      // ⑤ Buildings column — the only interactive layer
       Positioned.fill(
         child: SafeArea(
           child: Column(children: [
@@ -353,97 +370,112 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             ),
             ...stops.map((s) {
               final a   = Curves.easeOut.transform(
-                  ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
+                  ((entT - s.delay) / 0.35).clamp(0.0, 1.0));
               final hot = _tappedZone == s.zone;
               return Expanded(
                 child: Opacity(
                   opacity: a,
-                  child: GestureDetector(
-                    onTap: () => _tapZone(s.zone),
-                    onTapDown: (_) =>
-                        setState(() => _tappedZone = s.zone),
-                    onTapCancel: () => setState(() {
-                      if (_tappedZone == s.zone) _tappedZone = null;
-                    }),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      color: hot
-                          ? const Color(0x14FFF4D6)
-                          : Colors.transparent,
-                      child: Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          AnimatedSlide(
-                            offset: Offset(0, hot ? -0.04 : 0),
-                            duration: const Duration(milliseconds: 280),
-                            curve: Curves.easeOutCubic,
-                            child: ColorFiltered(
-                              colorFilter: hot
-                                  ? const ColorFilter.matrix(<double>[
-                                      1.06, 0, 0, 0, 0,
-                                      0, 1.06, 0, 0, 0,
-                                      0, 0, 1.06, 0, 0,
-                                      0, 0, 0, 1,    0,
-                                    ])
-                                  : const ColorFilter.matrix(<double>[
-                                      1, 0, 0, 0, 0,
-                                      0, 1, 0, 0, 0,
-                                      0, 0, 1, 0, 0,
-                                      0, 0, 0, 1, 0,
-                                    ]),
-                              child: s.img != null
-                                  ? RawImage(
-                                      image: s.img,
-                                      width: imgSize, height: imgSize,
-                                      filterQuality: FilterQuality.none,
-                                      fit: BoxFit.contain,
-                                    )
-                                  : SizedBox(width: imgSize, height: imgSize),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          // Marble plaque
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 7),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Color(0xFFFCF0D8), Color(0xFFECDAB0)],
-                              ),
-                              border: Border.all(
-                                  color: const Color(0xFF5E462C), width: 2),
-                              borderRadius: BorderRadius.circular(3),
-                              boxShadow: const [
-                                BoxShadow(
-                                    color: Color(0xFF5E462C),
-                                    offset: Offset(0, 3)),
-                                BoxShadow(
-                                    color: Color(0x593A2A1C),
-                                    offset: Offset(0, 6),
-                                    blurRadius: 10),
+                  child: Transform.translate(
+                    // Slide up from 18 px below as it fades in
+                    offset: Offset(0, (1.0 - a) * 18),
+                    child: GestureDetector(
+                      onTap: () => _tapZone(s.zone),
+                      onTapDown: (_) =>
+                          setState(() => _tappedZone = s.zone),
+                      onTapCancel: () => setState(() {
+                        if (_tappedZone == s.zone) _tappedZone = null;
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        color: hot
+                            ? const Color(0x14FFF4D6)
+                            : Colors.transparent,
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedSlide(
+                                  offset: Offset(0, hot ? -0.04 : 0),
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeOutCubic,
+                                  child: ColorFiltered(
+                                    colorFilter: hot
+                                        ? const ColorFilter.matrix(<double>[
+                                            1.06, 0, 0, 0, 0,
+                                            0, 1.06, 0, 0, 0,
+                                            0, 0, 1.06, 0, 0,
+                                            0, 0, 0, 1,    0,
+                                          ])
+                                        : const ColorFilter.matrix(<double>[
+                                            1, 0, 0, 0, 0,
+                                            0, 1, 0, 0, 0,
+                                            0, 0, 1, 0, 0,
+                                            0, 0, 0, 1, 0,
+                                          ]),
+                                    child: s.img != null
+                                        ? RawImage(
+                                            image: s.img,
+                                            width: imgSize, height: imgSize,
+                                            filterQuality: FilterQuality.none,
+                                            fit: BoxFit.contain,
+                                          )
+                                        : SizedBox(
+                                            width: imgSize, height: imgSize),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color(0xFFFCF0D8),
+                                        Color(0xFFECDAB0)
+                                      ],
+                                    ),
+                                    border: Border.all(
+                                        color: const Color(0xFF5E462C),
+                                        width: 2),
+                                    borderRadius: BorderRadius.circular(3),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                          color: Color(0xFF5E462C),
+                                          offset: Offset(0, 3)),
+                                      BoxShadow(
+                                          color: Color(0x593A2A1C),
+                                          offset: Offset(0, 6),
+                                          blurRadius: 10),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(s.title,
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.pixelifySans(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: _ink,
+                                              letterSpacing: 1.0)),
+                                      Text(s.sub,
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.pixelifySans(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w400,
+                                              color:
+                                                  const Color(0xFF7A5A3A))),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
-                            child: Column(mainAxisSize: MainAxisSize.min, children: [
-                              Text(s.title,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.pixelifySans(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: _ink,
-                                      letterSpacing: 1.0)),
-                              Text(s.sub,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.pixelifySans(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w400,
-                                      color: const Color(0xFF7A5A3A))),
-                            ]),
                           ),
-                        ]),
-                        ), // FittedBox
+                        ),
                       ),
                     ),
                   ),
@@ -470,8 +502,10 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
         ),
       ),
 
-      // IgnorePointer: vignette is visual-only — must not absorb touches
-      Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _VignettePainter()))),
+      // ⑥ Vignette — visual only, must not block touches
+      Positioned.fill(child: IgnorePointer(
+          child: CustomPaint(painter: _VignettePainter()))),
+      // ⑦ Side menu
       Positioned(top: 6, right: 16, child: const SideMenuButton()),
     ]);
   }
