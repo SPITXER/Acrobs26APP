@@ -106,7 +106,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     try {
       final data  = await rootBundle.load(path);
       final codec = await ui.instantiateImageCodec(
-          data.buffer.asUint8List(), targetWidth: maxPx, targetHeight: maxPx);
+          data.buffer.asUint8List(), targetWidth: maxPx);
       final frame = await codec.getNextFrame();
       if (mounted) setState(() => set(frame.image));
     } catch (_) {}
@@ -129,9 +129,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   }
 
   AcropolisZone? _zoneAt(Offset p, double w, double h) {
-    if (_imgRect(w, h, 0.19, 0.57, 0.23).inflate(12).contains(p)) return AcropolisZone.agora;
-    if (_imgRect(w, h, 0.50, 0.56, 0.20).inflate(12).contains(p)) return AcropolisZone.acropolis;
-    if (_imgRect(w, h, 0.81, 0.58, 0.22).inflate(12).contains(p)) return AcropolisZone.stoa;
+    if (_imgRect(w, h, 0.19, 0.58, 0.23).inflate(12).contains(p)) return AcropolisZone.agora;
+    if (_imgRect(w, h, 0.50, 0.57, 0.20).inflate(12).contains(p)) return AcropolisZone.acropolis;
+    if (_imgRect(w, h, 0.81, 0.59, 0.22).inflate(12).contains(p)) return AcropolisZone.stoa;
     return null;
   }
 
@@ -257,28 +257,29 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final data = [
       (
         zone: AcropolisZone.agora,
-        xF: 0.19, baseF: 0.57, wF: 0.23,
+        xF: 0.19, baseF: 0.58, wF: 0.23, minW: 92.0, maxW: 280.0,
         title: 'THE AGORA', sub: 'marketplace & forum',
         img: _agoraImg, delay: 0.0,
       ),
       (
         zone: AcropolisZone.acropolis,
-        xF: 0.50, baseF: 0.56, wF: 0.20,
+        xF: 0.50, baseF: 0.57, wF: 0.20, minW: 86.0, maxW: 250.0,
         title: 'SYMPOSIUM', sub: 'sanctuary',
         img: _templeImg, delay: 0.18,
       ),
       (
         zone: AcropolisZone.stoa,
-        xF: 0.81, baseF: 0.58, wF: 0.22,
+        xF: 0.81, baseF: 0.59, wF: 0.22, minW: 92.0, maxW: 280.0,
         title: 'THE STOA', sub: 'the long colonnade',
         img: _stoaImg, delay: 0.36,
       ),
     ];
 
     return data.map((s) {
-      final bw  = (w * s.wF).clamp(80.0, 280.0);
+      final bw  = (w * s.wF).clamp(s.minW, s.maxW);
       final cx  = w * s.xF;
-      final top = h * s.baseF - bw;
+      // +12: sinks base 12px into the road (matches template's calc(-100% + 12px))
+      final top = h * s.baseF - bw + 12;
       final hot = _hovered == s.zone || _tappedZone == s.zone;
       final a   = Curves.easeOut.transform(
           ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
@@ -619,11 +620,11 @@ class _SceneryPainter extends CustomPainter {
     this.amphora, this.brazier,
   });
 
-  // Draws a sprite with its BASE at (cx, baseY), width = spriteW.
+  // Draws a sprite with its BASE at (cx, baseY). min/max match template's CSS clamp().
   void _sp(Canvas canvas, ui.Image? img, double cx, double baseY, double spriteW,
-      {bool hideMobile = false}) {
+      {bool hideMobile = false, double minW = 20.0, double maxW = 120.0}) {
     if (img == null || (hideMobile && isMobile)) return;
-    final sw = spriteW.clamp(20.0, 110.0);
+    final sw = spriteW.clamp(minW, maxW);
     final sh = sw * img.height / img.width;
     canvas.drawImageRect(
       img,
@@ -635,20 +636,21 @@ class _SceneryPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Positions mirror template CONFIG exactly:
+    //   back scenery  — bottom-anchor at top% (50–52%)
+    //   front scenery — bottom-anchor at top% (74–83%)
     if (!front) {
-      // Back layer — behind buildings
-      _sp(canvas, cypress,   w * 0.07, h * 0.70, w * 0.070);
-      _sp(canvas, statue,    w * 0.33, h * 0.68, w * 0.055, hideMobile: true);
-      _sp(canvas, brokenCol, w * 0.66, h * 0.68, w * 0.050, hideMobile: true);
-      _sp(canvas, cypress,   w * 0.93, h * 0.68, w * 0.070);
-      _sp(canvas, olive,     w * 0.42, h * 0.70, w * 0.050, hideMobile: true);
+      _sp(canvas, cypress,   w * 0.07, h * 0.50, w * 0.07,  minW: 46, maxW: 92);
+      _sp(canvas, statue,    w * 0.33, h * 0.50, w * 0.06,  minW: 40, maxW: 78,  hideMobile: true);
+      _sp(canvas, brokenCol, w * 0.66, h * 0.51, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
+      _sp(canvas, cypress,   w * 0.93, h * 0.49, w * 0.07,  minW: 46, maxW: 96);
+      _sp(canvas, olive,     w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
     } else {
-      // Front layer — in front of buildings (lower on screen = closer)
-      _sp(canvas, amphora, w * 0.11, h * 0.88, w * 0.042);
-      _sp(canvas, olive,   w * 0.27, h * 0.90, w * 0.070);
-      _sp(canvas, brazier, w * 0.50, h * 0.86, w * 0.038, hideMobile: true);
-      _sp(canvas, olive,   w * 0.73, h * 0.91, w * 0.070);
-      _sp(canvas, amphora, w * 0.90, h * 0.89, w * 0.042, hideMobile: true);
+      _sp(canvas, amphora, w * 0.11, h * 0.78, w * 0.045, minW: 30, maxW: 58);
+      _sp(canvas, olive,   w * 0.27, h * 0.82, w * 0.07,  minW: 44, maxW: 86);
+      _sp(canvas, brazier, w * 0.50, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, olive,   w * 0.73, h * 0.83, w * 0.07,  minW: 48, maxW: 90);
+      _sp(canvas, amphora, w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
     }
   }
 
