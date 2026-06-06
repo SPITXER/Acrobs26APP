@@ -742,17 +742,7 @@ class _Header extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(height: mob ? 12 : 8),
-          Text(
-            'ΑΓΟΡΑ  ·  EST. ANTIQUITY',
-            style: GoogleFonts.pixelifySans(
-              fontSize: (w * 0.012).clamp(mob ? 10.5 : 9.0, 12.0),
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF6B4A30),
-              letterSpacing: (w * 0.012).clamp(mob ? 10.5 : 9.0, 12.0) * 0.35,
-            ),
-          ),
-          const SizedBox(height: 2),
+          SizedBox(height: mob ? 12 : 2),
           Text(
             'A · C · R · O',
             textAlign: TextAlign.center,
@@ -955,21 +945,21 @@ class _SceneryPainter extends CustomPainter {
     //   back scenery  — bottom-anchor at top% (50–52%)
     //   front scenery — bottom-anchor at top% (74–83%)
     if (!front) {
-      _sp(canvas, landmarkColumn,  w * 0.03, h * 0.51, w * 0.055, minW: 32, maxW: 68,  hideMobile: true);
       _sp(canvas, cypress,         w * 0.07, h * 0.50, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 92);
       _sp(canvas, statue,          w * 0.33, h * 0.50, w * 0.06,  minW: 40, maxW: 78,  hideMobile: true);
+      _sp(canvas, olive,           w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
+      _sp(canvas, landmarkColumn,  w * 0.62, h * 0.51, w * 0.055, minW: 32, maxW: 68,  hideMobile: true);
+      _sp(canvas, landmarkSelfie,  w * 0.69, h * 0.52, w * 0.055, minW: 32, maxW: 70,  hideMobile: true);
       _sp(canvas, brokenCol,       w * 0.66, h * 0.51, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
       _sp(canvas, cypress,         w * 0.93, h * 0.49, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 96);
-      _sp(canvas, landmarkThinker, w * 0.97, h * 0.51, w * 0.065, minW: 36, maxW: 80,  hideMobile: true);
-      _sp(canvas, olive,           w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
+      _sp(canvas, landmarkThinker, w * 0.97, h * 0.51, w * 0.070, minW: 36, maxW: 86,  hideMobile: true);
     } else {
-      _sp(canvas, amphora,        w * 0.11, h * 0.78, w * 0.045, minW: isMobile ? 38 : 30, maxW: 58);
-      _sp(canvas, olive,          w * 0.27, h * 0.82, w * 0.07,  minW: isMobile ? 54 : 44, maxW: 86);
-      _sp(canvas, brazier,        w * 0.37, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
-      _sp(canvas, brazier,        w * 0.63, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
-      _sp(canvas, olive,          w * 0.73, h * 0.83, w * 0.07,  minW: isMobile ? 58 : 48, maxW: 90);
-      _sp(canvas, landmarkSelfie, w * 0.04, h * 0.82, w * 0.055, minW: 32, maxW: 70,  hideMobile: true);
-      _sp(canvas, amphora,        w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
+      _sp(canvas, amphora, w * 0.11, h * 0.78, w * 0.045, minW: isMobile ? 38 : 30, maxW: 58);
+      _sp(canvas, olive,   w * 0.27, h * 0.82, w * 0.07,  minW: isMobile ? 54 : 44, maxW: 86);
+      _sp(canvas, brazier, w * 0.37, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, brazier, w * 0.63, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, olive,   w * 0.73, h * 0.83, w * 0.07,  minW: isMobile ? 58 : 48, maxW: 90);
+      _sp(canvas, amphora, w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
     }
   }
 
@@ -1014,18 +1004,18 @@ class _MobileSceneryPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (!front) {
-      _sp(canvas, landmarkColumn,  0.08, 0.27, 0.14, 42, 72);
+      _sp(canvas, landmarkColumn,  0.08, 0.35, 0.18, 54, 90);
       _sp(canvas, cypress,         0.33, 0.13, 0.11, 40, 72);
       _sp(canvas, statue,          0.69, 0.12, 0.11, 40, 72);
       _sp(canvas, cypress,         0.20, 0.40, 0.14, 46, 92);
       _sp(canvas, flowerBush,      0.80, 0.38, 0.15, 48, 98);
-      _sp(canvas, landmarkThinker, 0.90, 0.48, 0.17, 50, 88);
+      _sp(canvas, landmarkThinker, 0.90, 0.60, 0.20, 60, 100);
       _sp(canvas, herm,            0.25, 0.67, 0.12, 40, 80);
       _sp(canvas, cypress,         0.84, 0.65, 0.18, 58, 120);
     } else {
       _sp(canvas, amphora,        0.12, 0.96, 0.12, 40, 74);
       _sp(canvas, flowerBush,     0.78, 0.94, 0.20, 62, 112);
-      _sp(canvas, landmarkSelfie, 0.08, 0.79, 0.15, 44, 80);
+      _sp(canvas, landmarkSelfie, 0.10, 0.88, 0.18, 54, 92);
       _sp(canvas, amphora,        0.87, 0.71, 0.11, 34, 62);
       _sp(canvas, olive,          0.15, 0.60, 0.12, 40, 76);
     }
