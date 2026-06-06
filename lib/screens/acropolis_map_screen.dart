@@ -282,7 +282,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final data = [
       (
         zone: AcropolisZone.agora,
-        xF: 0.19, baseF: 0.58,
+        xF: 0.19, baseF: 0.58, botFrac: 0.837,
         wF:   isMobile ? 0.25  : 0.196,
         minW: isMobile ? 82.0  : 78.0,
         maxW: isMobile ? 122.0 : 238.0,
@@ -291,7 +291,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       ),
       (
         zone: AcropolisZone.stoa,
-        xF: 0.50, baseF: 0.57,
+        xF: 0.50, baseF: 0.57, botFrac: 0.810,
         wF:   isMobile ? 0.29  : 0.23,
         minW: isMobile ? 96.0  : 99.0,
         maxW: isMobile ? 140.0 : 288.0,
@@ -300,7 +300,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       ),
       (
         zone: AcropolisZone.acropolis,
-        xF: 0.81, baseF: 0.54,
+        xF: 0.81, baseF: 0.54, botFrac: 0.947,
         wF:   isMobile ? 0.24  : 0.22,
         minW: isMobile ? 82.0  : 92.0,
         maxW: isMobile ? 122.0 : 280.0,
@@ -324,7 +324,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           opacity: a,
           child: _Stop(
             title: s.title, sub: s.sub,
-            img: s.img, bw: bw,
+            img: s.img, bw: bw, botFrac: s.botFrac,
             hot: hot, pulseT: _pulse.value,
           ),
         ),
@@ -590,12 +590,12 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
 class _Stop extends StatelessWidget {
   final String title, sub;
   final ui.Image? img;
-  final double bw, pulseT;
+  final double bw, pulseT, botFrac;
   final bool hot;
 
   const _Stop({
     required this.title, required this.sub,
-    required this.img, required this.bw,
+    required this.img, required this.bw, required this.botFrac,
     required this.hot, required this.pulseT,
   });
 
@@ -641,13 +641,19 @@ class _Stop extends StatelessWidget {
                         0, 0, 1, 0, 0,
                         0, 0, 0, 1, 0,
                       ]),
-                child: img != null
-                    ? RawImage(
-                        image: img, width: bw, height: bw,
-                        filterQuality: FilterQuality.none,
-                        fit: BoxFit.contain,
-                      )
-                    : SizedBox(width: bw, height: bw),
+                child: ClipRect(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    heightFactor: botFrac,
+                    child: img != null
+                        ? RawImage(
+                            image: img, width: bw, height: bw,
+                            filterQuality: FilterQuality.none,
+                            fit: BoxFit.contain,
+                          )
+                        : SizedBox(width: bw, height: bw),
+                  ),
+                ),
               ),
             ]),
           ),
