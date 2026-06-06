@@ -647,7 +647,8 @@ class _SceneryPainter extends CustomPainter {
     } else {
       _sp(canvas, amphora, w * 0.11, h * 0.78, w * 0.045, minW: 30, maxW: 58);
       _sp(canvas, olive,   w * 0.27, h * 0.82, w * 0.07,  minW: 44, maxW: 86);
-      _sp(canvas, brazier, w * 0.50, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, brazier, w * 0.37, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, brazier, w * 0.63, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
       _sp(canvas, olive,   w * 0.73, h * 0.83, w * 0.07,  minW: 48, maxW: 90);
       _sp(canvas, amphora, w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
     }
