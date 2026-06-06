@@ -946,10 +946,10 @@ class _SceneryPainter extends CustomPainter {
     //   front scenery — bottom-anchor at top% (74–83%)
     if (!front) {
       _sp(canvas, cypress,         w * 0.07, h * 0.50, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 92);
+      _sp(canvas, landmarkColumn,  w * 0.13, h * 0.50, w * 0.055, minW: 32, maxW: 68,  hideMobile: true);
       _sp(canvas, statue,          w * 0.33, h * 0.50, w * 0.06,  minW: 40, maxW: 78,  hideMobile: true);
       _sp(canvas, olive,           w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
-      _sp(canvas, landmarkColumn,  w * 0.62, h * 0.51, w * 0.055, minW: 32, maxW: 68,  hideMobile: true);
-      _sp(canvas, landmarkSelfie,  w * 0.69, h * 0.52, w * 0.055, minW: 32, maxW: 70,  hideMobile: true);
+      _sp(canvas, landmarkSelfie,  w * 0.62, h * 0.52, w * 0.055, minW: 32, maxW: 70,  hideMobile: true);
       _sp(canvas, brokenCol,       w * 0.66, h * 0.51, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
       _sp(canvas, cypress,         w * 0.93, h * 0.49, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 96);
       _sp(canvas, landmarkThinker, w * 0.97, h * 0.51, w * 0.070, minW: 36, maxW: 86,  hideMobile: true);
