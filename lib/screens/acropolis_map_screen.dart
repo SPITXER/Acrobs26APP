@@ -322,14 +322,14 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final alpha   = Curves.easeOut.transform(entT);
     final imgSize = (h * 0.18).clamp(80.0, 170.0);
 
-    // Order: Agora (top) → Stoa (middle) → Symposium (bottom)
+    // Order: Symposium (top) → Stoa (middle) → Agora (bottom)
     final stops = [
-      (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
-       img: _agoraImg,  delay: 0.0),
+      (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
+       img: _templeImg, delay: 0.0),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
        img: _stoaImg,   delay: 0.15),
-      (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, delay: 0.30),
+      (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
+       img: _agoraImg,  delay: 0.30),
     ];
 
     return Stack(clipBehavior: Clip.hardEdge, children: [
