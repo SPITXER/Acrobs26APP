@@ -320,7 +320,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   // ── Mobile vertical layout ───────────────────────────────────────────────
   Widget _buildMobileVertical(double w, double h, double entT) {
     final alpha   = Curves.easeOut.transform(entT);
-    final imgSize = (w * 0.48).clamp(110.0, 190.0);
+    // Size buildings relative to height so they always fit their section
+    final imgSize = (h * 0.18).clamp(80.0, 170.0);
 
     final stops = [
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
@@ -370,7 +371,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                           ? const Color(0x14FFF4D6)
                           : Colors.transparent,
                       child: Center(
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
                           AnimatedSlide(
                             offset: Offset(0, hot ? -0.04 : 0),
                             duration: const Duration(milliseconds: 280),
@@ -440,6 +443,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                             ]),
                           ),
                         ]),
+                        ), // FittedBox
                       ),
                     ),
                   ),
@@ -466,7 +470,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
         ),
       ),
 
-      Positioned.fill(child: CustomPaint(painter: _VignettePainter())),
+      // IgnorePointer: vignette is visual-only — must not absorb touches
+      Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _VignettePainter()))),
       Positioned(top: 6, right: 16, child: const SideMenuButton()),
     ]);
   }
