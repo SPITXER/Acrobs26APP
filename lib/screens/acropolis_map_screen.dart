@@ -466,11 +466,11 @@ class _Header extends StatelessWidget {
             'Choose your path.',
             textAlign: TextAlign.center,
             style: GoogleFonts.cinzel(
-              fontSize: (w * 0.016).clamp(12.0, 17.0),
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF5A3F28),
+              fontSize: (w * 0.018).clamp(13.0, 19.0),
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFD4B87A),
               shadows: const [
-                Shadow(color: Color(0x7FFCF0D8), offset: Offset(0, 1)),
+                Shadow(color: Color(0xFF3A2A1C), offset: Offset(0, 2), blurRadius: 4),
               ],
             ),
           ),
