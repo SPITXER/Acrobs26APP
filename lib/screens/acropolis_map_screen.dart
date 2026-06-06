@@ -129,8 +129,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   }
 
   AcropolisZone? _zoneAt(Offset p, double w, double h) {
-    if (_imgRect(w, h, 0.19, 0.58, 0.23).inflate(12).contains(p)) return AcropolisZone.agora;
-    if (_imgRect(w, h, 0.50, 0.57, 0.20).inflate(12).contains(p)) return AcropolisZone.stoa;
+    if (_imgRect(w, h, 0.19, 0.58, 0.196).inflate(12).contains(p)) return AcropolisZone.agora;
+    if (_imgRect(w, h, 0.50, 0.57, 0.23).inflate(12).contains(p)) return AcropolisZone.stoa;
     if (_imgRect(w, h, 0.81, 0.59, 0.22).inflate(12).contains(p)) return AcropolisZone.acropolis;
     return null;
   }
@@ -257,13 +257,13 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final data = [
       (
         zone: AcropolisZone.agora,
-        xF: 0.19, baseF: 0.58, wF: 0.23, minW: 92.0, maxW: 280.0,
+        xF: 0.19, baseF: 0.58, wF: 0.196, minW: 78.0, maxW: 238.0,
         title: 'THE AGORA', sub: 'Browse',
         img: _agoraImg, delay: 0.0,
       ),
       (
         zone: AcropolisZone.stoa,
-        xF: 0.50, baseF: 0.57, wF: 0.20, minW: 86.0, maxW: 250.0,
+        xF: 0.50, baseF: 0.57, wF: 0.23, minW: 99.0, maxW: 288.0,
         title: 'THE STOA', sub: 'Forum',
         img: _stoaImg, delay: 0.18,
       ),
