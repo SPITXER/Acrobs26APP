@@ -882,6 +882,103 @@ class _SceneryPainter extends CustomPainter {
       o.amphora != amphora || o.brazier != brazier;
 }
 
+// ── Mobile vertical stone path ────────────────────────────────────────────────
+class _VertPathPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+    final pathW = (w * 0.36).clamp(80.0, 160.0);
+
+    // Stone path band — faint warm fill
+    final pathPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(cx - pathW / 2, 0), Offset(cx + pathW / 2, 0),
+        [
+          Colors.transparent,
+          const Color(0x33D4C4A0),
+          const Color(0x55D4C4A0),
+          const Color(0x33D4C4A0),
+          Colors.transparent,
+        ],
+        [0.0, 0.15, 0.50, 0.85, 1.0],
+      );
+    canvas.drawRect(Rect.fromLTWH(cx - pathW / 2, 0, pathW, h), pathPaint);
+
+    // Edge lines
+    final edge = Paint()
+      ..color = const Color(0x448A7A5A)
+      ..strokeWidth = 1.5;
+    canvas.drawLine(Offset(cx - pathW / 2, 0), Offset(cx - pathW / 2, h), edge);
+    canvas.drawLine(Offset(cx + pathW / 2, 0), Offset(cx + pathW / 2, h), edge);
+
+    // Dashed centre line
+    final dash = Paint()
+      ..color = const Color(0x228A7A5A)
+      ..strokeWidth = 1.0;
+    const segLen = 18.0;
+    const gapLen = 10.0;
+    var y = 0.0;
+    while (y < h) {
+      canvas.drawLine(Offset(cx, y), Offset(cx, (y + segLen).clamp(0, h)), dash);
+      y += segLen + gapLen;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VertPathPainter _) => false;
+}
+
+// ── Mobile side artifacts ─────────────────────────────────────────────────────
+class _MobileSidePainter extends CustomPainter {
+  final double w, h;
+  final ui.Image? cypress, olive, amphora;
+
+  const _MobileSidePainter({
+    required this.w, required this.h,
+    this.cypress, this.olive, this.amphora,
+  });
+
+  void _sp(Canvas canvas, ui.Image? img, double cx, double cy, double spriteW,
+      {double minW = 20.0, double maxW = 80.0}) {
+    if (img == null) return;
+    final sw = spriteW.clamp(minW, maxW);
+    final sh = sw * img.height / img.width;
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      Rect.fromLTWH(cx - sw / 2, cy - sh, sw, sh),
+      Paint()..filterQuality = FilterQuality.none,
+    );
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Divide screen into 3 zones; place artifacts at zone boundaries
+    final leftX  = w * 0.12;
+    final rightX = w * 0.88;
+    final sz     = (w * 0.13).clamp(28.0, 60.0);
+
+    // Cypress trees flanking top
+    _sp(canvas, cypress, leftX,  h * 0.24, sz, minW: 22, maxW: 52);
+    _sp(canvas, cypress, rightX, h * 0.22, sz, minW: 22, maxW: 52);
+
+    // Olive bushes at mid-screen
+    _sp(canvas, olive,   leftX,  h * 0.52, sz * 1.1, minW: 26, maxW: 60);
+    _sp(canvas, olive,   rightX, h * 0.55, sz * 1.1, minW: 26, maxW: 60);
+
+    // Amphoras near bottom
+    _sp(canvas, amphora, leftX,  h * 0.80, sz * 0.8, minW: 18, maxW: 44);
+    _sp(canvas, amphora, rightX, h * 0.82, sz * 0.8, minW: 18, maxW: 44);
+  }
+
+  @override
+  bool shouldRepaint(_MobileSidePainter o) =>
+      o.w != w || o.h != h ||
+      o.cypress != cypress || o.olive != olive || o.amphora != amphora;
+}
+
 // ── Vignette ──────────────────────────────────────────────────────────────────
 class _VignettePainter extends CustomPainter {
   @override
