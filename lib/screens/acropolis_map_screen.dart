@@ -945,19 +945,19 @@ class _SceneryPainter extends CustomPainter {
     //   back scenery  — bottom-anchor at top% (50–52%)
     //   front scenery — bottom-anchor at top% (74–83%)
     if (!front) {
+      _sp(canvas, landmarkColumn,  w * 0.04, h * 0.50, w * 0.041, minW: 24, maxW: 51,  hideMobile: true);
       _sp(canvas, cypress,         w * 0.07, h * 0.50, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 92);
-      _sp(canvas, landmarkColumn,  w * 0.12, h * 0.50, w * 0.041, minW: 24, maxW: 51,  hideMobile: true);
       _sp(canvas, statue,          w * 0.33, h * 0.50, w * 0.06,  minW: 40, maxW: 78,  hideMobile: true);
       _sp(canvas, olive,           w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
       _sp(canvas, brokenCol,       w * 0.62, h * 0.51, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
       _sp(canvas, cypress,         w * 0.93, h * 0.49, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 96);
-      _sp(canvas, landmarkThinker, w * 0.97, h * 0.49, w * 0.070, minW: 36, maxW: 86,  hideMobile: true);
+      _sp(canvas, landmarkThinker, w * 0.97, h * 0.46, w * 0.070, minW: 36, maxW: 86,  hideMobile: true);
     } else {
       _sp(canvas, amphora,        w * 0.11, h * 0.78, w * 0.045, minW: isMobile ? 38 : 30, maxW: 58);
       _sp(canvas, olive,          w * 0.27, h * 0.82, w * 0.07,  minW: isMobile ? 54 : 44, maxW: 86);
       _sp(canvas, brazier,        w * 0.37, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
       _sp(canvas, brazier,        w * 0.63, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
-      _sp(canvas, landmarkSelfie, w * 0.68, h * 0.76, w * 0.052, minW: 30, maxW: 66,  hideMobile: true);
+      _sp(canvas, landmarkSelfie, w * 0.68, h * 0.51, w * 0.052, minW: 30, maxW: 66,  hideMobile: true);
       _sp(canvas, olive,          w * 0.73, h * 0.83, w * 0.07,  minW: isMobile ? 58 : 48, maxW: 90);
       _sp(canvas, amphora,        w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
     }
