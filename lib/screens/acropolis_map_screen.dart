@@ -340,9 +340,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     // top = h*yF - h*rPx/1440  →  image top aligns with circle top
     final stops = [
       (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, xF: 0.45, yF: 0.22, bwF: 0.27, bwMin: 95.0,  bwMax: 160.0, rPx: 82.0,  delay: 0.28),
+       img: _templeImg, xF: 0.45, yF: 0.22, bwF: 0.35, bwMin: 124.0, bwMax: 208.0, rPx: 82.0,  delay: 0.28),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   xF: 0.63, yF: 0.52, bwF: 0.34, bwMin: 120.0, bwMax: 200.0, rPx: 104.0, delay: 0.14),
+       img: _stoaImg,   xF: 0.63, yF: 0.52, bwF: 0.44, bwMin: 156.0, bwMax: 260.0, rPx: 104.0, delay: 0.14),
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
        img: _agoraImg,  xF: 0.40, yF: 0.82, bwF: 0.42, bwMin: 150.0, bwMax: 250.0, rPx: 124.0, delay: 0.0),
     ];
@@ -407,7 +407,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           final hot = _tappedZone == s.zone;
           return Positioned(
             left:  w * s.xF - bw / 2,
-            top:   h * s.yF - h * s.rPx / 1440.0 + h * 0.03 - 45,
+            top:   h * s.yF - h * s.rPx / 1440.0 + h * 0.04,
             width: bw,
             child: Opacity(
               opacity: a,
