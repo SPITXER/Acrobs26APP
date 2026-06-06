@@ -337,16 +337,16 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     final alpha = Curves.easeOut.transform(entT);
 
     // bwH = fraction of screen HEIGHT so content exactly fills the plaza circle.
-    // Formula: bwH = 2*r_img / (1440 * (botFrac-topFrac))  →  device-independent.
-    // mid = (topFrac+botFrac)/2, measured from alpha-channel bounds of each 4000×4000 PNG.
-    // top = h*yF - mid*bw  →  visible art centred on plaza circle centre.
+    // mid = (topFrac+botFrac)/2 → visible art centred on circle centre.
+    // botFrac = content bottom as fraction of image height (alpha-measured).
+    // Art widget is clipped to botFrac so the plaque snaps to visible art edge.
     final stops = [
       (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, xF: 0.45, yF: 0.22, bwH: 0.1525, bwMin: 90.0,  bwMax: 165.0, mid: 0.574, delay: 0.28),
+       img: _templeImg, xF: 0.45, yF: 0.22, bwH: 0.1525, bwMin: 90.0,  bwMax: 165.0, mid: 0.574, botFrac: 0.947, delay: 0.28),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   xF: 0.63, yF: 0.52, bwH: 0.2820, bwMin: 180.0, bwMax: 275.0, mid: 0.554, delay: 0.14),
+       img: _stoaImg,   xF: 0.63, yF: 0.52, bwH: 0.2820, bwMin: 180.0, bwMax: 275.0, mid: 0.554, botFrac: 0.810, delay: 0.14),
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
-       img: _agoraImg,  xF: 0.40, yF: 0.82, bwH: 0.3137, bwMin: 200.0, bwMax: 310.0, mid: 0.562, delay: 0.0),
+       img: _agoraImg,  xF: 0.40, yF: 0.82, bwH: 0.2604, bwMin: 165.0, bwMax: 255.0, mid: 0.562, botFrac: 0.837, delay: 0.0),
     ];
 
     return GestureDetector(
@@ -449,14 +449,22 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                                     0, 0, 1, 0, 0,
                                     0, 0, 0, 1, 0,
                                   ]),
-                            child: s.img != null
-                                ? RawImage(
-                                    image: s.img,
-                                    width: bw,
-                                    filterQuality: FilterQuality.none,
-                                    fit: BoxFit.contain,
-                                  )
-                                : SizedBox(width: bw, height: bw * 0.8),
+                            // Clip transparent bottom padding so plaque
+                            // appears right below the visible art.
+                            child: ClipRect(
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                heightFactor: s.botFrac,
+                                child: s.img != null
+                                    ? RawImage(
+                                        image: s.img,
+                                        width: bw,
+                                        filterQuality: FilterQuality.none,
+                                        fit: BoxFit.contain,
+                                      )
+                                    : SizedBox(width: bw, height: bw),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 5),
