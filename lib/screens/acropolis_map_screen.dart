@@ -136,13 +136,12 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     return null;
   }
 
-  void _onTap(Offset pos, double w, double h) {
-    final zone = _zoneAt(pos, w, h);
-    if (zone == null) return;
+  void _tapZone(AcropolisZone zone) {
     setState(() => _tappedZone = zone);
     _tapFlash.forward(from: 0);
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 120), () {
       if (!mounted) return;
+      setState(() => _tappedZone = null);
       switch (zone) {
         case AcropolisZone.agora:
           Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
@@ -152,6 +151,12 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SymposiumScreen()));
       }
     });
+  }
+
+  void _onTap(Offset pos, double w, double h) {
+    final zone = _zoneAt(pos, w, h);
+    if (zone == null) return;
+    _tapZone(zone);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -171,6 +176,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
               ? (h * 0.20).clamp(110.0, 170.0)
               : (h * 0.27).clamp(150.0, 320.0);
           final entT  = _entrance.value;
+
+          if (isMobile) return _buildMobileVertical(w, h, entT);
 
           return MouseRegion(
             cursor:  _hovered != null ? SystemMouseCursors.click : MouseCursor.defer,
@@ -308,6 +315,160 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
         ),
       );
     }).toList();
+  }
+
+  // ── Mobile vertical layout ───────────────────────────────────────────────
+  Widget _buildMobileVertical(double w, double h, double entT) {
+    final alpha   = Curves.easeOut.transform(entT);
+    final imgSize = (w * 0.48).clamp(110.0, 190.0);
+
+    final stops = [
+      (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
+       img: _agoraImg,  delay: 0.0),
+      (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
+       img: _stoaImg,   delay: 0.18),
+      (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
+       img: _templeImg, delay: 0.36),
+    ];
+
+    return Stack(clipBehavior: Clip.hardEdge, children: [
+      // Earth background only — no road on vertical layout
+      CustomPaint(
+        size: Size(w, h),
+        painter: _BgPainter(
+          earthTile: _earthTile, roadTile: null,
+          roadY: 0, bandH: 0, isMobile: true, showRoad: false,
+        ),
+      ),
+      Positioned.fill(child: CustomPaint(painter: _HazePainter())),
+
+      // Vertical column of stops
+      Positioned.fill(
+        child: SafeArea(
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+              child: _Header(alpha: alpha),
+            ),
+            ...stops.map((s) {
+              final a   = Curves.easeOut.transform(
+                  ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
+              final hot = _tappedZone == s.zone;
+              return Expanded(
+                child: Opacity(
+                  opacity: a,
+                  child: GestureDetector(
+                    onTap: () => _tapZone(s.zone),
+                    onTapDown: (_) =>
+                        setState(() => _tappedZone = s.zone),
+                    onTapCancel: () => setState(() {
+                      if (_tappedZone == s.zone) _tappedZone = null;
+                    }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      color: hot
+                          ? const Color(0x14FFF4D6)
+                          : Colors.transparent,
+                      child: Center(
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          AnimatedSlide(
+                            offset: Offset(0, hot ? -0.04 : 0),
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeOutCubic,
+                            child: ColorFiltered(
+                              colorFilter: hot
+                                  ? const ColorFilter.matrix(<double>[
+                                      1.06, 0, 0, 0, 0,
+                                      0, 1.06, 0, 0, 0,
+                                      0, 0, 1.06, 0, 0,
+                                      0, 0, 0, 1,    0,
+                                    ])
+                                  : const ColorFilter.matrix(<double>[
+                                      1, 0, 0, 0, 0,
+                                      0, 1, 0, 0, 0,
+                                      0, 0, 1, 0, 0,
+                                      0, 0, 0, 1, 0,
+                                    ]),
+                              child: s.img != null
+                                  ? RawImage(
+                                      image: s.img,
+                                      width: imgSize, height: imgSize,
+                                      filterQuality: FilterQuality.none,
+                                      fit: BoxFit.contain,
+                                    )
+                                  : SizedBox(width: imgSize, height: imgSize),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          // Marble plaque
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 7),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFFFCF0D8), Color(0xFFECDAB0)],
+                              ),
+                              border: Border.all(
+                                  color: const Color(0xFF5E462C), width: 2),
+                              borderRadius: BorderRadius.circular(3),
+                              boxShadow: const [
+                                BoxShadow(
+                                    color: Color(0xFF5E462C),
+                                    offset: Offset(0, 3)),
+                                BoxShadow(
+                                    color: Color(0x593A2A1C),
+                                    offset: Offset(0, 6),
+                                    blurRadius: 10),
+                              ],
+                            ),
+                            child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              Text(s.title,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.pixelifySans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _ink,
+                                      letterSpacing: 1.0)),
+                              Text(s.sub,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.pixelifySans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFF7A5A3A))),
+                            ]),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            Opacity(
+              opacity: alpha * 0.85,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  'TAP A BUILDING TO START',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.pixelifySans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFE9D6AC),
+                    letterSpacing: 2.0,
+                  ),
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ),
+
+      Positioned.fill(child: CustomPaint(painter: _VignettePainter())),
+      Positioned(top: 6, right: 16, child: const SideMenuButton()),
+    ]);
   }
 }
 
@@ -498,11 +659,13 @@ class _BgPainter extends CustomPainter {
   final ui.Image? earthTile, roadTile;
   final double roadY, bandH;
   final bool isMobile;
+  final bool showRoad;
 
   const _BgPainter({
     this.earthTile, this.roadTile,
     required this.roadY, required this.bandH,
     this.isMobile = false,
+    this.showRoad = true,
   });
 
   @override
@@ -537,6 +700,8 @@ class _BgPainter extends CustomPainter {
       }
       canvas.restore();
     }
+
+    if (!showRoad) return;
 
     // Road band — rotated −1.2°, bleeds past edges
     canvas.save();
@@ -590,7 +755,8 @@ class _BgPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BgPainter o) =>
       o.earthTile != earthTile || o.roadTile != roadTile ||
-      o.roadY != roadY || o.bandH != bandH || o.isMobile != isMobile;
+      o.roadY != roadY || o.bandH != bandH ||
+      o.isMobile != isMobile || o.showRoad != showRoad;
 }
 
 // ── Warm sun haze ─────────────────────────────────────────────────────────────
