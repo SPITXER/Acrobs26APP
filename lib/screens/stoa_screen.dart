@@ -260,59 +260,64 @@ class _StoaScreenState extends State<StoaScreen>
       _currentCardRoomId = newId;
     });
 
-    return Column(children: [
-      // Counter
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Text('${idx + 1} / ${rooms.length}',
-              style: GoogleFonts.spaceMono(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.22))),
-        ]),
-      ),
+    return Stack(children: [
+      Column(children: [
+        // Counter
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Text('${idx + 1} / ${rooms.length}',
+                style: GoogleFonts.spaceMono(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.22))),
+          ]),
+        ),
 
-      // Card
-      Expanded(
-        child: Center(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragUpdate: (d) {
-              _snapCtrl.stop();
-              setState(() => _dragOffset += d.delta.dx);
-            },
-            onHorizontalDragEnd: (d) {
-              final vel = d.velocity.pixelsPerSecond.dx;
-              if (_dragOffset > 80 || vel > 500) {
-                _animateOff(500, () => _skip(rooms.length));
-              } else if (!isOwn && (_dragOffset < -80 || vel < -500)) {
-                _animateOff(-500, () => _challenge(room));
-              } else {
-                _snapBack();
-              }
-            },
-            child: Transform.translate(
-              offset: Offset(_dragOffset, _dragOffset.abs() * 0.04),
-              child: Transform.rotate(
-                angle: _dragOffset * 0.0022,
-                child: Stack(alignment: Alignment.center, children: [
-                  _roomCard(room),
-                  if (_dragOffset > 28)
-                    Positioned(top: 24, left: 24,
-                        child: _badge('SKIP', Colors.white54)),
-                  if (!isOwn && _dragOffset < -28)
-                    Positioned(top: 24, right: 24,
-                        child: _badge('CHALLENGE', AcroColors.gold)),
-                ]),
+        // Card — bottom padding ensures it never slides behind the action buttons
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 100),
+            child: Center(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragUpdate: (d) {
+                  _snapCtrl.stop();
+                  setState(() => _dragOffset += d.delta.dx);
+                },
+                onHorizontalDragEnd: (d) {
+                  final vel = d.velocity.pixelsPerSecond.dx;
+                  if (_dragOffset > 80 || vel > 500) {
+                    _animateOff(500, () => _skip(rooms.length));
+                  } else if (!isOwn && (_dragOffset < -80 || vel < -500)) {
+                    _animateOff(-500, () => _challenge(room));
+                  } else {
+                    _snapBack();
+                  }
+                },
+                child: Transform.translate(
+                  offset: Offset(_dragOffset, _dragOffset.abs() * 0.04),
+                  child: Transform.rotate(
+                    angle: _dragOffset * 0.0022,
+                    child: Stack(alignment: Alignment.center, children: [
+                      _roomCard(room),
+                      if (_dragOffset > 28)
+                        Positioned(top: 24, left: 24,
+                            child: _badge('SKIP', Colors.white54)),
+                      if (!isOwn && _dragOffset < -28)
+                        Positioned(top: 24, right: 24,
+                            child: _badge('CHALLENGE', AcroColors.gold)),
+                    ]),
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ]),
 
-      // Buttons — 80 pt above FAB
-      Padding(
-        padding: const EdgeInsets.fromLTRB(28, 0, 28, 100),
+      // Action buttons — anchored to the bottom of the screen, always below the card
+      Positioned(
+        left: 28, right: 28, bottom: 80,
         child: isOwn
             ? _ownCardFooter()
             : Row(children: [
