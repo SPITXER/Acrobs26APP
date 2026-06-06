@@ -130,8 +130,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
 
   AcropolisZone? _zoneAt(Offset p, double w, double h) {
     if (_imgRect(w, h, 0.19, 0.58, 0.23).inflate(12).contains(p)) return AcropolisZone.agora;
-    if (_imgRect(w, h, 0.50, 0.57, 0.20).inflate(12).contains(p)) return AcropolisZone.acropolis;
-    if (_imgRect(w, h, 0.81, 0.59, 0.22).inflate(12).contains(p)) return AcropolisZone.stoa;
+    if (_imgRect(w, h, 0.50, 0.57, 0.20).inflate(12).contains(p)) return AcropolisZone.stoa;
+    if (_imgRect(w, h, 0.81, 0.59, 0.22).inflate(12).contains(p)) return AcropolisZone.acropolis;
     return null;
   }
 
@@ -232,7 +232,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                   child: Opacity(
                     opacity: Curves.easeOut.transform(entT),
                     child: Text(
-                      'TAP A BUILDING TO ENTER',
+                      'TAP A BUILDING TO START',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.pixelifySans(
                         fontSize: 13,
@@ -258,20 +258,20 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       (
         zone: AcropolisZone.agora,
         xF: 0.19, baseF: 0.58, wF: 0.23, minW: 92.0, maxW: 280.0,
-        title: 'THE AGORA', sub: 'marketplace & forum',
+        title: 'THE AGORA', sub: 'Browse',
         img: _agoraImg, delay: 0.0,
       ),
       (
-        zone: AcropolisZone.acropolis,
+        zone: AcropolisZone.stoa,
         xF: 0.50, baseF: 0.57, wF: 0.20, minW: 86.0, maxW: 250.0,
-        title: 'SYMPOSIUM', sub: 'sanctuary',
-        img: _templeImg, delay: 0.18,
+        title: 'THE STOA', sub: 'Forum',
+        img: _stoaImg, delay: 0.18,
       ),
       (
-        zone: AcropolisZone.stoa,
+        zone: AcropolisZone.acropolis,
         xF: 0.81, baseF: 0.59, wF: 0.22, minW: 92.0, maxW: 280.0,
-        title: 'THE STOA', sub: 'the long colonnade',
-        img: _stoaImg, delay: 0.36,
+        title: 'SYMPOSIUM', sub: 'The Assembly',
+        img: _templeImg, delay: 0.36,
       ),
     ];
 
@@ -429,31 +429,30 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final titleSize = (w * 0.07).clamp(34.0, 84.0);
-    final subSize   = (w * 0.019).clamp(13.0, 20.0);
+    final titleSize = (w * 0.045).clamp(22.0, 52.0);
     return Opacity(
       opacity: alpha,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 18),
+          const SizedBox(height: 8),
           Text(
             'ΑΓΟΡΑ  ·  EST. ANTIQUITY',
             style: GoogleFonts.pixelifySans(
-              fontSize: (w * 0.014).clamp(10.0, 13.0),
+              fontSize: (w * 0.012).clamp(9.0, 12.0),
               fontWeight: FontWeight.w600,
               color: const Color(0xFF6B4A30),
-              letterSpacing: (w * 0.014).clamp(10.0, 13.0) * 0.35,
+              letterSpacing: (w * 0.012).clamp(9.0, 12.0) * 0.35,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             'A · C · R · O',
             textAlign: TextAlign.center,
             style: GoogleFonts.cinzel(
               fontSize: titleSize,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFFCF0D8), // --marble-hi
+              color: const Color(0xFFFCF0D8),
               letterSpacing: titleSize * 0.02,
               shadows: const [
                 Shadow(color: Color(0xFFB89368), offset: Offset(0, 2)),
@@ -462,12 +461,12 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            'Three buildings stand along the old stone way. Choose your path.',
+            'Choose your path.',
             textAlign: TextAlign.center,
             style: GoogleFonts.cinzel(
-              fontSize: subSize,
+              fontSize: (w * 0.016).clamp(12.0, 17.0),
               fontWeight: FontWeight.w500,
               color: const Color(0xFF5A3F28),
               shadows: const [
