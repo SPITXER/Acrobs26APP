@@ -405,8 +405,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
               painter: _MobileSceneryPainter(
                 w: w, h: h, front: false,
                 cypress: _cypress, statue: _statue,
-                flowerBush: _flowerBushImg, herm: _hermImg,
+                flowerBush: _flowerBushImg,
                 amphora: _amphora, olive: _olive,
+                brokenCol: _brokenCol, brazier: _brazier,
                 landmarkColumn: _landmarkColumn,
                 landmarkThinker: _landmarkThinker,
               ),
@@ -544,7 +545,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
               painter: _MobileSceneryPainter(
                 w: w, h: h, front: true,
                 cypress: _cypress, statue: _statue,
-                flowerBush: _flowerBushImg, herm: _hermImg,
+                flowerBush: _flowerBushImg,
                 amphora: _amphora, olive: _olive,
                 landmarkSelfie: _landmarkSelfie,
               ),
@@ -978,12 +979,14 @@ class _MobileSceneryPainter extends CustomPainter {
   final double w, h;
   final bool front;
   final ui.Image? cypress, statue, flowerBush, herm, amphora, olive;
+  final ui.Image? brokenCol, brazier;
   final ui.Image? landmarkColumn, landmarkSelfie, landmarkThinker;
 
   const _MobileSceneryPainter({
     required this.w, required this.h, required this.front,
     this.cypress, this.statue, this.flowerBush, this.herm,
     this.amphora, this.olive,
+    this.brokenCol, this.brazier,
     this.landmarkColumn, this.landmarkSelfie, this.landmarkThinker,
   });
 
@@ -1011,12 +1014,12 @@ class _MobileSceneryPainter extends CustomPainter {
       _sp(canvas, cypress,         0.20, 0.40, 0.14, 46, 92);
       _sp(canvas, flowerBush,      0.80, 0.38, 0.15, 48, 98);
       _sp(canvas, cypress,         0.85, 0.37, 0.18, 58, 120);
-      _sp(canvas, herm,            0.25, 0.67, 0.12, 40, 80);
+      _sp(canvas, brazier,         0.88, 0.52, 0.10, 28, 48);
+      _sp(canvas, brokenCol,       0.25, 0.67, 0.12, 34, 66);
     } else {
       _sp(canvas, amphora,        0.12, 0.96, 0.12, 40, 74);
       _sp(canvas, flowerBush,     0.78, 0.94, 0.20, 62, 112);
       _sp(canvas, landmarkSelfie, 0.65, 0.92, 0.18, 54, 92);
-      _sp(canvas, amphora,        0.87, 0.71, 0.11, 34, 62);
       _sp(canvas, olive,          0.15, 0.60, 0.12, 40, 76);
     }
   }
@@ -1025,8 +1028,8 @@ class _MobileSceneryPainter extends CustomPainter {
   bool shouldRepaint(_MobileSceneryPainter o) =>
       o.w != w || o.h != h || o.front != front ||
       o.cypress != cypress || o.statue != statue ||
-      o.flowerBush != flowerBush || o.herm != herm ||
-      o.amphora != amphora || o.olive != olive ||
+      o.flowerBush != flowerBush || o.amphora != amphora || o.olive != olive ||
+      o.brokenCol != brokenCol || o.brazier != brazier ||
       o.landmarkColumn != landmarkColumn || o.landmarkSelfie != landmarkSelfie ||
       o.landmarkThinker != landmarkThinker;
 }
