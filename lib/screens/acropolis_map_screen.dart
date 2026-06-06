@@ -64,6 +64,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   ui.Image? _roadVertImg;
   ui.Image? _flowerBushImg;
   ui.Image? _hermImg;
+  ui.Image? _landmarkColumn;
+  ui.Image? _landmarkSelfie;
+  ui.Image? _landmarkThinker;
 
   @override
   void initState() {
@@ -113,6 +116,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       _loadImg('assets/images/road_vertical.png', 1024, (v) => _roadVertImg  = v),
       _loadImg('assets/images/flower_bush.png',   256,  (v) => _flowerBushImg = v),
       _loadImg('assets/images/herm.png',          256,  (v) => _hermImg      = v),
+      _loadImg('assets/images/landmark_column.png',  256, (v) => _landmarkColumn  = v),
+      _loadImg('assets/images/landmark_selfie.png',  256, (v) => _landmarkSelfie  = v),
+      _loadImg('assets/images/landmark_thinker.png', 256, (v) => _landmarkThinker = v),
     ]);
   }
 
@@ -133,6 +139,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       _templeImg, _stoaImg, _agoraImg, _earthTile, _roadTile,
       _cypress, _statue, _brokenCol, _olive, _amphora, _brazier,
       _roadVertImg, _flowerBushImg, _hermImg,
+      _landmarkColumn, _landmarkSelfie, _landmarkThinker,
     ]) { img?.dispose(); }
     super.dispose();
   }
@@ -228,6 +235,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                       w: w, h: h, isMobile: isMobile, front: false,
                       cypress: _cypress, statue: _statue,
                       brokenCol: _brokenCol, olive: _olive,
+                      landmarkColumn: _landmarkColumn,
+                      landmarkThinker: _landmarkThinker,
                     ),
                   ),
                 ),
@@ -241,6 +250,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                     painter: _SceneryPainter(
                       w: w, h: h, isMobile: isMobile, front: true,
                       amphora: _amphora, olive: _olive, brazier: _brazier,
+                      landmarkSelfie: _landmarkSelfie,
                     ),
                   ),
                 ),
@@ -397,6 +407,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                 cypress: _cypress, statue: _statue,
                 flowerBush: _flowerBushImg, herm: _hermImg,
                 amphora: _amphora, olive: _olive,
+                landmarkColumn: _landmarkColumn,
+                landmarkThinker: _landmarkThinker,
               ),
             ),
           ),
@@ -534,6 +546,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                 cypress: _cypress, statue: _statue,
                 flowerBush: _flowerBushImg, herm: _hermImg,
                 amphora: _amphora, olive: _olive,
+                landmarkSelfie: _landmarkSelfie,
               ),
             ),
           ),
@@ -912,12 +925,14 @@ class _SceneryPainter extends CustomPainter {
   final double w, h;
   final bool isMobile, front;
   final ui.Image? cypress, statue, brokenCol, olive, amphora, brazier;
+  final ui.Image? landmarkColumn, landmarkSelfie, landmarkThinker;
 
   const _SceneryPainter({
     required this.w, required this.h,
     required this.isMobile, required this.front,
     this.cypress, this.statue, this.brokenCol, this.olive,
     this.amphora, this.brazier,
+    this.landmarkColumn, this.landmarkSelfie, this.landmarkThinker,
   });
 
   // Draws a sprite with its BASE at (cx, baseY). min/max match template's CSS clamp().
@@ -940,18 +955,21 @@ class _SceneryPainter extends CustomPainter {
     //   back scenery  — bottom-anchor at top% (50–52%)
     //   front scenery — bottom-anchor at top% (74–83%)
     if (!front) {
-      _sp(canvas, cypress,   w * 0.07, h * 0.50, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 92);
-      _sp(canvas, statue,    w * 0.33, h * 0.50, w * 0.06,  minW: 40, maxW: 78,  hideMobile: true);
-      _sp(canvas, brokenCol, w * 0.66, h * 0.51, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
-      _sp(canvas, cypress,   w * 0.93, h * 0.49, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 96);
-      _sp(canvas, olive,     w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
+      _sp(canvas, landmarkColumn,  w * 0.03, h * 0.51, w * 0.055, minW: 32, maxW: 68,  hideMobile: true);
+      _sp(canvas, cypress,         w * 0.07, h * 0.50, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 92);
+      _sp(canvas, statue,          w * 0.33, h * 0.50, w * 0.06,  minW: 40, maxW: 78,  hideMobile: true);
+      _sp(canvas, brokenCol,       w * 0.66, h * 0.51, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
+      _sp(canvas, cypress,         w * 0.93, h * 0.49, w * 0.07,  minW: isMobile ? 54 : 46, maxW: 96);
+      _sp(canvas, landmarkThinker, w * 0.97, h * 0.51, w * 0.065, minW: 36, maxW: 80,  hideMobile: true);
+      _sp(canvas, olive,           w * 0.42, h * 0.52, w * 0.05,  minW: 34, maxW: 66,  hideMobile: true);
     } else {
-      _sp(canvas, amphora, w * 0.11, h * 0.78, w * 0.045, minW: isMobile ? 38 : 30, maxW: 58);
-      _sp(canvas, olive,   w * 0.27, h * 0.82, w * 0.07,  minW: isMobile ? 54 : 44, maxW: 86);
-      _sp(canvas, brazier, w * 0.37, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
-      _sp(canvas, brazier, w * 0.63, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
-      _sp(canvas, olive,   w * 0.73, h * 0.83, w * 0.07,  minW: isMobile ? 58 : 48, maxW: 90);
-      _sp(canvas, amphora, w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
+      _sp(canvas, amphora,        w * 0.11, h * 0.78, w * 0.045, minW: isMobile ? 38 : 30, maxW: 58);
+      _sp(canvas, olive,          w * 0.27, h * 0.82, w * 0.07,  minW: isMobile ? 54 : 44, maxW: 86);
+      _sp(canvas, brazier,        w * 0.37, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, brazier,        w * 0.63, h * 0.74, w * 0.04,  minW: 26, maxW: 52,  hideMobile: true);
+      _sp(canvas, olive,          w * 0.73, h * 0.83, w * 0.07,  minW: isMobile ? 58 : 48, maxW: 90);
+      _sp(canvas, landmarkSelfie, w * 0.04, h * 0.82, w * 0.055, minW: 32, maxW: 70,  hideMobile: true);
+      _sp(canvas, amphora,        w * 0.90, h * 0.79, w * 0.045, minW: 30, maxW: 56,  hideMobile: true);
     }
   }
 
@@ -960,7 +978,9 @@ class _SceneryPainter extends CustomPainter {
       o.w != w || o.h != h || o.front != front ||
       o.cypress != cypress || o.statue != statue ||
       o.brokenCol != brokenCol || o.olive != olive ||
-      o.amphora != amphora || o.brazier != brazier;
+      o.amphora != amphora || o.brazier != brazier ||
+      o.landmarkColumn != landmarkColumn || o.landmarkSelfie != landmarkSelfie ||
+      o.landmarkThinker != landmarkThinker;
 }
 
 // ── Mobile scenery — back + front layers, positions from reference mobile.js ───
@@ -968,11 +988,13 @@ class _MobileSceneryPainter extends CustomPainter {
   final double w, h;
   final bool front;
   final ui.Image? cypress, statue, flowerBush, herm, amphora, olive;
+  final ui.Image? landmarkColumn, landmarkSelfie, landmarkThinker;
 
   const _MobileSceneryPainter({
     required this.w, required this.h, required this.front,
     this.cypress, this.statue, this.flowerBush, this.herm,
     this.amphora, this.olive,
+    this.landmarkColumn, this.landmarkSelfie, this.landmarkThinker,
   });
 
   // Bottom-centre anchored: base of image at (w*xF, h*yF)
@@ -992,17 +1014,20 @@ class _MobileSceneryPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (!front) {
-      _sp(canvas, cypress,    0.33, 0.13, 0.11, 40, 72);
-      _sp(canvas, statue,     0.69, 0.12, 0.11, 40, 72);  // swapped: statue top-right
-      _sp(canvas, cypress,    0.20, 0.40, 0.14, 46, 92);  // swapped: tree left-mid
-      _sp(canvas, flowerBush, 0.80, 0.38, 0.15, 48, 98);
-      _sp(canvas, herm,       0.25, 0.67, 0.12, 40, 80);
-      _sp(canvas, cypress,    0.84, 0.65, 0.18, 58, 120);
+      _sp(canvas, landmarkColumn,  0.08, 0.27, 0.14, 42, 72);
+      _sp(canvas, cypress,         0.33, 0.13, 0.11, 40, 72);
+      _sp(canvas, statue,          0.69, 0.12, 0.11, 40, 72);
+      _sp(canvas, cypress,         0.20, 0.40, 0.14, 46, 92);
+      _sp(canvas, flowerBush,      0.80, 0.38, 0.15, 48, 98);
+      _sp(canvas, landmarkThinker, 0.90, 0.48, 0.17, 50, 88);
+      _sp(canvas, herm,            0.25, 0.67, 0.12, 40, 80);
+      _sp(canvas, cypress,         0.84, 0.65, 0.18, 58, 120);
     } else {
-      _sp(canvas, amphora,    0.12, 0.96, 0.12, 40, 74);
-      _sp(canvas, flowerBush, 0.78, 0.94, 0.20, 62, 112);
-      _sp(canvas, amphora,    0.87, 0.71, 0.11, 34, 62);
-      _sp(canvas, olive,      0.15, 0.60, 0.12, 40, 76);
+      _sp(canvas, amphora,        0.12, 0.96, 0.12, 40, 74);
+      _sp(canvas, flowerBush,     0.78, 0.94, 0.20, 62, 112);
+      _sp(canvas, landmarkSelfie, 0.08, 0.79, 0.15, 44, 80);
+      _sp(canvas, amphora,        0.87, 0.71, 0.11, 34, 62);
+      _sp(canvas, olive,          0.15, 0.60, 0.12, 40, 76);
     }
   }
 
@@ -1011,7 +1036,9 @@ class _MobileSceneryPainter extends CustomPainter {
       o.w != w || o.h != h || o.front != front ||
       o.cypress != cypress || o.statue != statue ||
       o.flowerBush != flowerBush || o.herm != herm ||
-      o.amphora != amphora || o.olive != olive;
+      o.amphora != amphora || o.olive != olive ||
+      o.landmarkColumn != landmarkColumn || o.landmarkSelfie != landmarkSelfie ||
+      o.landmarkThinker != landmarkThinker;
 }
 
 // ── Vignette ──────────────────────────────────────────────────────────────────
