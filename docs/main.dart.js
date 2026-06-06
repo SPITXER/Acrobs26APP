@@ -40921,8 +40921,8 @@ for(p=[q.z,q.Q,q.as,q.at,q.ax,q.ay,q.ch,q.CW,q.cx,q.cy,q.db],s=0;s<11;++s){r=p[s
 if(r!=null)r.m()}q.a3l()},
 EI(a,b,c,d,e){var s=B.d.cz(a*e,80,280),r=a*c-s/2,q=b*d-s
 return new A.z(r,q,r+s,q+s)},
-Tv(a,b,c){if(this.EI(b,c,0.19,0.58,0.23).cL(12).p(0,a))return B.mA
-if(this.EI(b,c,0.5,0.57,0.2).cL(12).p(0,a))return B.mB
+Tv(a,b,c){if(this.EI(b,c,0.19,0.58,0.196).cL(12).p(0,a))return B.mA
+if(this.EI(b,c,0.5,0.57,0.23).cL(12).p(0,a))return B.mB
 if(this.EI(b,c,0.81,0.59,0.22).cL(12).p(0,a))return B.mC
 return null},
 aeo(a,b,c){var s,r=this,q=r.Tv(a,b,c)
@@ -40940,7 +40940,7 @@ r=q.w
 r===$&&A.a()
 return A.v8(p,B.ES,A.iy(new A.oj(A.b([o,s,r],t.bA)),new A.al_(q),p),p,B.ih,p)},
 a5s(a,b,c){var s=this,r=t.pv
-r=A.X(new A.a2(A.b([new A.wR([0.58,0,s.as,280,92,"Browse","THE AGORA",0.23,0.19,B.mA]),new A.wR([0.57,0.18,s.Q,250,86,"Forum","THE STOA",0.2,0.5,B.mB]),new A.wR([0.59,0.36,s.z,280,92,"The Assembly","SYMPOSIUM",0.22,0.81,B.mC])],t.Ki),new A.akC(s,a,b,c),r),r.i("aq.E"))
+r=A.X(new A.a2(A.b([new A.wR([0.58,0,s.as,238,78,"Browse","THE AGORA",0.196,0.19,B.mA]),new A.wR([0.57,0.18,s.Q,288,99,"Forum","THE STOA",0.23,0.5,B.mB]),new A.wR([0.59,0.36,s.z,280,92,"The Assembly","SYMPOSIUM",0.22,0.81,B.mC])],t.Ki),new A.akC(s,a,b,c),r),r.i("aq.E"))
 return r}}
 A.al3.prototype={
 $1(a){var s,r
