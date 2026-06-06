@@ -1004,18 +1004,18 @@ class _MobileSceneryPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (!front) {
+      _sp(canvas, landmarkThinker, 0.22, 0.14, 0.18, 54, 90);
       _sp(canvas, cypress,         0.33, 0.13, 0.11, 40, 72);
       _sp(canvas, statue,          0.69, 0.12, 0.11, 40, 72);
-      _sp(canvas, landmarkThinker, 0.72, 0.25, 0.18, 54, 90);
+      _sp(canvas, landmarkColumn,  0.11, 0.42, 0.09, 27, 45);
       _sp(canvas, cypress,         0.20, 0.40, 0.14, 46, 92);
       _sp(canvas, flowerBush,      0.80, 0.38, 0.15, 48, 98);
       _sp(canvas, cypress,         0.85, 0.37, 0.18, 58, 120);
       _sp(canvas, herm,            0.25, 0.67, 0.12, 40, 80);
-      _sp(canvas, landmarkColumn,  0.83, 0.52, 0.09, 27, 45);
     } else {
       _sp(canvas, amphora,        0.12, 0.96, 0.12, 40, 74);
       _sp(canvas, flowerBush,     0.78, 0.94, 0.20, 62, 112);
-      _sp(canvas, landmarkSelfie, 0.62, 0.84, 0.18, 54, 92);
+      _sp(canvas, landmarkSelfie, 0.65, 0.92, 0.18, 54, 92);
       _sp(canvas, amphora,        0.87, 0.71, 0.11, 34, 62);
       _sp(canvas, olive,          0.15, 0.60, 0.12, 40, 76);
     }
