@@ -61,6 +61,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   ui.Image? _olive;
   ui.Image? _amphora;
   ui.Image? _brazier;
+  ui.Image? _roadVertImg;
+  ui.Image? _flowerBushImg;
+  ui.Image? _hermImg;
 
   @override
   void initState() {
@@ -106,7 +109,10 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       _loadImg('assets/images/broken_column.png', 256, (v) => _brokenCol  = v),
       _loadImg('assets/images/olive_bush.png',    256, (v) => _olive      = v),
       _loadImg('assets/images/amphora.png',       256, (v) => _amphora    = v),
-      _loadImg('assets/images/brazier.png',       256, (v) => _brazier    = v),
+      _loadImg('assets/images/brazier.png',        256,  (v) => _brazier      = v),
+      _loadImg('assets/images/road_vertical.png', 1024, (v) => _roadVertImg  = v),
+      _loadImg('assets/images/flower_bush.png',   256,  (v) => _flowerBushImg = v),
+      _loadImg('assets/images/herm.png',          256,  (v) => _hermImg      = v),
     ]);
   }
 
@@ -126,6 +132,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     for (final img in [
       _templeImg, _stoaImg, _agoraImg, _earthTile, _roadTile,
       _cypress, _statue, _brokenCol, _olive, _amphora, _brazier,
+      _roadVertImg, _flowerBushImg, _hermImg,
     ]) { img?.dispose(); }
     super.dispose();
   }
@@ -325,19 +332,18 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     }).toList();
   }
 
-  // ── Mobile vertical layout ───────────────────────────────────────────────
+  // ── Mobile vertical layout — winding road + absolute building positions ──────
   Widget _buildMobileVertical(double w, double h, double entT) {
-    final alpha   = Curves.easeOut.transform(entT);
-    final imgSize = (h * 0.18).clamp(80.0, 170.0);
+    final alpha = Curves.easeOut.transform(entT);
 
-    // Order: Symposium (top) → Stoa (middle) → Agora (bottom)
+    // Back→front depth order; x%/y% from reference mobile.js (bottom-centre anchored)
     final stops = [
-      (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
-       img: _templeImg, delay: 0.0),
       (zone: AcropolisZone.stoa,      title: 'THE STOA',  sub: 'Forum',
-       img: _stoaImg,   delay: 0.15),
+       img: _stoaImg,   xF: 0.45, yF: 0.22, bwF: 0.27, bwMin: 95.0,  bwMax: 160.0, delay: 0.28),
+      (zone: AcropolisZone.acropolis, title: 'SYMPOSIUM', sub: 'The Assembly',
+       img: _templeImg, xF: 0.63, yF: 0.52, bwF: 0.34, bwMin: 120.0, bwMax: 200.0, delay: 0.14),
       (zone: AcropolisZone.agora,     title: 'THE AGORA', sub: 'Browse',
-       img: _agoraImg,  delay: 0.30),
+       img: _agoraImg,  xF: 0.40, yF: 0.82, bwF: 0.42, bwMin: 150.0, bwMax: 250.0, delay: 0.0),
     ];
 
     return GestureDetector(
@@ -352,160 +358,202 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
         _artSpring.forward(from: 0);
       },
       child: Stack(clipBehavior: Clip.hardEdge, children: [
-      // ① Earth tiles — IgnorePointer so touches pass through to buildings
-      IgnorePointer(
-        child: CustomPaint(
-          size: Size(w, h),
-          painter: _BgPainter(
-            earthTile: _earthTile, roadTile: null,
-            roadY: 0, bandH: 0, isMobile: true, showRoad: false,
-          ),
-        ),
-      ),
-      // ② Warm haze
-      Positioned.fill(child: IgnorePointer(
-          child: CustomPaint(painter: _HazePainter()))),
-      // ③ Vertical road — real road tile rotated 90°
-      Positioned.fill(child: IgnorePointer(
-          child: CustomPaint(painter: _VertPathPainter(roadTile: _roadTile)))),
-      // ④ Side artifacts — ON the road, bob with drag
-      IgnorePointer(
-        child: CustomPaint(
-          size: Size(w, h),
-          painter: _MobileSidePainter(
-            w: w, h: h,
-            cypress: _cypress, olive: _olive, amphora: _amphora,
-            dragY: _mobileDragY, pulseT: _pulse.value,
-          ),
-        ),
-      ),
-
-      // ⑤ Buildings column — the only interactive layer
-      Positioned.fill(
-        child: SafeArea(
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
-              child: _Header(alpha: alpha),
+        // ① Earth tile base
+        IgnorePointer(
+          child: CustomPaint(
+            size: Size(w, h),
+            painter: _BgPainter(
+              earthTile: _earthTile, roadTile: null,
+              roadY: 0, bandH: 0, isMobile: true, showRoad: false,
             ),
-            ...stops.map((s) {
-              final a   = Curves.easeOut.transform(
-                  ((entT - s.delay) / 0.35).clamp(0.0, 1.0));
-              final hot = _tappedZone == s.zone;
-              return Expanded(
-                child: Opacity(
-                  opacity: a,
-                  child: Transform.translate(
-                    // Slide up from 18 px below as it fades in
-                    offset: Offset(0, (1.0 - a) * 18),
-                    child: GestureDetector(
-                      onTap: () => _tapZone(s.zone),
-                      onTapDown: (_) =>
-                          setState(() => _tappedZone = s.zone),
-                      onTapCancel: () => setState(() {
-                        if (_tappedZone == s.zone) _tappedZone = null;
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
-                        color: hot
-                            ? const Color(0x14FFF4D6)
-                            : Colors.transparent,
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                AnimatedSlide(
-                                  offset: Offset(0, hot ? -0.04 : 0),
-                                  duration: const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
-                                  child: ColorFiltered(
-                                    colorFilter: hot
-                                        ? const ColorFilter.matrix(<double>[
-                                            1.06, 0, 0, 0, 0,
-                                            0, 1.06, 0, 0, 0,
-                                            0, 0, 1.06, 0, 0,
-                                            0, 0, 0, 1,    0,
-                                          ])
-                                        : const ColorFilter.matrix(<double>[
-                                            1, 0, 0, 0, 0,
-                                            0, 1, 0, 0, 0,
-                                            0, 0, 1, 0, 0,
-                                            0, 0, 0, 1, 0,
-                                          ]),
-                                    child: s.img != null
-                                        ? RawImage(
-                                            image: s.img,
-                                            width: imgSize, height: imgSize,
-                                            filterQuality: FilterQuality.none,
-                                            fit: BoxFit.contain,
-                                          )
-                                        : SizedBox(
-                                            width: imgSize, height: imgSize),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 7),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Color(0xFFFCF0D8),
-                                        Color(0xFFECDAB0)
-                                      ],
-                                    ),
-                                    border: Border.all(
-                                        color: const Color(0xFF5E462C),
-                                        width: 2),
-                                    borderRadius: BorderRadius.circular(3),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: Color(0xFF5E462C),
-                                          offset: Offset(0, 3)),
-                                      BoxShadow(
-                                          color: Color(0x593A2A1C),
-                                          offset: Offset(0, 6),
-                                          blurRadius: 10),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(s.title,
-                                          textAlign: TextAlign.center,
-                                          style: GoogleFonts.pixelifySans(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: _ink,
-                                              letterSpacing: 1.0)),
-                                      Text(s.sub,
-                                          textAlign: TextAlign.center,
-                                          style: GoogleFonts.pixelifySans(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w400,
-                                              color:
-                                                  const Color(0xFF7A5A3A))),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+          ),
+        ),
+        // ② Warm haze
+        Positioned.fill(
+          child: IgnorePointer(child: CustomPaint(painter: _HazePainter())),
+        ),
+        // ③ Winding road — road_vertical.png fills viewport (background-size:100% 100%)
+        if (_roadVertImg != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: RawImage(
+                image: _roadVertImg!,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.none,
+              ),
+            ),
+          ),
+        // ④ Back scenery — parallax drifts same direction as drag
+        Transform.translate(
+          offset: Offset(0, _mobileDragY * 0.3),
+          child: IgnorePointer(
+            child: CustomPaint(
+              size: Size(w, h),
+              painter: _MobileSceneryPainter(
+                w: w, h: h, front: false,
+                cypress: _cypress, statue: _statue,
+                flowerBush: _flowerBushImg, herm: _hermImg,
+                amphora: _amphora, olive: _olive,
+              ),
+            ),
+          ),
+        ),
+        // ⑤ Buildings — absolutely positioned, back-to-front (Stoa → Sym → Agora)
+        ...stops.map((s) {
+          final bw  = (w * s.bwF).clamp(s.bwMin, s.bwMax);
+          final a   = Curves.easeOut.transform(
+              ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
+          final hot = _tappedZone == s.zone;
+          return Positioned(
+            left:   w * s.xF - bw / 2,
+            bottom: h * (1.0 - s.yF),
+            width:  bw,
+            child: Opacity(
+              opacity: a,
+              child: Transform.translate(
+                offset: Offset(0, (1.0 - a) * 16),
+                child: GestureDetector(
+                  onTap: () => _tapZone(s.zone),
+                  onTapDown: (_) => setState(() => _tappedZone = s.zone),
+                  onTapCancel: () => setState(() {
+                    if (_tappedZone == s.zone) _tappedZone = null;
+                  }),
+                  child: AnimatedSlide(
+                    // whole card sinks down on press (matches CSS :active)
+                    offset: Offset(0, hot ? 0.025 : 0),
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOut,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        AnimatedSlide(
+                          // art lifts slightly against the press
+                          offset: Offset(0, hot ? -0.05 : 0),
+                          duration: const Duration(milliseconds: 120),
+                          curve: Curves.easeOut,
+                          child: ColorFiltered(
+                            colorFilter: hot
+                                ? const ColorFilter.matrix(<double>[
+                                    1.06, 0, 0, 0, 0,
+                                    0, 1.06, 0, 0, 0,
+                                    0, 0, 1.06, 0, 0,
+                                    0, 0, 0, 1,    0,
+                                  ])
+                                : const ColorFilter.matrix(<double>[
+                                    1, 0, 0, 0, 0,
+                                    0, 1, 0, 0, 0,
+                                    0, 0, 1, 0, 0,
+                                    0, 0, 0, 1, 0,
+                                  ]),
+                            child: s.img != null
+                                ? RawImage(
+                                    image: s.img,
+                                    width: bw,
+                                    filterQuality: FilterQuality.none,
+                                    fit: BoxFit.contain,
+                                  )
+                                : SizedBox(width: bw, height: bw * 0.8),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 11, vertical: 5),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFFCF0D8), Color(0xFFECDAB0)],
+                            ),
+                            border: Border.all(
+                                color: const Color(0xFF5E462C), width: 2),
+                            borderRadius: BorderRadius.circular(3),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Color(0xFF5E462C),
+                                  offset: Offset(0, 3)),
+                              BoxShadow(
+                                  color: Color(0x593A2A1C),
+                                  offset: Offset(0, 5),
+                                  blurRadius: 9),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                s.title,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.pixelifySans(
+                                  fontSize: (bw * 0.09).clamp(11.0, 15.0),
+                                  fontWeight: FontWeight.w600,
+                                  color: _ink,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              Text(
+                                s.sub,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.pixelifySans(
+                                  fontSize: (bw * 0.07).clamp(8.0, 11.0),
+                                  fontWeight: FontWeight.w400,
+                                  color: const Color(0xFF7A5A3A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            }),
-            Opacity(
-              opacity: alpha * 0.85,
+              ),
+            ),
+          );
+        }),
+        // ⑥ Front scenery — parallax drifts counter to drag
+        Transform.translate(
+          offset: Offset(0, _mobileDragY * -0.5),
+          child: IgnorePointer(
+            child: CustomPaint(
+              size: Size(w, h),
+              painter: _MobileSceneryPainter(
+                w: w, h: h, front: true,
+                cypress: _cypress, statue: _statue,
+                flowerBush: _flowerBushImg, herm: _hermImg,
+                amphora: _amphora, olive: _olive,
+              ),
+            ),
+          ),
+        ),
+        // ⑦ Vignette
+        Positioned.fill(
+          child: IgnorePointer(child: CustomPaint(painter: _VignettePainter())),
+        ),
+        // ⑧ Header
+        Positioned(
+          top: 0, left: 0, right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: Opacity(
+              opacity: alpha,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _Header(alpha: 1.0),
+              ),
+            ),
+          ),
+        ),
+        // ⑨ Pulsing hint
+        Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: SafeArea(
+            top: false,
+            child: Opacity(
+              opacity: (0.5 + 0.45 * _pulse.value) * alpha,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
                   'TAP A BUILDING TO START',
                   textAlign: TextAlign.center,
@@ -518,16 +566,11 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                 ),
               ),
             ),
-          ]),
+          ),
         ),
-      ),
-
-      // ⑥ Vignette — visual only, must not block touches
-      Positioned.fill(child: IgnorePointer(
-          child: CustomPaint(painter: _VignettePainter()))),
-      // ⑦ Side menu
-      Positioned(top: 6, right: 16, child: const SideMenuButton()),
-    ]),
+        // ⑩ Side menu
+        Positioned(top: 6, right: 16, child: const SideMenuButton()),
+      ]),
     );
   }
 }
@@ -903,107 +946,55 @@ class _SceneryPainter extends CustomPainter {
       o.amphora != amphora || o.brazier != brazier;
 }
 
-// ── Mobile vertical road — original road tile rotated 90° ────────────────────
-class _VertPathPainter extends CustomPainter {
-  final ui.Image? roadTile;
-  const _VertPathPainter({this.roadTile});
+// ── Mobile scenery — back + front layers, positions from reference mobile.js ───
+class _MobileSceneryPainter extends CustomPainter {
+  final double w, h;
+  final bool front;
+  final ui.Image? cypress, statue, flowerBush, herm, amphora, olive;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    // Visual road width on screen
-    final bandW = (w * 0.42).clamp(100.0, 190.0);
-
-    canvas.save();
-    // Rotate canvas so the horizontal road becomes vertical
-    canvas.translate(w / 2, h / 2);
-    canvas.rotate(math.pi / 2);
-    // Now: local x-axis = screen down, local y-axis = screen right
-    // Road runs along local x; bandW is road thickness along local y
-    final roadLen = h * 1.1; // bleed past top and bottom edges
-
-    if (roadTile != null) {
-      final tW = roadTile!.width.toDouble();
-      final tH = roadTile!.height.toDouble();
-      final drawH = bandW;
-      final drawW = tW * (drawH / tH);
-      final cols  = (roadLen / drawW).ceil() + 1;
-      final startX = -roadLen / 2;
-      for (var c = 0; c < cols; c++) {
-        canvas.drawImageRect(
-          roadTile!,
-          Rect.fromLTWH(0, 0, tW, tH),
-          Rect.fromLTWH(startX + c * drawW, -bandW / 2, drawW, drawH),
-          Paint()..filterQuality = FilterQuality.none,
-        );
-      }
-    } else {
-      canvas.drawRect(
-        Rect.fromLTWH(-roadLen / 2, -bandW / 2, roadLen, bandW),
-        Paint()..color = const Color(0xFFD4C4A0),
-      );
-    }
-
-    // Edge shadow lines
-    final edge = Paint()..color = const Color(0x888A7A5A)..strokeWidth = 1.5;
-    canvas.drawLine(Offset(-roadLen / 2, -bandW / 2), Offset(roadLen / 2, -bandW / 2), edge);
-    canvas.drawLine(Offset(-roadLen / 2,  bandW / 2), Offset(roadLen / 2,  bandW / 2), edge);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_VertPathPainter o) => o.roadTile != roadTile;
-}
-
-// ── Mobile side artifacts — on-road, bob with drag + idle pulse ───────────────
-class _MobileSidePainter extends CustomPainter {
-  final double w, h, dragY, pulseT;
-  final ui.Image? cypress, olive, amphora;
-
-  const _MobileSidePainter({
-    required this.w, required this.h,
-    required this.dragY, required this.pulseT,
-    this.cypress, this.olive, this.amphora,
+  const _MobileSceneryPainter({
+    required this.w, required this.h, required this.front,
+    this.cypress, this.statue, this.flowerBush, this.herm,
+    this.amphora, this.olive,
   });
 
-  void _sp(Canvas canvas, ui.Image? img, double cx, double baseY, double spriteW,
-      {double minW = 20.0, double maxW = 80.0}) {
+  // Bottom-centre anchored: base of image at (w*xF, h*yF)
+  void _sp(Canvas canvas, ui.Image? img,
+      double xF, double yF, double vwF, double minW, double maxW) {
     if (img == null) return;
-    final sw = spriteW.clamp(minW, maxW);
+    final sw = (w * vwF).clamp(minW, maxW);
     final sh = sw * img.height / img.width;
     canvas.drawImageRect(
       img,
       Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
-      Rect.fromLTWH(cx - sw / 2, baseY - sh, sw, sh),
+      Rect.fromLTWH(w * xF - sw / 2, h * yF - sh, sw, sh),
       Paint()..filterQuality = FilterQuality.none,
     );
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final roadW = (w * 0.42).clamp(100.0, 190.0);
-    // Place inside road band, offset slightly left/right of centre
-    final leftX  = w / 2 - roadW * 0.26;
-    final rightX = w / 2 + roadW * 0.26;
-    final sz = (w * 0.10).clamp(22.0, 48.0);
-
-    // Idle bob + drag parallax (each artifact reacts at a slightly different rate)
-    final bob = math.sin(pulseT * 2 * math.pi) * 3.5;
-
-    _sp(canvas, cypress, leftX,  h * 0.24 + bob * 0.9 + dragY * 0.5,  sz * 1.2, minW: 22, maxW: 50);
-    _sp(canvas, cypress, rightX, h * 0.21 + bob * 1.1 + dragY * 0.45, sz * 1.1, minW: 22, maxW: 46);
-    _sp(canvas, olive,   leftX,  h * 0.50 + bob       + dragY * 0.6,  sz * 1.3, minW: 26, maxW: 58);
-    _sp(canvas, olive,   rightX, h * 0.53 + bob * 0.8 + dragY * 0.55, sz * 1.2, minW: 26, maxW: 54);
-    _sp(canvas, amphora, leftX,  h * 0.78 + bob * 1.2 + dragY * 0.7,  sz,       minW: 18, maxW: 40);
-    _sp(canvas, amphora, rightX, h * 0.80 + bob * 0.9 + dragY * 0.65, sz,       minW: 18, maxW: 40);
+    if (!front) {
+      _sp(canvas, cypress,    0.33, 0.13, 0.11, 40, 72);
+      _sp(canvas, cypress,    0.69, 0.12, 0.11, 40, 72);
+      _sp(canvas, statue,     0.20, 0.40, 0.14, 46, 92);
+      _sp(canvas, flowerBush, 0.80, 0.38, 0.15, 48, 98);
+      _sp(canvas, herm,       0.25, 0.67, 0.12, 40, 80);
+      _sp(canvas, cypress,    0.84, 0.65, 0.18, 58, 120);
+    } else {
+      _sp(canvas, amphora,    0.12, 0.96, 0.12, 40, 74);
+      _sp(canvas, flowerBush, 0.78, 0.94, 0.20, 62, 112);
+      _sp(canvas, amphora,    0.87, 0.71, 0.11, 34, 62);
+      _sp(canvas, olive,      0.15, 0.60, 0.12, 40, 76);
+    }
   }
 
   @override
-  bool shouldRepaint(_MobileSidePainter o) =>
-      o.w != w || o.h != h || o.dragY != dragY || o.pulseT != pulseT ||
-      o.cypress != cypress || o.olive != olive || o.amphora != amphora;
+  bool shouldRepaint(_MobileSceneryPainter o) =>
+      o.w != w || o.h != h || o.front != front ||
+      o.cypress != cypress || o.statue != statue ||
+      o.flowerBush != flowerBush || o.herm != herm ||
+      o.amphora != amphora || o.olive != olive;
 }
 
 // ── Vignette ──────────────────────────────────────────────────────────────────
