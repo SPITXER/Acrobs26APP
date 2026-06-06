@@ -405,9 +405,9 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
               ((entT - s.delay) / 0.40).clamp(0.0, 1.0));
           final hot = _tappedZone == s.zone;
           return Positioned(
-            left:   w * s.xF - bw / 2,
-            bottom: h * (1.0 - s.yF),
-            width:  bw,
+            left:  w * s.xF - bw / 2,
+            top:   h * s.yF - bw,   // image base lands on plaza centre
+            width: bw,
             child: Opacity(
               opacity: a,
               child: Transform.translate(
@@ -976,8 +976,8 @@ class _MobileSceneryPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (!front) {
       _sp(canvas, cypress,    0.33, 0.13, 0.11, 40, 72);
-      _sp(canvas, cypress,    0.69, 0.12, 0.11, 40, 72);
-      _sp(canvas, statue,     0.20, 0.40, 0.14, 46, 92);
+      _sp(canvas, statue,     0.69, 0.12, 0.11, 40, 72);  // swapped: statue top-right
+      _sp(canvas, cypress,    0.20, 0.40, 0.14, 46, 92);  // swapped: tree left-mid
       _sp(canvas, flowerBush, 0.80, 0.38, 0.15, 48, 98);
       _sp(canvas, herm,       0.25, 0.67, 0.12, 40, 80);
       _sp(canvas, cypress,    0.84, 0.65, 0.18, 58, 120);
