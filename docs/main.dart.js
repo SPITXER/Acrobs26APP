@@ -41419,20 +41419,19 @@ m.Q=B.b7
 a.a.me(b,new A.z(0,0,q,s),new A.z(o,n,o+r,n+p),m)},
 tu(a,b,c,d,e,f,g){return this.jR(a,b,c,d,e,!1,f,g)},
 aA(a,b){var s,r,q,p,o,n,m,l,k=this,j=k.b,i=k.c
-if(!k.e){s=k.f
-r=j*0.07
-q=i*0.5
+if(!k.e){s=i*0.5
+k.jR(a,k.Q,j*0.04,s,j*0.041,!0,51,24)
+r=k.f
+q=j*0.07
 p=k.d
-k.tu(a,s,r,q,r,92,p?54:46)
-k.jR(a,k.Q,j*0.12,q,j*0.041,!0,51,24)
-k.jR(a,k.r,j*0.33,q,j*0.06,!0,78,40)
-q=j*0.05
-k.jR(a,k.x,j*0.42,i*0.52,q,!0,66,34)
-k.jR(a,k.w,j*0.62,i*0.51,q,!0,66,34)
-i*=0.49
-q=p?54:46
-k.tu(a,s,j*0.93,i,r,96,q)
-k.jR(a,k.at,j*0.97,i,r,!0,86,36)}else{s=k.y
+k.tu(a,r,q,s,q,92,p?54:46)
+k.jR(a,k.r,j*0.33,s,j*0.06,!0,78,40)
+s=j*0.05
+k.jR(a,k.x,j*0.42,i*0.52,s,!0,66,34)
+k.jR(a,k.w,j*0.62,i*0.51,s,!0,66,34)
+s=p?54:46
+k.tu(a,r,j*0.93,i*0.49,q,96,s)
+k.jR(a,k.at,j*0.97,i*0.46,q,!0,86,36)}else{s=k.y
 r=j*0.045
 q=k.d
 p=q?38:30
@@ -41446,7 +41445,7 @@ m=i*0.74
 l=j*0.04
 k.jR(a,n,j*0.37,m,l,!0,52,26)
 k.jR(a,n,j*0.63,m,l,!0,52,26)
-k.jR(a,k.as,j*0.68,i*0.76,j*0.052,!0,66,30)
+k.jR(a,k.as,j*0.68,i*0.51,j*0.052,!0,66,30)
 q=q?58:48
 k.tu(a,p,j*0.73,i*0.83,o,90,q)
 k.jR(a,s,j*0.9,i*0.79,r,!0,56,30)}},
