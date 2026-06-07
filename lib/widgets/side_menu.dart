@@ -315,12 +315,20 @@ class _StoaRooms extends StatelessWidget {
         }
 
         return Column(children: [
-          // Notification cards (rooms that were joined — already closed)
+          // Notification cards (rooms that were matched — debate accessible)
           ...notifRooms.map((roomId) {
-            final joiner = state.stoaNotifications[roomId] ?? 'Someone';
+            final joiner   = state.stoaNotifications[roomId] ?? 'Someone';
+            final debateId = state.debateRoomForStoaRoom(roomId);
             return _NotifTile(
               joiner: joiner,
               onClear: () => state.clearStoaNotification(roomId),
+              onEnter: debateId != null ? () {
+                state.reenterRoom(debateId, partnerName: joiner);
+                final nav = Navigator.of(context);
+                nav.pop();
+                nav.push(MaterialPageRoute(
+                    builder: (_) => const RoomScreen()));
+              } : null,
             );
           }),
           // Active open rooms
@@ -480,24 +488,60 @@ class _RoomTile extends StatelessWidget {
 class _NotifTile extends StatelessWidget {
   final String joiner;
   final VoidCallback onClear;
-  const _NotifTile({required this.joiner, required this.onClear});
+  final VoidCallback? onEnter;
+  const _NotifTile({
+    required this.joiner,
+    required this.onClear,
+    this.onEnter,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
       decoration: BoxDecoration(
         color: Colors.orange.withOpacity(0.05),
         border: Border.all(color: Colors.orangeAccent.withOpacity(0.30)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        const Text('🔔 ', style: TextStyle(fontSize: 12)),
         Expanded(
-          child: Text('$joiner joined your room',
-              style: const TextStyle(color: Colors.white, fontSize: 12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$joiner challenged you!',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text('Debate room still open',
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: onEnter != null
+                          ? Colors.orangeAccent
+                          : Colors.white30)),
+            ],
+          ),
         ),
+        if (onEnter != null)
+          TextButton(
+            onPressed: onEnter,
+            style: TextButton.styleFrom(
+              foregroundColor: AcroColors.gold,
+              backgroundColor: AcroColors.gold.withOpacity(0.10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2)),
+              textStyle: GoogleFonts.dmSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5),
+            ),
+            child: const Text('ENTER'),
+          ),
         IconButton(
           icon: const Icon(Icons.close, size: 14, color: Colors.white38),
           padding: EdgeInsets.zero,

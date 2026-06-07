@@ -236,7 +236,9 @@ class AppState extends ChangeNotifier {
     if (cached != null) {
       currentRoom = cached;
     } else {
-      // Reconstruct from the data we have — enough for RoomScreen to reconnect
+      // Reconstruct from the data we have. Read hostUid from Firebase so
+      // isHost is correct even after a page refresh (avoids both sides
+      // waiting for an offer that nobody creates).
       currentRoom = DebateRoom(
         id: roomId,
         title: title,
@@ -249,6 +251,24 @@ class AppState extends ChangeNotifier {
             RoomMember(name: partnerName, initials: partnerIni, isHost: true),
         ],
       );
+      // Async-correct isHost from the rooms node then re-notify
+      _db.ref('rooms/$roomId/hostUid').get().then((snap) {
+        if (snap.value == profile.uid && currentRoom?.id == roomId) {
+          currentRoom = DebateRoom(
+            id: roomId,
+            title: currentRoom?.title ?? title,
+            host: profile.name,
+            hostInitials: profile.initials,
+            isHost: true,
+            members: [
+              RoomMember(name: profile.name, initials: profile.initials, isHost: true),
+              if (partnerName.isNotEmpty)
+                RoomMember(name: partnerName, initials: partnerIni),
+            ],
+          );
+          notifyListeners();
+        }
+      });
     }
     _roomEnterTime = DateTime.now();
     notifyListeners();
@@ -504,6 +524,7 @@ class AppState extends ChangeNotifier {
         'desc': '',
         'host': profile.name,
         'hIni': profile.initials,
+        'hostUid': profile.uid,
         'cat': 'Conversation',
         'cap': 2,
         'dur': 'Open',
