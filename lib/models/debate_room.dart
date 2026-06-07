@@ -56,6 +56,7 @@ class DebateRoom {
   int guestCount;
   final RoomPerms perms;
   bool isHost;
+  bool isSpectator;
   List<RoomMember> members;
 
   DebateRoom({
@@ -72,6 +73,7 @@ class DebateRoom {
     this.guestCount = 0,
     this.perms = const RoomPerms(),
     this.isHost = false,
+    this.isSpectator = false,
     this.members = const [],
   });
 

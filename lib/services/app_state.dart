@@ -46,7 +46,8 @@ class AppState extends ChangeNotifier {
 
   // Stoa argument rooms (up to 10 active at once)
   final List<String> _myStoaRoomIds = [];
-  StreamSubscription? _globalStoaWatcher;
+  // Per-room join watchers — one per active stoa room, watches stoa_room_joins/$id
+  final Map<String, StreamSubscription> _stoaJoinWatchers = {};
 
   // roomId → joiner name, persists until cleared
   final Map<String, String> stoaNotifications = {};
@@ -111,7 +112,9 @@ class AppState extends ChangeNotifier {
       }
 
       if (_myStoaRoomIds.isNotEmpty) {
-        _ensureGlobalStoaWatch();
+        for (final id in List.of(_myStoaRoomIds)) {
+          _startStoaRoomWatch(id);
+        }
         notifyListeners();
       }
     } catch (_) {
@@ -185,13 +188,11 @@ class AppState extends ChangeNotifier {
     for (final roomId in tempRooms) {
       _db.ref('stoa_rooms/$roomId/hostUid').set(user.uid);
     }
-    // Reset and re-restore stoa state under the new uid
-    _myStoaRoomIds
-      ..clear()
-      ..addAll(tempRooms);
-    _globalStoaWatcher?.cancel();
-    _globalStoaWatcher = null;
-    if (_myStoaRoomIds.isNotEmpty) _ensureGlobalStoaWatch();
+    // Reset and re-subscribe stoa watchers under the new uid
+    for (final sub in _stoaJoinWatchers.values) sub.cancel();
+    _stoaJoinWatchers.clear();
+    _myStoaRoomIds..clear()..addAll(tempRooms);
+    for (final id in tempRooms) _startStoaRoomWatch(id);
     await _db.ref('users/${user.uid}').set({
       'uid':       user.uid,
       'name':      profile.name,
@@ -406,12 +407,29 @@ class AppState extends ChangeNotifier {
   Stream<Map<String, dynamic>?> matchStream() {
     return _db.ref('matches/${profile.uid}').onValue.map((event) {
       if (!event.snapshot.exists) return null;
-      return Map<String, dynamic>.from(event.snapshot.value as Map);
+      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      if (data['handled'] == true) return null;
+      return data;
     });
   }
 
-  Future<void> clearMatch() async {
-    await _db.ref('matches/${profile.uid}').remove();
+  // Marks the match notification as handled without deleting it, so the
+  // room remains visible on the floor for spectators.
+  Future<void> markMatchHandled() async {
+    await _db.ref('matches/${profile.uid}/handled').set(true);
+  }
+
+  Future<void> joinAsSpectator(String roomId, String title) async {
+    final room = DebateRoom(
+      id: roomId,
+      title: title,
+      host: '',
+      hostInitials: '?',
+      isHost: false,
+      isSpectator: true,
+      members: [RoomMember(name: profile.name, initials: profile.initials)],
+    );
+    enterRoom(room);
   }
 
   // ---------------------------------------------------------------------------
@@ -576,7 +594,7 @@ class AppState extends ChangeNotifier {
         'hIni': profile.initials,
         'hostUid': profile.uid,
         'cat': 'Conversation',
-        'cap': 2,
+        'cap': 4,
         'dur': 'Open',
         'durS': 0,
         'live': true,
@@ -765,25 +783,25 @@ class AppState extends ChangeNotifier {
       _db.ref('users/${profile.uid}/topicEngagement/$category')
           .set(ServerValue.increment(1));
     }
-    _ensureGlobalStoaWatch();
+    _startStoaRoomWatch(roomId);
     notifyListeners();
   }
 
   Future<void> terminateStoaRoom(String roomId) async {
-    // If this stoa room was matched, also mark the debate room as ended
     final debateSnap = await _db.ref('stoa_rooms/$roomId/debateRoomId').get();
     final debateId = debateSnap.value as String?;
-    final updates = <String, dynamic>{'stoa_rooms/$roomId': null};
+    final updates = <String, dynamic>{
+      'stoa_rooms/$roomId': null,
+      'stoa_room_joins/$roomId': null,
+    };
     if (debateId != null) updates['rooms/$debateId/live'] = false;
     await _db.ref().update(updates);
 
+    _stoaJoinWatchers[roomId]?.cancel();
+    _stoaJoinWatchers.remove(roomId);
     _myStoaRoomIds.remove(roomId);
     _stoaToDebateRoom.removeWhere((_, v) => v == debateId);
     stoaNotifications.remove(roomId);
-    if (_myStoaRoomIds.isEmpty) {
-      _globalStoaWatcher?.cancel();
-      _globalStoaWatcher = null;
-    }
     notifyListeners();
   }
 
@@ -812,23 +830,34 @@ class AppState extends ChangeNotifier {
     final hostUid    = room['hostUid']  as String;
     final hostName   = room['hostName'] as String? ?? 'Anonymous';
     final hostIni    = room['hostIni']  as String? ?? '?';
-    final title      = room['title']    as String? ?? 'Argument';
     final category   = room['category'] as String? ?? '';
 
-    // Track topic engagement for badge system
     if (isPermanentAccount && category.isNotEmpty) {
       _db.ref('users/${profile.uid}/topicEngagement/$category')
           .set(ServerValue.increment(1));
     }
 
-    final debateRoomId = 'r${DateTime.now().millisecondsSinceEpoch}';
-    final roomName     = _greekRoomName();
-    await _db.ref().update({
-      // Mark stoa card as matched + link debate room — card stays on the floor
-      'stoa_rooms/$stoaRoomId/matched':       true,
-      'stoa_rooms/$stoaRoomId/debateRoomId':  debateRoomId,
-      'stoa_rooms/$stoaRoomId/challengerName': profile.name,
-      'stoa_rooms/$stoaRoomId/challengerUid':  profile.uid,
+    // Reuse existing debate room if a previous challenger already created one
+    final existingDebateId = room['debateRoomId'] as String?;
+    final debateRoomId     = existingDebateId ?? 'r${DateTime.now().millisecondsSinceEpoch}';
+    final roomName         = room['roomName'] as String? ?? _greekRoomName();
+
+    // Determine new challenger count — room is full at 3 challengers (4 total)
+    final prevCount = room['challengerCount'] as int? ?? 0;
+    final newCount  = prevCount + 1;
+    final isFull    = newCount >= 3;
+
+    final updates = <String, dynamic>{
+      // Update the stoa card
+      'stoa_rooms/$stoaRoomId/challengers/${profile.uid}': {
+        'name': profile.name, 'ini': profile.initials,
+      },
+      'stoa_rooms/$stoaRoomId/challengerCount': newCount,
+      'stoa_rooms/$stoaRoomId/debateRoomId':    debateRoomId,
+      'stoa_rooms/$stoaRoomId/roomName':         roomName,
+      if (isFull) 'stoa_rooms/$stoaRoomId/matched': true,
+
+      // Notify this challenger via their own matches node
       'matches/${profile.uid}': {
         'roomId':      debateRoomId,
         'partnerId':   hostUid,
@@ -837,55 +866,119 @@ class AppState extends ChangeNotifier {
         'isHost':      false,
         'roomName':    roomName,
       },
-      'matches/$hostUid': {
-        'roomId':      debateRoomId,
-        'partnerId':   profile.uid,
-        'partnerName': profile.name,
-        'partnerIni':  profile.initials,
-        'isHost':      true,
-        'stoaRoomId':  stoaRoomId,
-        'roomName':    roomName,
+
+      // Notify the host via per-room join queue (supports multiple challengers)
+      'stoa_room_joins/$stoaRoomId/${profile.uid}': {
+        'uid':          profile.uid,
+        'name':         profile.name,
+        'ini':          profile.initials,
+        'debateRoomId': debateRoomId,
+        'ts':           ServerValue.timestamp,
       },
-      'rooms/$debateRoomId': _buildRoomMap(debateRoomId, roomName),
-    });
+    };
+
+    if (existingDebateId == null) {
+      // First challenger — create the debate room with the HOST's data
+      updates['rooms/$debateRoomId'] = {
+        'title':     roomName,
+        'desc':      '',
+        'host':      hostName,
+        'hIni':      hostIni,
+        'hostUid':   hostUid,
+        'cat':       'Conversation',
+        'cap':       4,
+        'dur':       'Open',
+        'durS':      0,
+        'live':      true,
+        'guests':    0,
+        'perms':     const RoomPerms().toMap(),
+        'createdAt': ServerValue.timestamp,
+      };
+    } else {
+      // Subsequent challengers — increment guest count on existing room
+      updates['rooms/$debateRoomId/guests'] = ServerValue.increment(1);
+    }
+
+    await _db.ref().update(updates);
   }
 
-  // Single watcher for all of this user's stoa rooms
-  void _ensureGlobalStoaWatch() {
-    if (_globalStoaWatcher != null) return;
-    _globalStoaWatcher = _db.ref('matches/${profile.uid}').onValue.listen((event) {
-      if (!event.snapshot.exists) return;
-      final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-      final stoaRoomId = data['stoaRoomId'] as String?;
-      if (stoaRoomId == null) return;            // not a stoa-triggered match
-      if (!_myStoaRoomIds.contains(stoaRoomId)) return; // not our room
+  // Per-room watcher: subscribes to stoa_room_joins/$stoaRoomId.onChildAdded.
+  // Pre-loads existing join keys so it only fires for NEW challengers.
+  void _startStoaRoomWatch(String stoaRoomId) {
+    if (_stoaJoinWatchers.containsKey(stoaRoomId)) return;
 
-      final partnerName = data['partnerName'] as String? ?? 'Someone';
-      final room = buildRoomFromMatch(data);
-      enterRoom(room);
-      _stoaToDebateRoom[stoaRoomId] = room.id; // so host can re-enter later
-      clearMatch();
-      _myStoaRoomIds.remove(stoaRoomId);
-      stoaNotifications[stoaRoomId] = partnerName;
-      if (_myStoaRoomIds.isEmpty) {
-        _globalStoaWatcher?.cancel();
-        _globalStoaWatcher = null;
+    // Pre-load existing joins to suppress replay on subscribe
+    _db.ref('stoa_room_joins/$stoaRoomId').get().then((snap) {
+      if (_stoaJoinWatchers.containsKey(stoaRoomId)) return;
+
+      final Set<String> knownJoins = {};
+      if (snap.exists && snap.value is Map) {
+        knownJoins.addAll(
+            (snap.value as Map).keys.map((k) => k.toString()));
       }
-      notifyListeners();
 
-      _messengerKey.currentState?.showSnackBar(SnackBar(
-        content: Text(
-          '⚖  $partnerName challenged your argument!',
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-        ),
-        action: SnackBarAction(
-          label: 'ENTER DEBATE',
-          onPressed: () => _enterRoomCallback?.call(),
-        ),
-        duration: const Duration(seconds: 20),
-        backgroundColor: const Color(0xFF1A1200),
-      ));
-    });
+      _stoaJoinWatchers[stoaRoomId] = _db
+          .ref('stoa_room_joins/$stoaRoomId')
+          .onChildAdded
+          .listen((event) {
+        final uid = event.snapshot.key?.toString() ?? '';
+        if (knownJoins.contains(uid)) return; // already existed before subscribe
+        knownJoins.add(uid);
+
+        final raw = event.snapshot.value;
+        if (raw is! Map) return;
+        final partnerName  = raw['name']         as String? ?? 'Someone';
+        final partnerIni   = raw['ini']          as String? ?? '?';
+        final debateRoomId = raw['debateRoomId'] as String?;
+        if (debateRoomId == null) return;
+
+        _stoaToDebateRoom[stoaRoomId] = debateRoomId;
+        stoaNotifications[stoaRoomId] = partnerName;
+
+        if (currentRoom != null && currentRoom!.id == debateRoomId) {
+          // Already inside this debate — add the new member without re-navigating
+          final alreadyListed =
+              currentRoom!.members.any((m) => m.name == partnerName);
+          if (!alreadyListed) {
+            currentRoom = DebateRoom(
+              id:            currentRoom!.id,
+              title:         currentRoom!.title,
+              host:          currentRoom!.host,
+              hostInitials:  currentRoom!.hostInitials,
+              isHost:        currentRoom!.isHost,
+              members:       [...currentRoom!.members,
+                               RoomMember(name: partnerName, initials: partnerIni)],
+            );
+          }
+        } else if (currentRoom == null) {
+          enterRoom(DebateRoom(
+            id:           debateRoomId,
+            title:        debateRoomId,
+            host:         profile.name,
+            hostInitials: profile.initials,
+            isHost:       true,
+            members: [
+              RoomMember(name: profile.name, initials: profile.initials, isHost: true),
+              RoomMember(name: partnerName,  initials: partnerIni),
+            ],
+          ));
+        }
+        notifyListeners();
+
+        _messengerKey.currentState?.showSnackBar(SnackBar(
+          content: Text(
+            '⚖  $partnerName challenged your argument!',
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+          ),
+          action: SnackBarAction(
+            label: 'ENTER DEBATE',
+            onPressed: () => _enterRoomCallback?.call(),
+          ),
+          duration: const Duration(seconds: 20),
+          backgroundColor: const Color(0xFF1A1200),
+        ));
+      });
+    }).catchError((_) {});
   }
 
   // ---------------------------------------------------------------------------

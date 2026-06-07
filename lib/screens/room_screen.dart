@@ -72,6 +72,7 @@ class _RoomScreenState extends State<RoomScreen> {
   Future<void> _startWebRTC() async {
     final room = context.read<AppState>().currentRoom;
     if (room == null) return;
+    if (room.isSpectator) return; // spectators watch without a WebRTC connection
     _webrtc = WebRTCService(roomId: room.id, isHost: room.isHost);
 
     _localStreamSub = _webrtc!.onLocalStream.listen((stream) {
@@ -174,6 +175,18 @@ class _RoomScreenState extends State<RoomScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
             overflow: TextOverflow.ellipsis),
         actions: [
+          if (room.isSpectator)
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.amberAccent.withOpacity(0.10),
+                border: Border.all(color: Colors.amberAccent.withOpacity(0.35)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text('WATCHING',
+                  style: TextStyle(fontSize: 10, color: Colors.amberAccent, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+            ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10),
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
@@ -320,6 +333,7 @@ class _RoomScreenState extends State<RoomScreen> {
             alignment: WrapAlignment.center,
             spacing: 9,
             children: [
+              if (!room.isSpectator) ...[
               _ctrlBtn(
                 icon: _micOn ? Icons.mic : Icons.mic_off,
                 active: _micOn,
@@ -340,6 +354,7 @@ class _RoomScreenState extends State<RoomScreen> {
                       SnackBar(content: Text(_camOn ? 'Camera on' : 'Camera off')));
                 },
               ),
+              ],
               _ctrlBtn(
                 icon: Icons.back_hand_outlined,
                 color: AcroColors.gold.withOpacity(0.15),

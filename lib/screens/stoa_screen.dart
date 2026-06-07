@@ -77,7 +77,7 @@ class _StoaScreenState extends State<StoaScreen>
       if (isHost) return;
       final state = context.read<AppState>();
       state.enterRoom(state.buildRoomFromMatch(data));
-      state.clearMatch();
+      state.markMatchHandled();
       Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const RoomScreen()));
     });
@@ -327,9 +327,22 @@ class _StoaScreenState extends State<StoaScreen>
   }
 
   Widget _ownCardFooter(Map<String, dynamic> room) {
-    final isMatched      = room['matched'] == true;
-    final debateRoomId   = room['debateRoomId']   as String?;
-    final challengerName = room['challengerName'] as String? ?? 'Challenger';
+    final isMatched    = room['matched'] == true;
+    final debateRoomId = room['debateRoomId'] as String?;
+    final challengerCount = room['challengerCount'] as int? ?? 0;
+
+    // Build display name from challengers map, fall back to stored challengerName
+    final challengers = room['challengers'];
+    String challengerName;
+    if (challengers is Map && challengers.isNotEmpty) {
+      final names = challengers.values
+          .map((v) => v is Map ? (v['name'] as String? ?? '') : '')
+          .where((n) => n.isNotEmpty)
+          .toList();
+      challengerName = names.join(', ');
+    } else {
+      challengerName = room['challengerName'] as String? ?? 'Challenger';
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -344,7 +357,11 @@ class _StoaScreenState extends State<StoaScreen>
           ),
           const SizedBox(width: 8),
           Text(
-            isMatched ? 'IN DEBATE  ·  $challengerName' : 'YOUR ARGUMENT  ·  LIVE',
+            isMatched
+                ? 'FULL  ·  $challengerName'
+                : challengerCount > 0
+                    ? '$challengerCount / 3 CHALLENGERS  ·  $challengerName'
+                    : 'YOUR ARGUMENT  ·  LIVE',
             style: GoogleFonts.spaceMono(
                 fontSize: 10,
                 color: AcroColors.gold.withOpacity(0.50),
@@ -391,18 +408,44 @@ class _StoaScreenState extends State<StoaScreen>
     final isMatched = room['matched'] == true;
 
     if (isMatched) {
-      return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(
-          width: 7, height: 7,
-          decoration: const BoxDecoration(
-              color: Colors.amberAccent, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text('DEBATE IN PROGRESS',
-            style: GoogleFonts.spaceMono(
-                fontSize: 11,
-                color: AcroColors.gold.withOpacity(0.50),
-                letterSpacing: 2)),
+      final roomId = room['roomId'] as String? ?? '';
+      final title  = room['title']  as String? ?? 'Debate';
+      return Row(children: [
+        Row(children: [
+          Container(
+            width: 7, height: 7,
+            decoration: const BoxDecoration(
+                color: Colors.amberAccent, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text('LIVE',
+              style: GoogleFonts.spaceMono(
+                  fontSize: 10,
+                  color: Colors.amberAccent.withOpacity(0.70),
+                  letterSpacing: 2)),
+        ]),
+        const Spacer(),
+        if (roomId.isNotEmpty)
+          ElevatedButton(
+            onPressed: () {
+              context.read<AppState>().joinAsSpectator(roomId, title);
+              Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const RoomScreen()));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.07),
+              foregroundColor: AcroColors.gold,
+              side: BorderSide(color: AcroColors.gold.withOpacity(0.40)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2)),
+              textStyle: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2),
+            ),
+            child: const Text('SPECTATE'),
+          ),
       ]);
     }
 
@@ -446,12 +489,14 @@ class _StoaScreenState extends State<StoaScreen>
   }
 
   Widget _roomCard(Map<String, dynamic> room) {
-    final title    = room['title']    as String? ?? 'Untitled';
-    final thesis   = room['thesis']   as String? ?? '';
-    final hostName = room['hostName'] as String? ?? 'Anonymous';
-    final category = room['category'] as String? ?? '';
-    final ts       = room['ts']       as int?    ?? 0;
-    final roomId   = room['roomId']   as String? ?? '';
+    final title           = room['title']          as String? ?? 'Untitled';
+    final thesis          = room['thesis']         as String? ?? '';
+    final hostName        = room['hostName']       as String? ?? 'Anonymous';
+    final category        = room['category']       as String? ?? '';
+    final ts              = room['ts']             as int?    ?? 0;
+    final roomId          = room['roomId']         as String? ?? '';
+    final challengerCount = room['challengerCount'] as int?   ?? 0;
+    final occupancy       = challengerCount + 1; // +1 for host
 
     return CloudCornerBox(
       width: 320,
@@ -498,6 +543,30 @@ class _StoaScreenState extends State<StoaScreen>
                 style: GoogleFonts.spaceMono(
                     fontSize: 9,
                     color: Colors.white.withOpacity(0.22))),
+            if (occupancy > 1) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: occupancy >= 4
+                      ? Colors.red.withOpacity(0.12)
+                      : AcroColors.gold.withOpacity(0.08),
+                  border: Border.all(
+                    color: occupancy >= 4
+                        ? Colors.red.withOpacity(0.40)
+                        : AcroColors.gold.withOpacity(0.30),
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text('$occupancy / 4',
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 9,
+                        color: occupancy >= 4
+                            ? Colors.red.withOpacity(0.70)
+                            : AcroColors.gold.withOpacity(0.70),
+                        letterSpacing: 1)),
+              ),
+            ],
           ]),
           const SizedBox(height: 18),
 

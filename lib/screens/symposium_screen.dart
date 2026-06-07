@@ -95,7 +95,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final state = context.read<AppState>();
     final room = state.buildRoomFromMatch(matchData);
     state.enterRoom(room);
-    state.clearMatch();
+    state.markMatchHandled();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const RoomScreen()),
     );

@@ -54,7 +54,7 @@ class _SearchingScreenState extends State<SearchingScreen>
     final state = context.read<AppState>();
     final room = state.buildRoomFromMatch(matchData);
     state.enterRoom(room);
-    state.clearMatch();
+    state.markMatchHandled();
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const RoomScreen()),
