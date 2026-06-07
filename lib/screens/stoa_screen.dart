@@ -286,9 +286,10 @@ class _StoaScreenState extends State<StoaScreen>
                 },
                 onHorizontalDragEnd: (d) {
                   final vel = d.velocity.pixelsPerSecond.dx;
+                  final canChallenge = !isOwn && room['matched'] != true;
                   if (_dragOffset > 80 || vel > 500) {
                     _animateOff(500, () => _skip(rooms.length));
-                  } else if (!isOwn && (_dragOffset < -80 || vel < -500)) {
+                  } else if (canChallenge && (_dragOffset < -80 || vel < -500)) {
                     _animateOff(-500, () => _challenge(room));
                   } else {
                     _snapBack();
@@ -303,7 +304,7 @@ class _StoaScreenState extends State<StoaScreen>
                       if (_dragOffset > 28)
                         Positioned(top: 24, left: 24,
                             child: _badge('SKIP', Colors.white54)),
-                      if (!isOwn && _dragOffset < -28)
+                      if (!isOwn && room['matched'] != true && _dragOffset < -28)
                         Positioned(top: 24, right: 24,
                             child: _badge('CHALLENGE', AcroColors.gold)),
                     ]),
@@ -320,86 +321,129 @@ class _StoaScreenState extends State<StoaScreen>
         left: 28, right: 28, bottom: 80,
         child: isOwn
             ? _ownCardFooter(room)
-            : Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _skip(rooms.length),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AcroColors.stoneLight,
-                      side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(2)),
-                    ),
-                    child: Text('SKIP',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2)),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _challenge(room),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AcroColors.gold,
-                      foregroundColor: AcroColors.stone,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(2)),
-                      textStyle: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 2),
-                    ),
-                    child: const Text('CHALLENGE'),
-                  ),
-                ),
-              ]),
+            : _challengerFooter(room, rooms.length),
       ),
     ]);
   }
 
-  Widget _ownCardFooter(Map<String, dynamic> room) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(
-              width: 6, height: 6,
-              decoration: const BoxDecoration(
-                  color: Colors.greenAccent, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 8),
-            Text('YOUR ARGUMENT  ·  LIVE',
-                style: GoogleFonts.spaceMono(
-                    fontSize: 10,
-                    color: AcroColors.gold.withOpacity(0.50),
-                    letterSpacing: 2)),
-          ]),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => _HostWaitScreen(room: room))),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AcroColors.gold,
-                foregroundColor: AcroColors.stone,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2)),
-                textStyle: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2),
-              ),
-              child: const Text('VIEW ROOM'),
+  Widget _ownCardFooter(Map<String, dynamic> room) {
+    final isMatched      = room['matched'] == true;
+    final debateRoomId   = room['debateRoomId']   as String?;
+    final challengerName = room['challengerName'] as String? ?? 'Challenger';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(
+            width: 6, height: 6,
+            decoration: BoxDecoration(
+              color: isMatched ? Colors.amberAccent : Colors.greenAccent,
+              shape: BoxShape.circle,
             ),
           ),
-        ],
-      );
+          const SizedBox(width: 8),
+          Text(
+            isMatched ? 'IN DEBATE  ·  $challengerName' : 'YOUR ARGUMENT  ·  LIVE',
+            style: GoogleFonts.spaceMono(
+                fontSize: 10,
+                color: AcroColors.gold.withOpacity(0.50),
+                letterSpacing: 2),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              if (isMatched && debateRoomId != null) {
+                context.read<AppState>().reenterRoom(
+                      debateRoomId,
+                      partnerName: challengerName,
+                    );
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RoomScreen()));
+              } else {
+                Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => _HostWaitScreen(room: room)));
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AcroColors.gold,
+              foregroundColor: AcroColors.stone,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2)),
+              textStyle: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2),
+            ),
+            child: Text(isMatched ? 'ENTER DEBATE' : 'VIEW ROOM'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _challengerFooter(Map<String, dynamic> room, int total) {
+    final isMatched = room['matched'] == true;
+
+    if (isMatched) {
+      return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(
+          width: 7, height: 7,
+          decoration: const BoxDecoration(
+              color: Colors.amberAccent, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text('DEBATE IN PROGRESS',
+            style: GoogleFonts.spaceMono(
+                fontSize: 11,
+                color: AcroColors.gold.withOpacity(0.50),
+                letterSpacing: 2)),
+      ]);
+    }
+
+    return Row(children: [
+      Expanded(
+        child: OutlinedButton(
+          onPressed: () => _skip(total),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AcroColors.stoneLight,
+            side: BorderSide(color: Colors.white.withOpacity(0.15)),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2)),
+          ),
+          child: Text('SKIP',
+              style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2)),
+        ),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () => _challenge(room),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AcroColors.gold,
+            foregroundColor: AcroColors.stone,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2)),
+            textStyle: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2),
+          ),
+          child: const Text('CHALLENGE'),
+        ),
+      ),
+    ]);
+  }
 
   Widget _roomCard(Map<String, dynamic> room) {
     final title    = room['title']    as String? ?? 'Untitled';

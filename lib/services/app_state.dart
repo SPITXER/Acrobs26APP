@@ -720,8 +720,15 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> terminateStoaRoom(String roomId) async {
-    await _db.ref('stoa_rooms/$roomId').remove();
+    // If this stoa room was matched, also mark the debate room as ended
+    final debateSnap = await _db.ref('stoa_rooms/$roomId/debateRoomId').get();
+    final debateId = debateSnap.value as String?;
+    final updates = <String, dynamic>{'stoa_rooms/$roomId': null};
+    if (debateId != null) updates['rooms/$debateId/live'] = false;
+    await _db.ref().update(updates);
+
     _myStoaRoomIds.remove(roomId);
+    _stoaToDebateRoom.removeWhere((_, v) => v == debateId);
     stoaNotifications.remove(roomId);
     if (_myStoaRoomIds.isEmpty) {
       _globalStoaWatcher?.cancel();
@@ -767,7 +774,11 @@ class AppState extends ChangeNotifier {
     final debateRoomId = 'r${DateTime.now().millisecondsSinceEpoch}';
     final roomName     = _greekRoomName();
     await _db.ref().update({
-      'stoa_rooms/$stoaRoomId': null,
+      // Mark stoa card as matched + link debate room — card stays on the floor
+      'stoa_rooms/$stoaRoomId/matched':       true,
+      'stoa_rooms/$stoaRoomId/debateRoomId':  debateRoomId,
+      'stoa_rooms/$stoaRoomId/challengerName': profile.name,
+      'stoa_rooms/$stoaRoomId/challengerUid':  profile.uid,
       'matches/${profile.uid}': {
         'roomId':      debateRoomId,
         'partnerId':   hostUid,
