@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color, Colors, GlobalKey, NavigatorState, ScaffoldMessengerState, SnackBar, SnackBarAction, Text, TextStyle;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -522,16 +523,17 @@ class AppState extends ChangeNotifier {
   }
 
   DebateRoom buildRoomFromMatch(Map<String, dynamic> matchData) {
-    final roomId = matchData['roomId'] as String;
-    final isHost = matchData['isHost'] as bool? ?? false;
+    final roomId      = matchData['roomId']      as String;
+    final isHost      = matchData['isHost']      as bool?   ?? false;
     final partnerName = matchData['partnerName'] as String? ?? 'Anonymous';
-    final partnerIni = matchData['partnerIni'] as String? ?? '?';
+    final partnerIni  = matchData['partnerIni']  as String? ?? '?';
+    final roomName    = matchData['roomName']    as String? ?? _greekRoomName();
     final myName = profile.name;
-    final myIni = profile.initials;
+    final myIni  = profile.initials;
 
     return DebateRoom(
       id: roomId,
-      title: isHost ? 'Conversation' : 'Conversation',
+      title: roomName,
       host: isHost ? myName : partnerName,
       hostInitials: isHost ? myIni : partnerIni,
       isHost: isHost,
@@ -712,6 +714,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  static const _greekTerms = [
+    'Λόγος',    'Νόμος',    'Δίκη',     'Σοφία',    'Ἀρετή',
+    'Πόλις',    'Δόξα',     'Ψυχή',     'Κόσμος',   'Κρίσις',
+    'Εἰρήνη',  'Δύναμις',  'Φρόνησις', 'Θέσις',    'Μοῖρα',
+    'Χάρις',    'Ἀγών',     'Ἔρως',     'Τύχη',     'Ἀρχή',
+  ];
+
+  String _greekRoomName() {
+    final rng = math.Random();
+    final a = _greekTerms[rng.nextInt(_greekTerms.length)];
+    String b;
+    do { b = _greekTerms[rng.nextInt(_greekTerms.length)]; } while (b == a);
+    return '$a · $b';
+  }
+
   Future<void> joinStoaRoom(Map<String, dynamic> room) async {
     final stoaRoomId = room['roomId']   as String;
     final hostUid    = room['hostUid']  as String;
@@ -727,6 +744,7 @@ class AppState extends ChangeNotifier {
     }
 
     final debateRoomId = 'r${DateTime.now().millisecondsSinceEpoch}';
+    final roomName     = _greekRoomName();
     await _db.ref().update({
       'stoa_rooms/$stoaRoomId': null,
       'matches/${profile.uid}': {
@@ -735,6 +753,7 @@ class AppState extends ChangeNotifier {
         'partnerName': hostName,
         'partnerIni':  hostIni,
         'isHost':      false,
+        'roomName':    roomName,
       },
       'matches/$hostUid': {
         'roomId':      debateRoomId,
@@ -742,9 +761,10 @@ class AppState extends ChangeNotifier {
         'partnerName': profile.name,
         'partnerIni':  profile.initials,
         'isHost':      true,
-        'stoaRoomId':  stoaRoomId, // lets the host's watcher identify which room
+        'stoaRoomId':  stoaRoomId,
+        'roomName':    roomName,
       },
-      'rooms/$debateRoomId': _buildRoomMap(debateRoomId, title),
+      'rooms/$debateRoomId': _buildRoomMap(debateRoomId, roomName),
     });
   }
 
