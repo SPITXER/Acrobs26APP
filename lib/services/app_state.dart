@@ -79,6 +79,44 @@ class AppState extends ChangeNotifier {
     if (profile.name.isNotEmpty && firebaseUser == null) {
       _startActivityTimer();
     }
+    // Restore in-memory stoa state from Firebase so re-entry and
+    // match notifications work correctly after a page refresh.
+    if (profile.name.isNotEmpty) {
+      _restoreStoaState();
+    }
+  }
+
+  Future<void> _restoreStoaState() async {
+    try {
+      final snap = await _db.ref('stoa_rooms').get();
+      if (!snap.exists || snap.value == null) return;
+      final raw = snap.value;
+      if (raw is! Map) return;
+
+      for (final entry in raw.entries) {
+        final data = entry.value;
+        if (data is! Map) continue;
+        final hostUid = data['hostUid'] as String?;
+        if (hostUid != profile.uid) continue;
+
+        final roomId   = data['roomId'] as String? ?? entry.key.toString();
+        final debateId = data['debateRoomId'] as String?;
+
+        if (!_myStoaRoomIds.contains(roomId)) {
+          _myStoaRoomIds.add(roomId);
+        }
+        if (debateId != null) {
+          _stoaToDebateRoom[roomId] = debateId;
+        }
+      }
+
+      if (_myStoaRoomIds.isNotEmpty) {
+        _ensureGlobalStoaWatch();
+        notifyListeners();
+      }
+    } catch (_) {
+      // Non-fatal — stoa state will rebuild naturally on user interaction
+    }
   }
 
   // ── Local storage ────────────────────────────────────────────────────────
@@ -140,8 +178,20 @@ class AppState extends ChangeNotifier {
     if (profile.name.isEmpty && user.displayName != null) {
       profile.name = user.displayName!;
     }
+    // Migrate any stoa rooms created under the temp uid to the Firebase uid
+    final tempRooms = List<String>.of(_myStoaRoomIds);
     profile.uid = user.uid;
     await _saveLocalProfile();
+    for (final roomId in tempRooms) {
+      _db.ref('stoa_rooms/$roomId/hostUid').set(user.uid);
+    }
+    // Reset and re-restore stoa state under the new uid
+    _myStoaRoomIds
+      ..clear()
+      ..addAll(tempRooms);
+    _globalStoaWatcher?.cancel();
+    _globalStoaWatcher = null;
+    if (_myStoaRoomIds.isNotEmpty) _ensureGlobalStoaWatch();
     await _db.ref('users/${user.uid}').set({
       'uid':       user.uid,
       'name':      profile.name,
