@@ -32,7 +32,8 @@ class AppState extends ChangeNotifier {
 
   // Room navigation — registered by StoaScreen / any active screen
   VoidCallback? _enterRoomCallback;
-  void registerEnterRoomCallback(VoidCallback cb) => _enterRoomCallback = cb;
+  VoidCallback? get enterRoomCallback => _enterRoomCallback;
+  void registerEnterRoomCallback(VoidCallback? cb) => _enterRoomCallback = cb;
 
   // Room session timing — for hours-active stat
   DateTime? _roomEnterTime;
@@ -884,12 +885,13 @@ class AppState extends ChangeNotifier {
     await _db.ref('stoa_viewers/$roomId/${profile.uid}').remove();
   }
 
-  Stream<int> stoaViewerCountStream(String roomId) {
+  Stream<int> stoaViewerCountStream(String roomId, {String hostUid = ''}) {
     return _db.ref('stoa_viewers/$roomId').onValue.map((event) {
       if (!event.snapshot.exists) return 0;
       final raw = event.snapshot.value;
       if (raw is! Map) return 0;
-      return raw.length;
+      final count = raw.length;
+      return hostUid.isNotEmpty && raw.containsKey(hostUid) ? count - 1 : count;
     });
   }
 
