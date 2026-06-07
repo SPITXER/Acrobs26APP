@@ -361,40 +361,44 @@ class _StoaScreenState extends State<StoaScreen>
     ]);
   }
 
-  Widget _ownCardFooter(Map<String, dynamic> room) => GestureDetector(
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => _HostWaitScreen(room: room))),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          decoration: BoxDecoration(
-            color: AcroColors.gold.withOpacity(0.06),
-            border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
-            borderRadius: BorderRadius.circular(2),
-          ),
-          child: Row(children: [
+  Widget _ownCardFooter(Map<String, dynamic> room) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Container(
               width: 6, height: 6,
               decoration: const BoxDecoration(
                   color: Colors.greenAccent, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Text('YOUR ARGUMENT  ·  LIVE',
                 style: GoogleFonts.spaceMono(
                     fontSize: 10,
-                    color: AcroColors.gold.withOpacity(0.65),
+                    color: AcroColors.gold.withOpacity(0.50),
                     letterSpacing: 2)),
-            const Spacer(),
-            Text('ENTER',
-                style: GoogleFonts.spaceMono(
-                    fontSize: 10,
-                    color: AcroColors.gold,
-                    letterSpacing: 1.5)),
-            const SizedBox(width: 4),
-            Icon(Icons.arrow_forward_ios,
-                size: 10, color: AcroColors.gold.withOpacity(0.70)),
           ]),
-        ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => _HostWaitScreen(room: room))),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AcroColors.gold,
+                foregroundColor: AcroColors.stone,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2)),
+                textStyle: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2),
+              ),
+              child: const Text('VIEW ROOM'),
+            ),
+          ),
+        ],
       );
 
   Widget _roomCard(Map<String, dynamic> room) {
