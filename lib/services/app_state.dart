@@ -101,14 +101,13 @@ class AppState extends ChangeNotifier {
         if (hostUid != profile.uid) continue;
 
         final roomId   = data['roomId'] as String? ?? entry.key.toString();
-        final debateId = data['debateRoomId'] as String?;
+        // debateRoomId is deterministic; fall back to stored value for old rooms
+        final debateId = data['debateRoomId'] as String? ?? 'dr_$roomId';
 
         if (!_myStoaRoomIds.contains(roomId)) {
           _myStoaRoomIds.add(roomId);
         }
-        if (debateId != null) {
-          _stoaToDebateRoom[roomId] = debateId;
-        }
+        _stoaToDebateRoom[roomId] = debateId;
       }
 
       if (_myStoaRoomIds.isNotEmpty) {
@@ -766,19 +765,39 @@ class AppState extends ChangeNotifier {
     required String category,
   }) async {
     if (_myStoaRoomIds.length >= 10) return; // hard cap
-    final roomId = 'stoa_${_uuid.v4()}';
+    final roomId      = 'stoa_${_uuid.v4()}';
+    final debateRoomId = 'dr_$roomId'; // deterministic — no race on first challenger
     _myStoaRoomIds.add(roomId);
-    await _db.ref('stoa_rooms/$roomId').set({
-      'roomId':   roomId,
-      'hostUid':  profile.uid,
-      'hostName': profile.name,
-      'hostIni':  profile.initials,
-      'title':    title,
-      'thesis':   thesis,
-      'category': category,
-      'ts':       ServerValue.timestamp,
+    // Create the stoa card and the debate room together so the debateRoomId
+    // is always present before any challenger joins.
+    await _db.ref().update({
+      'stoa_rooms/$roomId': {
+        'roomId':      roomId,
+        'debateRoomId': debateRoomId,
+        'hostUid':     profile.uid,
+        'hostName':    profile.name,
+        'hostIni':     profile.initials,
+        'title':       title,
+        'thesis':      thesis,
+        'category':    category,
+        'ts':          ServerValue.timestamp,
+      },
+      'rooms/$debateRoomId': {
+        'title':     title,
+        'desc':      thesis,
+        'host':      profile.name,
+        'hIni':      profile.initials,
+        'hostUid':   profile.uid,
+        'cat':       category,
+        'cap':       4,
+        'dur':       'Open',
+        'durS':      0,
+        'live':      true,
+        'guests':    0,
+        'perms':     const RoomPerms().toMap(),
+        'createdAt': ServerValue.timestamp,
+      },
     });
-    // Track topic engagement for badge system
     if (isPermanentAccount && category.isNotEmpty) {
       _db.ref('users/${profile.uid}/topicEngagement/$category')
           .set(ServerValue.increment(1));
@@ -788,14 +807,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> terminateStoaRoom(String roomId) async {
-    final debateSnap = await _db.ref('stoa_rooms/$roomId/debateRoomId').get();
-    final debateId = debateSnap.value as String?;
-    final updates = <String, dynamic>{
-      'stoa_rooms/$roomId': null,
+    // debateRoomId is always 'dr_$roomId' since createStoaRoom now pre-creates it.
+    // Fall back to a Firebase read only if the room predates this change.
+    final debateId = 'dr_$roomId';
+    await _db.ref().update({
+      'stoa_rooms/$roomId':      null,
       'stoa_room_joins/$roomId': null,
-    };
-    if (debateId != null) updates['rooms/$debateId/live'] = false;
-    await _db.ref().update(updates);
+      'rooms/$debateId/live':    false,
+    });
 
     _stoaJoinWatchers[roomId]?.cancel();
     _stoaJoinWatchers.remove(roomId);
@@ -837,27 +856,24 @@ class AppState extends ChangeNotifier {
           .set(ServerValue.increment(1));
     }
 
-    // Reuse existing debate room if a previous challenger already created one
-    final existingDebateId = room['debateRoomId'] as String?;
-    final debateRoomId     = existingDebateId ?? 'r${DateTime.now().millisecondsSinceEpoch}';
-    final roomName         = room['roomName'] as String? ?? _greekRoomName();
+    // debateRoomId is always set by createStoaRoom — deterministic, no race.
+    final debateRoomId = room['debateRoomId'] as String? ?? 'dr_$stoaRoomId';
+    final roomName     = room['title'] as String? ?? _greekRoomName();
 
-    // Determine new challenger count — room is full at 3 challengers (4 total)
+    // Use server-side increment so simultaneous challengers don't corrupt the count.
+    // isFull is best-effort from the local snapshot — worst case one extra person
+    // slips in, which the host's watcher will correct by setting matched:true.
     final prevCount = room['challengerCount'] as int? ?? 0;
-    final newCount  = prevCount + 1;
-    final isFull    = newCount >= 3;
+    final isFull    = prevCount + 1 >= 3;
 
-    final updates = <String, dynamic>{
-      // Update the stoa card
+    await _db.ref().update({
       'stoa_rooms/$stoaRoomId/challengers/${profile.uid}': {
         'name': profile.name, 'ini': profile.initials,
       },
-      'stoa_rooms/$stoaRoomId/challengerCount': newCount,
-      'stoa_rooms/$stoaRoomId/debateRoomId':    debateRoomId,
-      'stoa_rooms/$stoaRoomId/roomName':         roomName,
+      'stoa_rooms/$stoaRoomId/challengerCount': ServerValue.increment(1),
       if (isFull) 'stoa_rooms/$stoaRoomId/matched': true,
 
-      // Notify this challenger via their own matches node
+      // Notify this challenger
       'matches/${profile.uid}': {
         'roomId':      debateRoomId,
         'partnerId':   hostUid,
@@ -867,7 +883,7 @@ class AppState extends ChangeNotifier {
         'roomName':    roomName,
       },
 
-      // Notify the host via per-room join queue (supports multiple challengers)
+      // Notify the host via per-room join queue
       'stoa_room_joins/$stoaRoomId/${profile.uid}': {
         'uid':          profile.uid,
         'name':         profile.name,
@@ -875,31 +891,10 @@ class AppState extends ChangeNotifier {
         'debateRoomId': debateRoomId,
         'ts':           ServerValue.timestamp,
       },
-    };
 
-    if (existingDebateId == null) {
-      // First challenger — create the debate room with the HOST's data
-      updates['rooms/$debateRoomId'] = {
-        'title':     roomName,
-        'desc':      '',
-        'host':      hostName,
-        'hIni':      hostIni,
-        'hostUid':   hostUid,
-        'cat':       'Conversation',
-        'cap':       4,
-        'dur':       'Open',
-        'durS':      0,
-        'live':      true,
-        'guests':    0,
-        'perms':     const RoomPerms().toMap(),
-        'createdAt': ServerValue.timestamp,
-      };
-    } else {
-      // Subsequent challengers — increment guest count on existing room
-      updates['rooms/$debateRoomId/guests'] = ServerValue.increment(1);
-    }
-
-    await _db.ref().update(updates);
+      // Increment guest count on the debate room that the host pre-created
+      'rooms/$debateRoomId/guests': ServerValue.increment(1),
+    });
   }
 
   // Per-room watcher: subscribes to stoa_room_joins/$stoaRoomId.onChildAdded.

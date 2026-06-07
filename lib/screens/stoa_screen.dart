@@ -408,8 +408,8 @@ class _StoaScreenState extends State<StoaScreen>
     final isMatched = room['matched'] == true;
 
     if (isMatched) {
-      final roomId = room['roomId'] as String? ?? '';
-      final title  = room['title']  as String? ?? 'Debate';
+      final roomId = room['debateRoomId'] as String? ?? '';
+      final title  = room['title']        as String? ?? 'Debate';
       return Row(children: [
         Row(children: [
           Container(
