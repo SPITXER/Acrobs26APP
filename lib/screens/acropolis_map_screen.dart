@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../services/app_state.dart';
+import '../widgets/news_ticker.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/signup_dialog.dart';
 import 'agora_screen.dart';
@@ -280,6 +281,13 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                 ),
                 // ⑨ Side-menu
                 Positioned(top: 6, right: 16, child: const SideMenuButton()),
+                // ⑩ News ticker — between the two braziers (web only)
+                Positioned(
+                  left: w * 0.39,
+                  top: h * 0.74 - 16,
+                  width: w * 0.22,
+                  child: const NewsTicker(),
+                ),
               ]),
             ),
           );
