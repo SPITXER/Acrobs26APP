@@ -16,16 +16,16 @@ class NewsTicker extends StatefulWidget {
 
 class _NewsTickerState extends State<NewsTicker> {
   static const _greekPool = [
-    'The gods look favorably upon today\'s debates',
-    'Citizens! Logos, ethos, pathos — choose your weapon',
-    'By Athena — a worthy argument has been posted',
-    'The Ekklesia convenes — all voices shall be heard',
-    'Socrates asks: what is the good life?',
-    'The Stoa fills with discourse at the ninth hour',
-    'A new champion emerges from the Agora',
-    'Hear ye! A debate of great consequence begins',
-    'The Oracle has spoken — enter the Agora',
-    'New challenger approaches the Stoa floor',
+    'HEAR YE — the Agora opens its gates',
+    'BY DECREE — a new argument is posted',
+    'KNOW THYSELF — the Oracle has spoken',
+    'THE AGON IS OPEN — challengers, approach',
+    'LOGOS PREVAILS — enter and be heard',
+    'BY ATHENA\'S WILL — worthy debate begins',
+    'THE EKKLESIA CONVENES — speak your truth',
+    'THE HERALD PROCLAIMS: take your stand',
+    'DISCOURSE IS VIRTUE — the Stoa awaits',
+    'CITIZENS OF ATHENS — the hour is nigh',
   ];
 
   List<String> _pool = [];
@@ -109,21 +109,21 @@ class _NewsTickerState extends State<NewsTicker> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 32,
+      height: 26,
       decoration: BoxDecoration(
-        color: const Color(0xFF1C0F00).withValues(alpha: 0.80),
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: const Color(0xFF5E462C), width: 1),
+        color: const Color(0xFF180D00).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: const Color(0xFFCC9C54), width: 1),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
           Text(
-            '◈  ',
+            'Ψ  ',
             style: GoogleFonts.pixelifySans(
-              fontSize: 10,
-              color: const Color(0xFFCC9C54).withValues(alpha: 0.9),
+              fontSize: 9,
+              color: const Color(0xFFCC9C54),
             ),
           ),
           Expanded(
@@ -131,10 +131,10 @@ class _NewsTickerState extends State<NewsTicker> {
               '$_displayed${_cursorOn ? '▌' : ' '}',
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.pixelifySans(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFFE9D6AC).withValues(alpha: 0.92),
-                letterSpacing: 1.5,
+                letterSpacing: 2.0,
               ),
             ),
           ),
