@@ -1221,6 +1221,18 @@ class AppState extends ChangeNotifier {
     await _db.ref('rooms/$roomId/presence/${profile.uid}').remove();
   }
 
+  Future<void> endRoomFB(String roomId) async {
+    if (roomId.isEmpty) return;
+    await _db.ref('rooms/$roomId/live').set(false);
+  }
+
+  Stream<bool> roomLiveStream(String roomId) {
+    return _db.ref('rooms/$roomId/live').onValue.map((event) {
+      if (!event.snapshot.exists) return false;
+      return event.snapshot.value == true;
+    });
+  }
+
   Stream<List<RoomMember>> roomPresenceStream(String roomId) {
     return _db.ref('rooms/$roomId/presence').onValue.map((event) {
       if (!event.snapshot.exists) return <RoomMember>[];

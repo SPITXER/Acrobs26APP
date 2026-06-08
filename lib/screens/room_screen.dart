@@ -37,6 +37,7 @@ class _RoomScreenState extends State<RoomScreen> {
   StreamSubscription? _remoteStreamSub;
   StreamSubscription? _presenceSub;
   StreamSubscription? _peerDisconnectSub;
+  StreamSubscription? _roomLiveSub;
   String? _roomId;
   bool _isSpectator = false;
   bool _leftExplicitly = false;
@@ -60,6 +61,13 @@ class _RoomScreenState extends State<RoomScreen> {
         _presenceSub = state.roomPresenceStream(room.id).listen((members) {
           if (!mounted) return;
           state.updateRoomMembers(room.id, members);
+        });
+      }
+
+      // Guests and spectators watch for the host ending the room.
+      if (!room.isHost) {
+        _roomLiveSub = state.roomLiveStream(room.id).listen((live) {
+          if (!live && mounted) _ejectFromRoom();
         });
       }
 
@@ -155,11 +163,29 @@ class _RoomScreenState extends State<RoomScreen> {
     _timer?.cancel();
     final state = context.read<AppState>();
     final room = state.currentRoom;
-    if (room != null && !room.isSpectator) state.leaveRoomFB(room.id);
+    if (room != null && !room.isSpectator) {
+      state.leaveRoomFB(room.id);
+      // Signal all guests/spectators to leave when the host ends the room.
+      if (room.isHost) state.endRoomFB(room.id);
+    }
     state.leaveRoom();
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You have left the debate room.')));
+  }
+
+  // Called when Firebase signals the host ended the room.
+  void _ejectFromRoom() {
+    if (_leftExplicitly) return;
+    _leftExplicitly = true;
+    _timer?.cancel();
+    _roomLiveSub?.cancel();
+    final state = context.read<AppState>();
+    if (!_isSpectator && _roomId != null) state.leaveRoomFB(_roomId!);
+    state.leaveRoom();
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('The host ended the debate.')));
   }
 
   @override
@@ -168,6 +194,7 @@ class _RoomScreenState extends State<RoomScreen> {
     _chatSub?.cancel();
     _presenceSub?.cancel();
     _peerDisconnectSub?.cancel();
+    _roomLiveSub?.cancel();
     _localStreamSub?.cancel();
     _remoteStreamSub?.cancel();
     _webrtc?.dispose();
