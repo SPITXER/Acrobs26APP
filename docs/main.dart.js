@@ -43476,8 +43476,8 @@ q=s?b:o.e.geU()
 p=o.e
 p=A.b([new A.dy(p.b,p.geU(),!1)],t.v1)
 if(s)p.push(new A.dy(c,b,!0))
-o.f=new A.jT(a,d,"",r,q,"Philosophy",4,"Open",0,!1,0,B.cv,!1,!1,p)
-A.b2(o.a.gaT().aR("rooms/"+a+"/hostUid")).h7().aU(new A.a_F(o,a,d,c,b),t.P)}o.as=new A.dX(Date.now(),0,!1)
+o.f=new A.jT(a,d,"",r,q,"Philosophy",4,"Open",0,!1,0,B.cv,!1,!1,p)}A.b2(o.a.gaT().aR("rooms/"+a+"/hostUid")).h7().aU(new A.a_F(o,a,d,c,b),t.P)
+o.as=new A.dX(Date.now(),0,!1)
 o.al()},
 arA(a,b,c){return this.BA(a,"?",b,c)},
 Y2(a,b){return this.BA(a,"?",b,"Debate")},
@@ -43949,10 +43949,13 @@ A.a_F.prototype={
 $1(a){var s,r,q,p,o,n=this,m=n.a,l=m.e
 if(J.d(a.a.a.h(0,"value"),l.a)){s=m.f
 s=s==null?null:s.a
-s=s===n.b}else s=!1
-if(s){s=n.b
+s=s!==n.b}else s=!0
+if(s)return
+s=n.b
+A.b2(m.a.gaT().aR("rooms/"+s+"/live")).c.bn(!0)
 r=m.f
-r=r==null?null:r.b
+q=r==null
+if((q?null:r.as)!==!0){r=q?null:r.b
 if(r==null)r=n.c
 q=l.b
 p=l.geU()
@@ -43960,7 +43963,6 @@ l=A.b([new A.dy(l.b,l.geU(),!0)],t.v1)
 o=n.d
 if(o.length!==0)l.push(new A.dy(o,n.e,!1))
 m.f=new A.jT(s,r,"",q,p,"Philosophy",4,"Open",0,!1,0,B.cv,!0,!1,l)
-A.b2(m.a.gaT().aR("rooms/"+s+"/live")).c.bn(!0)
 m.al()}},
 $S:136}
 A.a_A.prototype={
