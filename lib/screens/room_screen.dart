@@ -705,7 +705,7 @@ class _HandRaiseOverlayState extends State<_HandRaiseOverlay>
   void initState() {
     super.initState();
     _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
-    _slide   = Tween<double>(begin: 20, end: 90).animate(
+    _slide   = Tween<double>(begin: 60, end: 270).animate(
         CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
         CurvedAnimation(parent: _ctrl, curve: const Interval(0.45, 1.0, curve: Curves.easeIn)));
@@ -729,7 +729,7 @@ class _HandRaiseOverlayState extends State<_HandRaiseOverlay>
           child: Opacity(
             opacity: _opacity.value,
             child: const Center(
-              child: Text('✋', style: TextStyle(fontSize: 38)),
+              child: Text('✋', style: TextStyle(fontSize: 114)),
             ),
           ),
         ),
