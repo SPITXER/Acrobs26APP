@@ -422,7 +422,9 @@ class AppState extends ChangeNotifier {
           ..sort((a, b) => ((a.value as Map)['ts'] ?? 0)
               .compareTo((b.value as Map)['ts'] ?? 0));
         for (final e in entries) {
-          msgs.add(Map<dynamic, dynamic>.from(e.value as Map));
+          final m = Map<String, dynamic>.from(e.value as Map);
+          m['_fbKey'] = e.key as String;
+          msgs.add(m);
         }
       }
       onMessages(msgs);
@@ -464,6 +466,12 @@ class AppState extends ChangeNotifier {
         'msg': text,
         'ts': DateTime.now().millisecondsSinceEpoch,
       });
+    } catch (_) {}
+  }
+
+  Future<void> pinRoomMessageFB(String roomId, String fbKey, bool pinned) async {
+    try {
+      await _db.ref('rchats/$roomId/$fbKey').update({'pinned': pinned});
     } catch (_) {}
   }
 

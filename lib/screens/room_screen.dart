@@ -29,6 +29,8 @@ class _RoomScreenState extends State<RoomScreen> {
   final Map<String, int> _handRaising = {};
   // prevents re-triggering animation for already-seen messages on chat refresh
   final Set<int> _processedHandRaisedTs = {};
+  // timestamp when user entered this session — used to hide pre-join system events
+  late final int _joinedAt;
   Timer? _timer;
   int _timeLeft = 0;
   StreamSubscription? _chatSub;
@@ -51,6 +53,7 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   void initState() {
     super.initState();
+    _joinedAt = DateTime.now().millisecondsSinceEpoch;
     Future.wait([_localRenderer.initialize(), _remoteRenderer.initialize()])
         .then((_) => _startWebRTC());
 
@@ -83,8 +86,16 @@ class _RoomScreenState extends State<RoomScreen> {
         setState(() {
           _messages.clear();
           for (final m in msgs) {
-            final type = m['type'] as String? ?? 'chat';
-            final ts   = m['ts']   as int?    ?? 0;
+            final type   = m['type']   as String? ?? 'chat';
+            final ts     = m['ts']     as int?    ?? 0;
+            final pinned = m['pinned'] as bool?   ?? false;
+            final fbKey  = m['_fbKey'] as String? ?? '';
+
+            // Hide session events (joined / left / hand_raise) from before this session.
+            // Pinned chat messages are always shown regardless of join time.
+            final isSessionEvent = type == 'system' || type == 'hand_raise';
+            if (isSessionEvent && !pinned && ts < _joinedAt) continue;
+
             // Trigger hand-raise animation once per unique event
             if (type == 'hand_raise' && _processedHandRaisedTs.add(ts)) {
               final name = m['name'] as String? ?? '';
@@ -93,11 +104,14 @@ class _RoomScreenState extends State<RoomScreen> {
               });
             }
             _messages.add(_ChatMsg(
-              name: m['name'] ?? '',
-              ini:  m['ini']  ?? '?',
-              text: m['msg']  ?? '',
-              isMe: m['name'] == state.profile.name,
-              type: type,
+              name:   m['name'] ?? '',
+              ini:    m['ini']  ?? '?',
+              text:   m['msg']  ?? '',
+              isMe:   m['name'] == state.profile.name,
+              type:   type,
+              ts:     ts,
+              fbKey:  fbKey,
+              pinned: pinned,
             ));
           }
         });
@@ -435,6 +449,7 @@ class _RoomScreenState extends State<RoomScreen> {
                             ],
                           ),
                         ),
+                        _buildPinnedSection(_messages.where((m) => m.pinned && m.type == 'chat').toList()),
                         Expanded(
                           child: ListView.builder(
                             controller: _chatScroll,
@@ -764,6 +779,7 @@ class _RoomScreenState extends State<RoomScreen> {
               ],
             ),
           ),
+          _buildPinnedSection(_messages.where((m) => m.pinned && m.type == 'chat').toList()),
           Expanded(
             child: ListView.builder(
               controller: _chatScroll,
@@ -851,47 +867,129 @@ class _RoomScreenState extends State<RoomScreen> {
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: msg.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!msg.isMe) ...[
-            AcroAvatar(initials: msg.ini, size: 22, style: AvatarStyle.stone),
-            const SizedBox(width: 7),
-          ],
-          Column(
-            crossAxisAlignment: msg.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              Text(msg.isMe ? 'You' : msg.name,
-                  style: const TextStyle(fontSize: 10, color: Colors.white30)),
-              const SizedBox(height: 2),
-              Container(
-                constraints: const BoxConstraints(maxWidth: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                decoration: BoxDecoration(
-                  color: msg.isMe
-                      ? AcroColors.gold.withOpacity(0.18)
-                      : Colors.white.withOpacity(0.07),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(11),
-                    topRight: const Radius.circular(11),
-                    bottomLeft: msg.isMe ? const Radius.circular(11) : const Radius.circular(3),
-                    bottomRight: msg.isMe ? const Radius.circular(3) : const Radius.circular(11),
-                  ),
-                ),
-                child: Text(msg.text,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: msg.isMe ? AcroColors.goldLight : Colors.white70,
-                        height: 1.5)),
-              ),
+    return GestureDetector(
+      onLongPress: () => _pinMessage(msg),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          mainAxisAlignment: msg.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!msg.isMe) ...[
+              AcroAvatar(initials: msg.ini, size: 22, style: AvatarStyle.stone),
+              const SizedBox(width: 7),
             ],
+            Column(
+              crossAxisAlignment: msg.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (msg.pinned)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(Icons.push_pin, size: 10, color: AcroColors.gold),
+                      ),
+                    Text(msg.isMe ? 'You' : msg.name,
+                        style: const TextStyle(fontSize: 10, color: Colors.white30)),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: msg.pinned
+                        ? AcroColors.gold.withOpacity(0.12)
+                        : msg.isMe
+                            ? AcroColors.gold.withOpacity(0.18)
+                            : Colors.white.withOpacity(0.07),
+                    border: msg.pinned
+                        ? Border.all(color: AcroColors.gold.withOpacity(0.25))
+                        : null,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(11),
+                      topRight: const Radius.circular(11),
+                      bottomLeft: msg.isMe ? const Radius.circular(11) : const Radius.circular(3),
+                      bottomRight: msg.isMe ? const Radius.circular(3) : const Radius.circular(11),
+                    ),
+                  ),
+                  child: Text(msg.text,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: msg.isMe ? AcroColors.goldLight : Colors.white70,
+                          height: 1.5)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Pinned messages bar shown at top of chat panels
+  Widget _buildPinnedSection(List<_ChatMsg> pinned) {
+    if (pinned.isEmpty) return const SizedBox();
+    return Container(
+      decoration: BoxDecoration(
+        color: AcroColors.gold.withOpacity(0.07),
+        border: Border(bottom: BorderSide(color: AcroColors.gold.withOpacity(0.15))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Row(
+              children: [
+                const Icon(Icons.push_pin, size: 11, color: AcroColors.gold),
+                const SizedBox(width: 5),
+                Text('Pinned (${pinned.length})',
+                    style: const TextStyle(fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              ],
+            ),
           ),
+          ...pinned.map((m) => GestureDetector(
+            onLongPress: () => _pinMessage(m),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.push_pin, size: 9, color: AcroColors.gold),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '${m.isMe ? 'You' : m.name}: ',
+                            style: const TextStyle(fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w600),
+                          ),
+                          TextSpan(
+                            text: m.text,
+                            style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.65)),
+                          ),
+                        ],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )),
         ],
       ),
     );
+  }
+
+  void _pinMessage(_ChatMsg msg) {
+    if (msg.fbKey.isEmpty || _roomId == null) return;
+    final s = context.read<AppState>();
+    s.pinRoomMessageFB(_roomId!, msg.fbKey, !msg.pinned);
   }
 
   Widget _ctrlBtn({
@@ -918,10 +1016,20 @@ class _RoomScreenState extends State<RoomScreen> {
 }
 
 class _ChatMsg {
-  final String name, ini, text;
-  final bool isMe;
+  final String name, ini, text, fbKey;
+  final bool isMe, pinned;
   final String type;
-  _ChatMsg({required this.name, required this.ini, required this.text, required this.isMe, this.type = 'chat'});
+  final int ts;
+  _ChatMsg({
+    required this.name,
+    required this.ini,
+    required this.text,
+    required this.isMe,
+    this.type   = 'chat',
+    this.ts     = 0,
+    this.fbKey  = '',
+    this.pinned = false,
+  });
 }
 
 // Rising-hand animation overlaid on a participant's video tile.
