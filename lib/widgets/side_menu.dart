@@ -22,13 +22,14 @@ class SideMenu extends StatelessWidget {
           child: Column(children: [
             _Header(state: state),
             const Divider(color: Colors.white10, height: 1),
-            if (state.activeDebates.isNotEmpty)
-              _JumpBackIn(state: state),
             Expanded(
               child: ListView(padding: EdgeInsets.zero, children: [
-                _Section(label: 'YOUR STOA ROOMS'),
+                _Section(
+                  label: 'YOUR ARGUMENTS',
+                  liveCount: state.myStoaRoomIds.length,
+                ),
                 _StoaRooms(state: state),
-                _Section(label: 'ACTIVE DEBATES'),
+                _Section(label: 'DEBATES'),
                 _ActiveDebates(state: state),
               ]),
             ),
@@ -75,77 +76,6 @@ class SideMenuButton extends StatelessWidget {
 // Internal widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _JumpBackIn extends StatelessWidget {
-  final AppState state;
-  const _JumpBackIn({required this.state});
-
-  void _jump(BuildContext context) {
-    final d   = state.activeDebates.first;
-    state.reenterRoom(
-      d['roomId']     ?? '',
-      title:       d['title']       ?? 'Debate',
-      partnerName: d['partnerName'] ?? '',
-      partnerIni:  d['partnerIni']  ?? '?',
-    );
-    final nav = Navigator.of(context);
-    nav.pop();
-    nav.push(MaterialPageRoute(builder: (_) => const RoomScreen()));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final d           = state.activeDebates.first;
-    final partnerName = d['partnerName'] ?? '';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(4),
-          onTap: () => _jump(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: AcroColors.gold.withOpacity(0.10),
-              border: Border.all(color: AcroColors.gold.withOpacity(0.55)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(children: [
-              Container(
-                width: 8, height: 8,
-                decoration: const BoxDecoration(
-                    color: Colors.greenAccent, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('JUMP BACK IN!',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AcroColors.gold,
-                            letterSpacing: 1.5)),
-                    if (partnerName.isNotEmpty)
-                      Text('vs $partnerName',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withOpacity(0.40))),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios,
-                  size: 14, color: AcroColors.gold.withOpacity(0.60)),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _Header extends StatelessWidget {
   final AppState state;
   const _Header({required this.state});
@@ -166,90 +96,78 @@ class _Header extends StatelessWidget {
         final hours       = minutes ~/ 60;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 8, 14),
+          padding: const EdgeInsets.fromLTRB(14, 14, 8, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Avatar row ──────────────────────────────────────────
-              Row(children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                 AcroAvatar(
                   initials: state.profile.initials,
                   seed: state.profile.uid,
-                  size: 42,
+                  size: 38,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text(state.profile.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600)),
                     if (state.profile.field.isNotEmpty)
                       Text(state.profile.field,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withOpacity(0.38))),
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.35))),
                   ]),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close,
-                      color: Colors.white30, size: 18),
+                      color: Colors.white24, size: 16),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ]),
 
-              // ── Badge pill ──────────────────────────────────────────
-              ...[
-                const SizedBox(height: 10),
+              // ── Badge + stats inline ────────────────────────────────
+              const SizedBox(height: 10),
+              Row(children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                      horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AcroColors.gold.withOpacity(0.08),
                     border: Border.all(
-                        color: AcroColors.gold.withOpacity(0.30)),
+                        color: AcroColors.gold.withOpacity(0.25)),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Text(info.emoji,
-                        style: const TextStyle(fontSize: 13)),
-                    const SizedBox(width: 6),
-                    Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                      Text(info.name,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AcroColors.gold,
-                              letterSpacing: 0.5)),
-                      Text(info.epithet,
-                          style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.white.withOpacity(0.35),
-                              fontStyle: FontStyle.italic)),
-                    ]),
+                        style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 5),
+                    Text(info.name,
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AcroColors.gold,
+                            letterSpacing: 0.5)),
                   ]),
                 ),
-              ],
-
-              // ── Stats strip ─────────────────────────────────────────
-              if (state.isPermanentAccount) ...[
-                const SizedBox(height: 10),
-                Row(children: [
+                if (state.isPermanentAccount) ...[
+                  const SizedBox(width: 12),
                   _stat('${hours}h', 'active'),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   _stat('$quoteCount', 'quotes'),
-                  const SizedBox(width: 16),
-                  _stat('$nomReceived', 'nom. recv'),
-                  const SizedBox(width: 16),
-                  _stat('$nomGiven', 'nom. given'),
-                ]),
-              ],
+                  const SizedBox(width: 12),
+                  _stat('$nomReceived', 'noms'),
+                ],
+              ]),
             ],
           ),
         );
@@ -276,18 +194,36 @@ class _Header extends StatelessWidget {
 
 class _Section extends StatelessWidget {
   final String label;
-  const _Section({required this.label});
+  final int liveCount;
+  const _Section({required this.label, this.liveCount = 0});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-      child: Text(label,
-          style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 9,
-              letterSpacing: 2.5,
-              color: Colors.white.withOpacity(0.30))),
+      child: Row(children: [
+        Text(label,
+            style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 9,
+                letterSpacing: 2.5,
+                color: Colors.white.withOpacity(0.30))),
+        if (liveCount > 0) ...[
+          const SizedBox(width: 8),
+          Container(
+            width: 5, height: 5,
+            decoration: const BoxDecoration(
+                color: Colors.greenAccent, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text('$liveCount LIVE',
+              style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 8,
+                  letterSpacing: 1.5,
+                  color: Colors.greenAccent.withOpacity(0.65))),
+        ],
+      ]),
     );
   }
 }
@@ -599,50 +535,69 @@ class _ActiveDebates extends StatelessWidget {
     final debates = state.activeDebates;
     if (debates.isEmpty) return _empty('No active debates.');
     return Column(
-      children: debates.map((d) {
+      children: List.generate(debates.length, (i) {
+        final d = debates[i];
+        final isFirst = i == 0;
         return Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(4),
             onTap: () => _enterRoom(context, d),
             child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: AcroColors.gold.withOpacity(0.05),
-            border: Border.all(color: AcroColors.gold.withOpacity(0.22)),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: ListTile(
-            dense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-            leading: AcroAvatar(
-              initials: d['partnerIni'] ?? '?',
-              seed: d['partnerName'] ?? '',
-              size: 36,
-            ),
-            title: Text(d['title'] ?? 'Debate',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 13)),
-            subtitle: Text('vs ${d['partnerName'] ?? ''}',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.35))),
-            trailing: TextButton(
-              onPressed: () => _enterRoom(context, d),
-              style: TextButton.styleFrom(
-                foregroundColor: AcroColors.gold,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                textStyle: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5),
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isFirst
+                    ? AcroColors.gold.withOpacity(0.08)
+                    : Colors.white.withOpacity(0.03),
+                border: Border.all(
+                    color: isFirst
+                        ? AcroColors.gold.withOpacity(0.40)
+                        : Colors.white.withOpacity(0.08)),
+                borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text('ENTER'),
+              child: Row(children: [
+                AcroAvatar(
+                  initials: d['partnerIni'] ?? '?',
+                  seed: d['partnerName'] ?? '',
+                  size: 32,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(d['title'] ?? 'Debate',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: isFirst
+                                  ? FontWeight.w600
+                                  : FontWeight.normal)),
+                      Text('vs ${d['partnerName'] ?? ''}',
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.35))),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _enterRoom(context, d),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AcroColors.gold,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    textStyle: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5),
+                  ),
+                  child: Text(isFirst ? 'RESUME' : 'ENTER'),
+                ),
+              ]),
             ),
-          ),
-        ),
           ),
         );
       }).toList(),

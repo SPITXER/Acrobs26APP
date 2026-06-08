@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -181,68 +182,10 @@ class _StoaScreenState extends State<StoaScreen>
         stream: state.stoaRoomsStream(),
         builder: (ctx, snap) {
           final all = snap.data ?? [];
-
-          // My live rooms → compact banner
-          final myRooms = all
-              .where((r) => r['hostUid'] == state.profile.uid)
-              .toList();
-
-          return Column(children: [
-            // ── Your live room(s) indicator ───────────────────────────
-            if (myRooms.isNotEmpty) _myRoomsBanner(myRooms, state),
-
-            // ── Swipe cards — ALL rooms incl. own ────────────────────
-            Expanded(
-              child: all.isEmpty
-                  ? _emptyFloor(false)
-                  : _swipeArea(all),
-            ),
-          ]);
+          return all.isEmpty ? _emptyFloor(false) : _swipeArea(all);
         },
       );
     });
-  }
-
-  Widget _myRoomsBanner(List<Map<String, dynamic>> rooms, AppState state) {
-    final count = rooms.length;
-    final title = count == 1
-        ? (rooms.first['title'] as String? ?? 'Your argument')
-        : '$count arguments on the floor';
-    return GestureDetector(
-      onTap: () => Scaffold.of(context).openEndDrawer(),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AcroColors.gold.withOpacity(0.07),
-          border: Border.all(color: AcroColors.gold.withOpacity(0.40)),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(children: [
-          Container(
-            width: 6, height: 6,
-            decoration: const BoxDecoration(
-                color: Colors.greenAccent, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 13)),
-          ),
-          Text('LIVE',
-              style: GoogleFonts.spaceMono(
-                  fontSize: 9,
-                  letterSpacing: 2,
-                  color: AcroColors.gold.withOpacity(0.65))),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right,
-              size: 16, color: Colors.white.withOpacity(0.30)),
-        ]),
-      ),
-    );
   }
 
   Widget _swipeArea(List<Map<String, dynamic>> rooms) {
@@ -261,65 +204,60 @@ class _StoaScreenState extends State<StoaScreen>
       _currentCardRoomId = newId;
     });
 
-    return Stack(children: [
-      Column(children: [
-        // Counter
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-          child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            Text('${idx + 1} / ${rooms.length}',
-                style: GoogleFonts.spaceMono(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.22))),
-          ]),
-        ),
+    return Column(children: [
+      // Counter
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          Text('${idx + 1} / ${rooms.length}',
+              style: GoogleFonts.spaceMono(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.22))),
+        ]),
+      ),
 
-        // Card — bottom padding ensures it never slides behind the action buttons
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 100),
-            child: Center(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onHorizontalDragUpdate: (d) {
-                  _snapCtrl.stop();
-                  setState(() => _dragOffset += d.delta.dx);
-                },
-                onHorizontalDragEnd: (d) {
-                  final vel = d.velocity.pixelsPerSecond.dx;
-                  final canChallenge = !isOwn && room['matched'] != true;
-                  if (_dragOffset > 80 || vel > 500) {
-                    _animateOff(500, () => _skip(rooms.length));
-                  } else if (canChallenge && (_dragOffset < -80 || vel < -500)) {
-                    _animateOff(-500, () => _challenge(room));
-                  } else {
-                    _snapBack();
-                  }
-                },
-                child: Transform.translate(
-                  offset: Offset(_dragOffset, _dragOffset.abs() * 0.04),
-                  child: Transform.rotate(
-                    angle: _dragOffset * 0.0022,
-                    child: Stack(alignment: Alignment.center, children: [
-                      _roomCard(room),
-                      if (_dragOffset > 28)
-                        Positioned(top: 24, left: 24,
-                            child: _badge('SKIP', Colors.white54)),
-                      if (!isOwn && room['matched'] != true && _dragOffset < -28)
-                        Positioned(top: 24, right: 24,
-                            child: _badge('CHALLENGE', AcroColors.gold)),
-                    ]),
-                  ),
-                ),
+      // Card — fills remaining space; buttons live below, never overlapping
+      Expanded(
+        child: Center(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragUpdate: (d) {
+              _snapCtrl.stop();
+              setState(() => _dragOffset += d.delta.dx);
+            },
+            onHorizontalDragEnd: (d) {
+              final vel = d.velocity.pixelsPerSecond.dx;
+              final canChallenge = !isOwn && room['matched'] != true;
+              if (_dragOffset > 80 || vel > 500) {
+                _animateOff(500, () => _skip(rooms.length));
+              } else if (canChallenge && (_dragOffset < -80 || vel < -500)) {
+                _animateOff(-500, () => _challenge(room));
+              } else {
+                _snapBack();
+              }
+            },
+            child: Transform.translate(
+              offset: Offset(_dragOffset, _dragOffset.abs() * 0.04),
+              child: Transform.rotate(
+                angle: _dragOffset * 0.0022,
+                child: Stack(alignment: Alignment.center, children: [
+                  _roomCard(room),
+                  if (_dragOffset > 28)
+                    Positioned(top: 24, left: 24,
+                        child: _badge('SKIP', Colors.white54)),
+                  if (!isOwn && room['matched'] != true && _dragOffset < -28)
+                    Positioned(top: 24, right: 24,
+                        child: _badge('CHALLENGE', AcroColors.gold)),
+                ]),
               ),
             ),
           ),
         ),
-      ]),
+      ),
 
-      // Action buttons — anchored to the bottom of the screen, always below the card
-      Positioned(
-        left: 28, right: 28, bottom: 80,
+      // Action buttons — always below the card, never overlapping
+      Padding(
+        padding: EdgeInsets.fromLTRB(28, 8, 28, kIsWeb ? 20 : 28),
         child: isOwn
             ? _ownCardFooter(room)
             : _challengerFooter(room, rooms.length),
@@ -446,6 +384,9 @@ class _StoaScreenState extends State<StoaScreen>
       ]);
     }
 
+    final vPad = kIsWeb ? 9.0 : 14.0;
+    final fSize = kIsWeb ? 11.0 : 12.0;
+
     return Row(children: [
       Expanded(
         child: OutlinedButton(
@@ -453,29 +394,29 @@ class _StoaScreenState extends State<StoaScreen>
           style: OutlinedButton.styleFrom(
             foregroundColor: AcroColors.stoneLight,
             side: BorderSide(color: Colors.white.withOpacity(0.15)),
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: EdgeInsets.symmetric(vertical: vPad),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(2)),
           ),
           child: Text('SKIP',
               style: GoogleFonts.dmSans(
-                  fontSize: 12,
+                  fontSize: fSize,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 2)),
         ),
       ),
-      const SizedBox(width: 14),
+      const SizedBox(width: 12),
       Expanded(
         child: ElevatedButton(
           onPressed: () => _challenge(room),
           style: ElevatedButton.styleFrom(
             backgroundColor: AcroColors.gold,
             foregroundColor: AcroColors.stone,
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: EdgeInsets.symmetric(vertical: vPad),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(2)),
             textStyle: GoogleFonts.dmSans(
-                fontSize: 12,
+                fontSize: fSize,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 2),
           ),
