@@ -441,6 +441,9 @@ class _RoomScreenState extends State<RoomScreen> {
                 onTap: () {
                   setState(() => _micOn = !_micOn);
                   _webrtc?.toggleMic(_micOn);
+                  final s = context.read<AppState>();
+                  s.sendRoomSystemEventFB(s.currentRoom!.id, s.profile.name, s.profile.initials,
+                      _micOn ? 'unmuted their microphone' : 'muted their microphone');
                   ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(_micOn ? 'Microphone on' : 'Muted')));
                 },
@@ -451,6 +454,9 @@ class _RoomScreenState extends State<RoomScreen> {
                 onTap: () {
                   setState(() => _camOn = !_camOn);
                   _webrtc?.toggleCamera(_camOn);
+                  final s = context.read<AppState>();
+                  s.sendRoomSystemEventFB(s.currentRoom!.id, s.profile.name, s.profile.initials,
+                      _camOn ? 'turned on camera' : 'turned off camera');
                   ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(_camOn ? 'Camera on' : 'Camera off')));
                 },
