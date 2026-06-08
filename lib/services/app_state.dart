@@ -1028,19 +1028,8 @@ class AppState extends ChangeNotifier {
           ));
         }
         notifyListeners();
-
-        _messengerKey.currentState?.showSnackBar(SnackBar(
-          content: Text(
-            '⚖  $partnerName challenged your argument!',
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-          ),
-          action: SnackBarAction(
-            label: 'ENTER DEBATE',
-            onPressed: () => _enterRoomCallback?.call(),
-          ),
-          duration: const Duration(seconds: 20),
-          backgroundColor: const Color(0xFF1A1200),
-        ));
+        // Auto-enter immediately — no host permission step required.
+        _enterRoomCallback?.call();
       });
     }).catchError((_) {});
   }
