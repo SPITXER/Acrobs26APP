@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../screens/room_screen.dart';
+import '../screens/host_wait_screen.dart';
 import '../services/app_state.dart';
 import '../services/badge_engine.dart';
 import '../theme/acro_theme.dart';
@@ -459,6 +460,30 @@ class _RoomTile extends StatelessWidget {
                       letterSpacing: 1.5),
                 ),
                 child: const Text('ENTER'),
+              ),
+            ] else ...[
+              // VIEW button — opens the waiting room for unmatched rooms
+              const SizedBox(width: 6),
+              TextButton(
+                onPressed: () {
+                  final nav = Navigator.of(context);
+                  nav.pop();
+                  nav.push(MaterialPageRoute(
+                      builder: (_) => HostWaitScreen(room: room)));
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white60,
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2)),
+                  textStyle: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5),
+                ),
+                child: const Text('VIEW'),
               ),
             ],
 
