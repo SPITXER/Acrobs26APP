@@ -63,6 +63,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
       if (!room.isSpectator) {
         state.writeRoomPresence(room.id, isHost: room.isHost);
+        state.sendRoomSystemEventFB(room.id, state.profile.name, state.profile.initials, 'joined the debate');
         _presenceSub = state.roomPresenceStream(room.id).listen((members) {
           if (!mounted) return;
           state.updateRoomMembers(room.id, members);
@@ -191,6 +192,7 @@ class _RoomScreenState extends State<RoomScreen> {
     final room      = state.currentRoom;
     final messenger = ScaffoldMessenger.of(context);
     if (room != null && !room.isSpectator) {
+      state.sendRoomSystemEventFB(room.id, state.profile.name, state.profile.initials, 'left the debate');
       state.leaveRoomFB(room.id);
       // Host leaving no longer ends the room — guests stay until they leave.
     }
@@ -597,7 +599,18 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   Widget _buildChatBubble(_ChatMsg msg) {
-    // System event: hand raise
+    // System events: joined / left / hand raise
+    if (msg.type == 'system') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Center(
+          child: Text(
+            '${msg.isMe ? 'You' : msg.name} ${msg.text}',
+            style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.35), fontStyle: FontStyle.italic),
+          ),
+        ),
+      );
+    }
     if (msg.type == 'hand_raise') {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
