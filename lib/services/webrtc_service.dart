@@ -25,6 +25,14 @@ class WebRTCService {
   // pc.close() (e.g. onConnectionState → _resetForPeerReconnect) can bail out.
   bool _disposed = false;
 
+  // Guest-side: SDP of the last processed offer so we detect host re-negotiation
+  // even when _remoteDescSet was already set by a stale offer.
+  String? _lastProcessedOfferSdp;
+
+  // ICE candidates that arrived before setRemoteDescription completed.
+  // Flushed immediately after setRemoteDescription succeeds.
+  final List<RTCIceCandidate> _pendingCandidates = [];
+
   static const _iceConfig = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
@@ -53,6 +61,8 @@ class WebRTCService {
   // Called by start() and by _resetForPeerReconnect() / resetForNewPeer().
   Future<void> _connect() async {
     _pc = await createPeerConnection(_iceConfig);
+    _remoteDescSet = false;
+    _pendingCandidates.clear();
 
     if (_localStream != null) {
       for (final track in _localStream!.getTracks()) {
@@ -92,6 +102,10 @@ class WebRTCService {
   }
 
   Future<void> _runHostSignaling() async {
+    // Wipe ALL stale signaling — offer, answer, and both candidate lists —
+    // so a reconnecting guest never replays stale ICE candidates via onChildAdded.
+    await _db.ref('signaling/$roomId').remove();
+
     final offer = await _pc!.createOffer();
     await _pc!.setLocalDescription(offer);
     await _db.ref('signaling/$roomId/offer').set({'sdp': offer.sdp, 'type': offer.type});
@@ -101,20 +115,59 @@ class WebRTCService {
       _remoteDescSet = true;
       final v = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
       await _pc!.setRemoteDescription(RTCSessionDescription(v['sdp'], v['type']));
+      // Flush candidates that arrived before the answer was processed.
+      for (final c in List.of(_pendingCandidates)) {
+        try { await _pc!.addCandidate(c); } catch (_) {}
+      }
+      _pendingCandidates.clear();
     }));
 
     _subs.add(_db.ref('signaling/$roomId/guestCandidates').onChildAdded.listen((e) async {
       final v = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
-      await _pc!.addCandidate(RTCIceCandidate(v['candidate'], v['sdpMid'], v['sdpMLineIndex']));
+      final c = RTCIceCandidate(v['candidate'], v['sdpMid'], v['sdpMLineIndex']);
+      if (!_remoteDescSet) {
+        // Remote description not set yet — buffer and flush after the answer arrives.
+        _pendingCandidates.add(c);
+        return;
+      }
+      try { await _pc!.addCandidate(c); } catch (_) {}
     }));
   }
 
   void _runGuestSignaling() {
     _subs.add(_db.ref('signaling/$roomId/offer').onValue.listen((e) async {
-      if (_disposed || !e.snapshot.exists || _remoteDescSet) return;
+      if (_disposed || !e.snapshot.exists) return;
+      final v   = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
+      final sdp = v['sdp'] as String? ?? '';
+      if (sdp.isEmpty || sdp == _lastProcessedOfferSdp) return;
+
+      // A new offer arrived with a different SDP. If we've already negotiated
+      // with a previous offer on this peer connection, the host has reset.
+      // Create a fresh peer connection so the new offer gets a clean slate.
+      if (_lastProcessedOfferSdp != null && !_resetting) {
+        _lastProcessedOfferSdp = null;
+        _remoteDescSet = false;
+        for (final s in _subs) s.cancel();
+        _subs.clear();
+        _pendingCandidates.clear();
+        await _pc?.close();
+        _pc = null;
+        await Future.wait([
+          _db.ref('signaling/$roomId/answer').remove(),
+          _db.ref('signaling/$roomId/guestCandidates').remove(),
+        ]);
+        if (!_disposed) await _connect();
+        return;
+      }
+
+      _lastProcessedOfferSdp = sdp;
       _remoteDescSet = true;
-      final v = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
-      await _pc!.setRemoteDescription(RTCSessionDescription(v['sdp'], v['type']));
+      await _pc!.setRemoteDescription(RTCSessionDescription(sdp, v['type']));
+      // Flush candidates buffered before the offer was processed.
+      for (final c in List.of(_pendingCandidates)) {
+        try { await _pc!.addCandidate(c); } catch (_) {}
+      }
+      _pendingCandidates.clear();
       final answer = await _pc!.createAnswer();
       await _pc!.setLocalDescription(answer);
       await _db.ref('signaling/$roomId/answer').set({'sdp': answer.sdp, 'type': answer.type});
@@ -123,9 +176,13 @@ class WebRTCService {
     _subs.add(_db.ref('signaling/$roomId/hostCandidates').onChildAdded.listen((e) async {
       if (_disposed) return;
       final v = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
-      try {
-        await _pc!.addCandidate(RTCIceCandidate(v['candidate'], v['sdpMid'], v['sdpMLineIndex']));
-      } catch (_) {}
+      final c = RTCIceCandidate(v['candidate'], v['sdpMid'], v['sdpMLineIndex']);
+      if (!_remoteDescSet) {
+        // Buffer until the offer is processed and setRemoteDescription completes.
+        _pendingCandidates.add(c);
+        return;
+      }
+      try { await _pc!.addCandidate(c); } catch (_) {}
     }));
   }
 
@@ -138,12 +195,12 @@ class WebRTCService {
       for (final s in _subs) s.cancel();
       _subs.clear();
       _remoteDescSet = false;
+      _pendingCandidates.clear();
       await _pc?.close();
-      // Clear stale guest signaling so the re-entering peer starts fresh
-      await Future.wait([
-        _db.ref('signaling/$roomId/answer').remove(),
-        _db.ref('signaling/$roomId/guestCandidates').remove(),
-      ]);
+      // _runHostSignaling() clears all signaling at the start, so no need to
+      // do it here — but clearing early reduces the window where the guest
+      // could pick up a stale offer before the new one is written.
+      await _db.ref('signaling/$roomId').remove();
       await _connect();
     } catch (_) {
       // Non-fatal — next re-entry attempt will try again
@@ -161,6 +218,8 @@ class WebRTCService {
       for (final s in _subs) s.cancel();
       _subs.clear();
       _remoteDescSet = false;
+      _lastProcessedOfferSdp = null;
+      _pendingCandidates.clear();
       await _pc?.close();
       _pc = null;
       await Future.wait([
