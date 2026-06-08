@@ -329,7 +329,7 @@ class _RoomScreenState extends State<RoomScreen> {
               final chatW = MediaQuery.of(ctx).size.width * 0.62;
               final screenH = MediaQuery.of(ctx).size.height;
               final chatH = screenH * 0.50;
-              final chatTop = screenH * 0.25;
+              final chatTop = screenH * 0.15;
               return Stack(
                 children: [
                   // Edge-to-edge split video
@@ -346,7 +346,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   if (!_chatVisible)
                     Positioned(
                       right: 0,
-                      top: screenH * 0.44,
+                      top: screenH * 0.37,
                       child: GestureDetector(
                         onTap: () => setState(() => _chatVisible = true),
                         child: Container(
