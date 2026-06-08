@@ -77,7 +77,15 @@ class _StoaScreenState extends State<StoaScreen>
       // isHost: false → we are the challenger; navigate here
       final isHost = data['isHost'] as bool? ?? false;
       if (isHost) return;
-      final state = context.read<AppState>();
+      final state   = context.read<AppState>();
+      final roomId  = data['roomId'] as String? ?? '';
+      if (roomId.isEmpty) { state.markMatchHandled(); return; }
+      // Guard: already in this room (stream can fire multiple times before
+      // markMatchHandled() writes back to Firebase).
+      if (state.currentRoom?.id == roomId) {
+        state.markMatchHandled();
+        return;
+      }
       state.enterRoom(state.buildRoomFromMatch(data));
       state.markMatchHandled();
       Navigator.of(context).push(

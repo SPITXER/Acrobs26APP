@@ -670,7 +670,7 @@ class AppState extends ChangeNotifier {
   }
 
   DebateRoom buildRoomFromMatch(Map<String, dynamic> matchData) {
-    final roomId      = matchData['roomId']      as String;
+    final roomId      = matchData['roomId']      as String? ?? '';
     final isHost      = matchData['isHost']      as bool?   ?? false;
     final partnerName = matchData['partnerName'] as String? ?? 'Anonymous';
     final partnerIni  = matchData['partnerIni']  as String? ?? '?';
@@ -904,8 +904,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> joinStoaRoom(Map<String, dynamic> room) async {
-    final stoaRoomId = room['roomId']   as String;
-    final hostUid    = room['hostUid']  as String;
+    final stoaRoomId = room['roomId']   as String? ?? '';
+    final hostUid    = room['hostUid']  as String? ?? '';
+    if (stoaRoomId.isEmpty || hostUid.isEmpty) return;
     final hostName   = room['hostName'] as String? ?? 'Anonymous';
     final hostIni    = room['hostIni']  as String? ?? '?';
     final category   = room['category'] as String? ?? '';

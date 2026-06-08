@@ -161,16 +161,17 @@ class _RoomScreenState extends State<RoomScreen> {
   void _leave() {
     _leftExplicitly = true;
     _timer?.cancel();
-    final state = context.read<AppState>();
-    final room = state.currentRoom;
+    final state     = context.read<AppState>();
+    final room      = state.currentRoom;
+    final messenger = ScaffoldMessenger.of(context);
     if (room != null && !room.isSpectator) {
       state.leaveRoomFB(room.id);
       // Signal all guests/spectators to leave when the host ends the room.
       if (room.isHost) state.endRoomFB(room.id);
     }
-    state.leaveRoom();
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    state.leaveRoom(); // after pop — prevents blank flash during exit animation
+    messenger.showSnackBar(
         const SnackBar(content: Text('You have left the debate room.')));
   }
 
@@ -180,11 +181,11 @@ class _RoomScreenState extends State<RoomScreen> {
     _leftExplicitly = true;
     _timer?.cancel();
     _roomLiveSub?.cancel();
-    final state   = context.read<AppState>();
+    final state     = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
     if (!_isSpectator && _roomId != null) state.leaveRoomFB(_roomId!);
-    state.leaveRoom();
     Navigator.pop(context);
+    state.leaveRoom(); // after pop — prevents blank flash during exit animation
     messenger.showSnackBar(
         const SnackBar(content: Text('The host ended the debate.')));
   }
@@ -216,6 +217,16 @@ class _RoomScreenState extends State<RoomScreen> {
   Widget build(BuildContext context) {
     final room = context.watch<AppState>().currentRoom;
     if (room == null) return const SizedBox();
+
+    // reenterRoom() initially sets isHost=false then corrects it async.
+    // Once the correction arrives, drop the live-end watcher — hosts never
+    // get ejected by it and it would fire incorrectly if endRoomFB runs.
+    if (room.isHost && _roomLiveSub != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _roomLiveSub?.cancel();
+        _roomLiveSub = null;
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF09080F),
