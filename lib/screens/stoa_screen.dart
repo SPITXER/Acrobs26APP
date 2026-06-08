@@ -234,10 +234,14 @@ class _StoaScreenState extends State<StoaScreen>
               setState(() => _dragOffset += d.delta.dx);
             },
             onHorizontalDragEnd: (d) {
-              final vel = d.velocity.pixelsPerSecond.dx;
-              final canChallenge = !isOwn && room['matched'] != true;
+              final vel           = d.velocity.pixelsPerSecond.dx;
+              final isParticipant = _isParticipant(room);
+              final canChallenge  = !isOwn && room['matched'] != true && !isParticipant;
+              final canRejoin     = !isOwn && isParticipant;
               if (_dragOffset > 80 || vel > 500) {
                 _animateOff(500, () => _skip(rooms.length));
+              } else if (canRejoin && (_dragOffset < -80 || vel < -500)) {
+                _animateOff(-500, () => _rejoin(room));
               } else if (canChallenge && (_dragOffset < -80 || vel < -500)) {
                 _animateOff(-500, () => _challenge(room));
               } else {
@@ -253,9 +257,14 @@ class _StoaScreenState extends State<StoaScreen>
                   if (_dragOffset > 28)
                     Positioned(top: 24, left: 24,
                         child: _badge('SKIP', Colors.white54)),
-                  if (!isOwn && room['matched'] != true && _dragOffset < -28)
-                    Positioned(top: 24, right: 24,
-                        child: _badge('CHALLENGE', AcroColors.gold)),
+                  if (!isOwn && _dragOffset < -28) ...[
+                    if (_isParticipant(room))
+                      Positioned(top: 24, right: 24,
+                          child: _badge('REJOIN', AcroColors.gold))
+                    else if (room['matched'] != true)
+                      Positioned(top: 24, right: 24,
+                          child: _badge('CHALLENGE', AcroColors.gold)),
+                  ],
                 ]),
               ),
             ),
@@ -347,12 +356,71 @@ class _StoaScreenState extends State<StoaScreen>
     );
   }
 
-  Widget _challengerFooter(Map<String, dynamic> room, int total) {
-    final isMatched = room['matched'] == true;
+  // Returns true if the current user is already a participant in this room
+  // (i.e. they challenged it before and it's still in their active debates).
+  bool _isParticipant(Map<String, dynamic> room) {
+    final debateId = room['debateRoomId'] as String? ?? '';
+    if (debateId.isEmpty) return false;
+    return context.read<AppState>().activeDebates.any((d) => d['roomId'] == debateId);
+  }
 
-    if (isMatched) {
-      final roomId = room['debateRoomId'] as String? ?? '';
-      final title  = room['title']        as String? ?? 'Debate';
+  void _rejoin(Map<String, dynamic> room) {
+    final roomId = room['debateRoomId'] as String? ?? '';
+    final title  = room['title']        as String? ?? 'Debate';
+    if (roomId.isEmpty) return;
+    context.read<AppState>().reenterRoom(roomId, title: title);
+    Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const RoomScreen()));
+  }
+
+  Widget _challengerFooter(Map<String, dynamic> room, int total) {
+    final debateRoomId    = room['debateRoomId']    as String? ?? '';
+    final title           = room['title']           as String? ?? 'Debate';
+    final isMatched       = room['matched']         == true;
+    // Room is 4/4 full when 3 challengers have joined (host + 3 = 4).
+    final challengerCount = room['challengerCount'] as int? ?? 0;
+    final isFull          = isMatched && challengerCount >= 3;
+    final isParticipant   = _isParticipant(room);
+
+    // Returning participant — offer REJOIN regardless of matched state.
+    if (isParticipant && debateRoomId.isNotEmpty) {
+      return Row(children: [
+        if (isMatched) ...[
+          Row(children: [
+            Container(
+              width: 7, height: 7,
+              decoration: const BoxDecoration(
+                  color: Colors.amberAccent, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text('LIVE',
+                style: GoogleFonts.spaceMono(
+                    fontSize: 10,
+                    color: Colors.amberAccent.withOpacity(0.70),
+                    letterSpacing: 2)),
+          ]),
+        ],
+        const Spacer(),
+        ElevatedButton(
+          onPressed: () => _rejoin(room),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AcroColors.gold,
+            foregroundColor: AcroColors.stone,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2)),
+            textStyle: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2),
+          ),
+          child: const Text('REJOIN'),
+        ),
+      ]);
+    }
+
+    // Room is fully occupied (4/4) — offer spectating to 3rd parties.
+    if (isFull && debateRoomId.isNotEmpty) {
       return Row(children: [
         Row(children: [
           Container(
@@ -368,30 +436,30 @@ class _StoaScreenState extends State<StoaScreen>
                   letterSpacing: 2)),
         ]),
         const Spacer(),
-        if (roomId.isNotEmpty)
-          ElevatedButton(
-            onPressed: () {
-              context.read<AppState>().joinAsSpectator(roomId, title);
-              Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RoomScreen()));
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.07),
-              foregroundColor: AcroColors.gold,
-              side: BorderSide(color: AcroColors.gold.withOpacity(0.40)),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2)),
-              textStyle: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2),
-            ),
-            child: const Text('SPECTATE'),
+        ElevatedButton(
+          onPressed: () {
+            context.read<AppState>().joinAsSpectator(debateRoomId, title);
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RoomScreen()));
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white.withOpacity(0.07),
+            foregroundColor: AcroColors.gold,
+            side: BorderSide(color: AcroColors.gold.withOpacity(0.40)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2)),
+            textStyle: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2),
           ),
+          child: const Text('SPECTATE'),
+        ),
       ]);
     }
 
+    // Default: SKIP + CHALLENGE for new challengers on open rooms.
     final vPad = kIsWeb ? 9.0 : 14.0;
     final fSize = kIsWeb ? 11.0 : 12.0;
 
