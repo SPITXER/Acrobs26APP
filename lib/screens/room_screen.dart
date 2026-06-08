@@ -255,6 +255,8 @@ class _RoomScreenState extends State<RoomScreen> {
       });
     }
 
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
     return Scaffold(
       backgroundColor: const Color(0xFF09080F),
       endDrawer: const SideMenu(),
@@ -301,126 +303,182 @@ class _RoomScreenState extends State<RoomScreen> {
           Text('${room.members.length}/${room.capacity}',
               style: const TextStyle(fontSize: 11, color: Colors.white38)),
           const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(Icons.chat_bubble_outline,
-                color: _chatVisible ? AcroColors.gold : Colors.white54),
-            onPressed: () => setState(() => _chatVisible = !_chatVisible),
-          ),
+          if (!isMobile)
+            IconButton(
+              icon: Icon(Icons.chat_bubble_outline,
+                  color: _chatVisible ? AcroColors.gold : Colors.white54),
+              onPressed: () => setState(() => _chatVisible = !_chatVisible),
+            ),
           const SideMenuButton(),
           const SizedBox(width: 4),
         ],
       ),
-      body: Row(
-        children: [
-          // Video grid
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(child: _buildVideoGrid(room)),
-                if (room.desc.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AcroColors.gold.withOpacity(0.07),
-                      border: Border(top: BorderSide(color: AcroColors.gold.withOpacity(0.1))),
+      body: isMobile
+          // ── Mobile: full-screen split + sliding chat overlay ──────────────
+          ? Builder(builder: (ctx) {
+              final chatW = MediaQuery.of(ctx).size.width * 0.80;
+              final screenH = MediaQuery.of(ctx).size.height;
+              return Stack(
+                children: [
+                  // Edge-to-edge split video
+                  Positioned.fill(child: _buildMobileVideoSplit(room)),
+                  // Faded chat panel slides in from the right
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    right: _chatVisible ? 0 : -chatW,
+                    top: 0, bottom: 0, width: chatW,
+                    child: _buildMobileChatPanel(room),
+                  ),
+                  // Recall tab — visible on right edge when chat is hidden
+                  if (!_chatVisible)
+                    Positioned(
+                      right: 0,
+                      top: screenH * 0.35,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _chatVisible = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F0E17).withOpacity(0.85),
+                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                            border: Border(
+                              left:   BorderSide(color: Colors.white.withOpacity(0.12)),
+                              top:    BorderSide(color: Colors.white.withOpacity(0.08)),
+                              bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.chat_bubble_outline, size: 16, color: AcroColors.gold),
+                              const SizedBox(height: 6),
+                              RotatedBox(
+                                quarterTurns: 1,
+                                child: Text('CHAT',
+                                    style: TextStyle(
+                                        fontSize: 8,
+                                        color: Colors.white.withOpacity(0.50),
+                                        letterSpacing: 1.2,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Row(
+                ],
+              );
+            })
+          // ── Web: side-by-side video + chat panel ──────────────────────────
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      Expanded(child: _buildVideoGrid(room)),
+                      if (room.desc.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: AcroColors.gold.withOpacity(0.07),
+                            border: Border(top: BorderSide(color: AcroColors.gold.withOpacity(0.1))),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.lightbulb_outline, color: AcroColors.gold, size: 13),
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Text(room.desc,
+                                    style: const TextStyle(fontSize: 12, color: AcroColors.goldLight)),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (_chatVisible)
+                  Container(
+                    width: 260,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F0E17),
+                      border: Border(left: BorderSide(color: Colors.white.withOpacity(0.06))),
+                    ),
+                    child: Column(
                       children: [
-                        const Icon(Icons.lightbulb_outline, color: AcroColors.gold, size: 13),
-                        const SizedBox(width: 9),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.forum, size: 14, color: Colors.white54),
+                              const SizedBox(width: 5),
+                              const Text('Debate Chat',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white60)),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () => setState(() => _chatVisible = false),
+                                child: const Icon(Icons.close, size: 16, color: Colors.white38),
+                              ),
+                            ],
+                          ),
+                        ),
                         Expanded(
-                          child: Text(room.desc,
-                              style: const TextStyle(fontSize: 12, color: AcroColors.goldLight)),
+                          child: ListView.builder(
+                            controller: _chatScroll,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            itemCount: _messages.length,
+                            itemBuilder: (_, i) => _buildChatBubble(_messages[i]),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _chatCtrl,
+                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  onSubmitted: (_) => _sendChat(),
+                                  decoration: InputDecoration(
+                                    hintText: 'Argue your point…',
+                                    hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.06),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                      borderSide: const BorderSide(color: AcroColors.gold),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              GestureDetector(
+                                onTap: _sendChat,
+                                child: Container(
+                                  width: 30, height: 30,
+                                  decoration: const BoxDecoration(color: AcroColors.gold, shape: BoxShape.circle),
+                                  child: const Icon(Icons.send, size: 12, color: AcroColors.stone),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
               ],
             ),
-          ),
-
-          // Chat panel
-          if (_chatVisible)
-            Container(
-              width: 260,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F0E17),
-                border: Border(left: BorderSide(color: Colors.white.withOpacity(0.06))),
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.forum, size: 14, color: Colors.white54),
-                        const SizedBox(width: 5),
-                        const Text('Debate Chat',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white60)),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () => setState(() => _chatVisible = false),
-                          child: const Icon(Icons.close, size: 16, color: Colors.white38),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: _chatScroll,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      itemCount: _messages.length,
-                      itemBuilder: (_, i) => _buildChatBubble(_messages[i]),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _chatCtrl,
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                            onSubmitted: (_) => _sendChat(),
-                            decoration: InputDecoration(
-                              hintText: 'Argue your point…',
-                              hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-                              filled: true,
-                              fillColor: Colors.white.withOpacity(0.06),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: const BorderSide(color: AcroColors.gold),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        GestureDetector(
-                          onTap: _sendChat,
-                          child: Container(
-                            width: 30, height: 30,
-                            decoration: const BoxDecoration(color: AcroColors.gold, shape: BoxShape.circle),
-                            child: const Icon(Icons.send, size: 12, color: AcroColors.stone),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
 
       // Controls
       bottomNavigationBar: Container(
@@ -503,12 +561,99 @@ class _RoomScreenState extends State<RoomScreen> {
     );
   }
 
-  Widget _buildVideoGrid(DebateRoom room) {
-    final members = room.members;
-    final n = members.length;
-    final avColors = [AvatarStyle.gold, AvatarStyle.stone, AvatarStyle.red, AvatarStyle.green, AvatarStyle.blue];
-    final myName = context.read<AppState>().profile.name;
+  static const _avColors = [AvatarStyle.gold, AvatarStyle.stone, AvatarStyle.red, AvatarStyle.green, AvatarStyle.blue];
 
+  Widget _buildTile(DebateRoom room, int i, String myName, double avatarSize,
+      {BorderRadius? borderRadius}) {
+    final m = room.members[i];
+    final isMe = m.name == myName;
+    final showVideo = isMe ? (_localReady && _camOn) : _remoteReady;
+    final renderer = isMe ? _localRenderer : _remoteRenderer;
+    final br = borderRadius ?? BorderRadius.circular(11);
+
+    return ClipRRect(
+      borderRadius: br,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A1510), Color(0xFF2C2820)],
+          ),
+          borderRadius: br,
+          border: Border.all(
+            color: isMe
+                ? AcroColors.green.withOpacity(0.45)
+                : Colors.white.withOpacity(0.06),
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (showVideo)
+              RTCVideoView(renderer,
+                  mirror: isMe,
+                  objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
+            else
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedGhostAvatar(
+                        initials: m.initials,
+                        seed: m.name,
+                        size: avatarSize,
+                        style: _avColors[i % _avColors.length]),
+                    const SizedBox(height: 8),
+                    Text(isMe ? 'You (${m.initials})' : m.name,
+                        style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                  ],
+                ),
+              ),
+            if (m.isHost)
+              Positioned(
+                top: 7, right: 7,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AcroColors.gold.withOpacity(0.15),
+                    border: Border.all(color: AcroColors.gold.withOpacity(0.25)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('HOST',
+                      style: TextStyle(fontSize: 9, color: AcroColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                ),
+              ),
+            Positioned(
+              bottom: 7, left: 7,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(m.isHost ? 'Host' : isMe ? 'You' : 'Guest',
+                    style: const TextStyle(fontSize: 9, color: Colors.white38)),
+              ),
+            ),
+            if (!_micOn && isMe)
+              const Positioned(
+                bottom: 7, right: 7,
+                child: Icon(Icons.mic_off, size: 12, color: AcroColors.redLight),
+              ),
+            if (_handRaising.containsKey(m.name))
+              _HandRaiseOverlay(key: ValueKey(_handRaising[m.name])),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Web: padded grid layout
+  Widget _buildVideoGrid(DebateRoom room) {
+    final n = room.members.length;
+    final myName = context.read<AppState>().profile.name;
+    final avatarSize = n <= 2 ? 60.0 : n <= 4 ? 48.0 : 38.0;
     return GridView.builder(
       padding: const EdgeInsets.all(14),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -517,90 +662,132 @@ class _RoomScreenState extends State<RoomScreen> {
         mainAxisSpacing: 10,
       ),
       itemCount: n,
-      itemBuilder: (_, i) {
-        final m = members[i];
-        final isMe = m.name == myName;
-        final showVideo = isMe ? (_localReady && _camOn) : _remoteReady;
-        final renderer = isMe ? _localRenderer : _remoteRenderer;
+      itemBuilder: (_, i) => _buildTile(room, i, myName, avatarSize),
+    );
+  }
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(11),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF1A1510), Color(0xFF2C2820)],
-              ),
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(
-                color: isMe
-                    ? AcroColors.green.withOpacity(0.45)
-                    : Colors.white.withOpacity(0.06),
-              ),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
+  // Mobile: edge-to-edge vertical split
+  Widget _buildMobileVideoSplit(DebateRoom room) {
+    final n = room.members.length;
+    final myName = context.read<AppState>().profile.name;
+    if (n == 0) return const SizedBox.expand();
+    if (n == 1) {
+      return _buildTile(room, 0, myName, 80, borderRadius: BorderRadius.zero);
+    }
+    if (n == 2) {
+      return Column(children: [
+        Expanded(child: _buildTile(room, 0, myName, 72, borderRadius: BorderRadius.zero)),
+        const SizedBox(height: 2),
+        Expanded(child: _buildTile(room, 1, myName, 72, borderRadius: BorderRadius.zero)),
+      ]);
+    }
+    // 3-4: 2×2 edge-to-edge
+    return GridView.builder(
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+      ),
+      itemCount: n,
+      itemBuilder: (_, i) => _buildTile(room, i, myName, 56, borderRadius: BorderRadius.zero),
+    );
+  }
+
+  // Mobile: semi-transparent chat overlay panel
+  Widget _buildMobileChatPanel(DebateRoom room) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0E17).withOpacity(0.93),
+        border: Border(left: BorderSide(color: Colors.white.withOpacity(0.10))),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: [
-                if (showVideo)
-                  RTCVideoView(renderer,
-                      mirror: isMe,
-                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
-                else
-                  Center(
-                    child: Column(
+                const Icon(Icons.forum, size: 14, color: Colors.white54),
+                const SizedBox(width: 5),
+                const Text('Debate Chat',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white60)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() => _chatVisible = false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AnimatedGhostAvatar(
-                            initials: m.initials,
-                            seed: m.name,
-                            size: n <= 2 ? 60 : n <= 4 ? 48 : 38,
-                            style: avColors[i % avColors.length]),
-                        const SizedBox(height: 8),
-                        Text(isMe ? 'You (${m.initials})' : m.name,
-                            style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                        Icon(Icons.chevron_right, size: 15, color: Colors.white54),
+                        SizedBox(width: 2),
+                        Text('Hide', style: TextStyle(fontSize: 11, color: Colors.white38)),
                       ],
                     ),
                   ),
-                if (m.isHost)
-                  Positioned(
-                    top: 7, right: 7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AcroColors.gold.withOpacity(0.15),
-                        border: Border.all(color: AcroColors.gold.withOpacity(0.25)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text('HOST',
-                          style: TextStyle(fontSize: 9, color: AcroColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-                    ),
-                  ),
-                Positioned(
-                  bottom: 7, left: 7,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(m.isHost ? 'Host' : isMe ? 'You' : 'Guest',
-                        style: const TextStyle(fontSize: 9, color: Colors.white38)),
-                  ),
                 ),
-                if (!_micOn && isMe)
-                  const Positioned(
-                    bottom: 7, right: 7,
-                    child: Icon(Icons.mic_off, size: 12, color: AcroColors.redLight),
-                  ),
-                // Hand-raise animation overlay
-                if (_handRaising.containsKey(m.name))
-                  _HandRaiseOverlay(key: ValueKey(_handRaising[m.name])),
               ],
             ),
           ),
-        );
-      },
+          Expanded(
+            child: ListView.builder(
+              controller: _chatScroll,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: _messages.length,
+              itemBuilder: (_, i) => _buildChatBubble(_messages[i]),
+            ),
+          ),
+          if (!room.isSpectator)
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _chatCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      onSubmitted: (_) => _sendChat(),
+                      decoration: InputDecoration(
+                        hintText: 'Argue your point…',
+                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.06),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(18)),
+                          borderSide: BorderSide(color: AcroColors.gold),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  GestureDetector(
+                    onTap: _sendChat,
+                    child: Container(
+                      width: 30, height: 30,
+                      decoration: const BoxDecoration(color: AcroColors.gold, shape: BoxShape.circle),
+                      child: const Icon(Icons.send, size: 12, color: AcroColors.stone),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
