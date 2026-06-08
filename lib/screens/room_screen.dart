@@ -114,6 +114,9 @@ class _RoomScreenState extends State<RoomScreen> {
     _peerDisconnectSub = _webrtc!.onPeerDisconnected.listen((_) {
       if (!mounted) return;
       setState(() { _remoteReady = false; _remoteRenderer.srcObject = null; });
+      // Guest: peer (host) disconnected — reset so we accept the host's new
+      // offer when they re-enter, rather than blocking on stale _remoteDescSet.
+      _webrtc?.resetForNewPeer();
     });
 
     try {

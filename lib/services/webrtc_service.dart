@@ -21,6 +21,9 @@ class WebRTCService {
   final _db = FirebaseDatabase.instance;
   bool _remoteDescSet = false;
   bool _resetting = false;
+  // Set immediately at the top of dispose() so callbacks that fire during
+  // pc.close() (e.g. onConnectionState → _resetForPeerReconnect) can bail out.
+  bool _disposed = false;
 
   static const _iceConfig = {
     'iceServers': [
@@ -47,7 +50,7 @@ class WebRTCService {
   }
 
   // Creates a fresh peer connection, wires up handlers, and runs signaling.
-  // Called by start() and by _resetForPeerReconnect().
+  // Called by start() and by _resetForPeerReconnect() / resetForNewPeer().
   Future<void> _connect() async {
     _pc = await createPeerConnection(_iceConfig);
 
@@ -75,7 +78,8 @@ class WebRTCService {
           state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
         if (!_peerDisconnectedCtrl.isClosed) _peerDisconnectedCtrl.add(null);
-        // Host resets so it can accept a fresh connection when the peer re-enters
+        // Host resets so it can accept a fresh connection when the peer re-enters.
+        // Guard with _disposed so pc.close() inside dispose() doesn't spawn a ghost.
         if (isHost) _resetForPeerReconnect();
       }
     };
@@ -107,7 +111,7 @@ class WebRTCService {
 
   void _runGuestSignaling() {
     _subs.add(_db.ref('signaling/$roomId/offer').onValue.listen((e) async {
-      if (!e.snapshot.exists || _remoteDescSet) return;
+      if (_disposed || !e.snapshot.exists || _remoteDescSet) return;
       _remoteDescSet = true;
       final v = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
       await _pc!.setRemoteDescription(RTCSessionDescription(v['sdp'], v['type']));
@@ -117,15 +121,18 @@ class WebRTCService {
     }));
 
     _subs.add(_db.ref('signaling/$roomId/hostCandidates').onChildAdded.listen((e) async {
+      if (_disposed) return;
       final v = Map<dynamic, dynamic>.from(e.snapshot.value as Map);
-      await _pc!.addCandidate(RTCIceCandidate(v['candidate'], v['sdpMid'], v['sdpMLineIndex']));
+      try {
+        await _pc!.addCandidate(RTCIceCandidate(v['candidate'], v['sdpMid'], v['sdpMLineIndex']));
+      } catch (_) {}
     }));
   }
 
   // Host-only: tear down the old peer connection and negotiate a fresh one
   // so a re-entering guest can connect without both sides being stuck on stale state.
   Future<void> _resetForPeerReconnect() async {
-    if (_resetting || _peerDisconnectedCtrl.isClosed) return;
+    if (_resetting || _disposed || _peerDisconnectedCtrl.isClosed) return;
     _resetting = true;
     try {
       for (final s in _subs) s.cancel();
@@ -145,6 +152,25 @@ class WebRTCService {
     }
   }
 
+  // Guest-side reset: called when the host disconnects while the guest stays
+  // in the room (host left and may re-enter). Tears down the stale peer
+  // connection and re-subscribes so the guest is ready for the host's new offer.
+  Future<void> resetForNewPeer() async {
+    if (_disposed || isHost) return;
+    try {
+      for (final s in _subs) s.cancel();
+      _subs.clear();
+      _remoteDescSet = false;
+      await _pc?.close();
+      _pc = null;
+      await Future.wait([
+        _db.ref('signaling/$roomId/answer').remove(),
+        _db.ref('signaling/$roomId/guestCandidates').remove(),
+      ]);
+      await _connect();
+    } catch (_) {}
+  }
+
   void toggleMic(bool enabled) {
     _localStream?.getAudioTracks().forEach((t) => t.enabled = enabled);
   }
@@ -154,7 +180,9 @@ class WebRTCService {
   }
 
   Future<void> dispose() async {
+    _disposed = true; // must be first — prevents ghost callbacks during pc.close()
     for (final s in _subs) s.cancel();
+    _subs.clear();
     _localStream?.getTracks().forEach((t) => t.stop());
     await _pc?.close();
     _localStreamCtrl.close();
