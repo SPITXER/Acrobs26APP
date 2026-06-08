@@ -8,6 +8,7 @@ import '../services/webrtc_service.dart';
 import '../models/debate_room.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
+import '../widgets/side_menu.dart';
 
 class RoomScreen extends StatefulWidget {
   const RoomScreen({super.key});
@@ -232,6 +233,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF09080F),
+      endDrawer: const SideMenu(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0F0E17),
         leading: TextButton(
@@ -280,6 +282,8 @@ class _RoomScreenState extends State<RoomScreen> {
                 color: _chatVisible ? AcroColors.gold : Colors.white54),
             onPressed: () => setState(() => _chatVisible = !_chatVisible),
           ),
+          const SideMenuButton(),
+          const SizedBox(width: 4),
         ],
       ),
       body: Row(
