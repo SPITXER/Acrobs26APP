@@ -1228,7 +1228,9 @@ class AppState extends ChangeNotifier {
 
   Stream<bool> roomLiveStream(String roomId) {
     return _db.ref('rooms/$roomId/live').onValue.map((event) {
-      if (!event.snapshot.exists) return false;
+      // If the field hasn't arrived yet, assume the room is still live.
+      // Only eject when Firebase explicitly delivers live = false.
+      if (!event.snapshot.exists) return true;
       return event.snapshot.value == true;
     });
   }

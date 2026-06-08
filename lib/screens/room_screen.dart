@@ -180,11 +180,12 @@ class _RoomScreenState extends State<RoomScreen> {
     _leftExplicitly = true;
     _timer?.cancel();
     _roomLiveSub?.cancel();
-    final state = context.read<AppState>();
+    final state   = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
     if (!_isSpectator && _roomId != null) state.leaveRoomFB(_roomId!);
     state.leaveRoom();
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
         const SnackBar(content: Text('The host ended the debate.')));
   }
 
