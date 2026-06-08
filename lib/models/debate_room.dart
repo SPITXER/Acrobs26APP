@@ -32,6 +32,7 @@ class RoomMember {
   final bool isHost;
   bool muted;
   bool handRaised;
+  bool camOn;
 
   RoomMember({
     required this.name,
@@ -39,6 +40,7 @@ class RoomMember {
     this.isHost = false,
     this.muted = false,
     this.handRaised = false,
+    this.camOn = true,
   });
 }
 

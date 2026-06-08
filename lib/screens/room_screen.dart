@@ -316,26 +316,27 @@ class _RoomScreenState extends State<RoomScreen> {
       body: isMobile
           // ── Mobile: full-screen split + sliding chat overlay ──────────────
           ? Builder(builder: (ctx) {
-              final chatW = MediaQuery.of(ctx).size.width * 0.70;
+              final chatW = MediaQuery.of(ctx).size.width * 0.62;
               final screenH = MediaQuery.of(ctx).size.height;
-              final chatH = screenH * 0.58;
+              final chatH = screenH * 0.50;
+              final chatTop = screenH * 0.25;
               return Stack(
                 children: [
                   // Edge-to-edge split video
                   Positioned.fill(child: _buildMobileVideoSplit(room)),
-                  // Faded chat panel slides in from the right (top portion only)
+                  // Faded chat panel — centred between the two split tiles
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOut,
                     right: _chatVisible ? 0 : -chatW,
-                    top: 0, height: chatH, width: chatW,
+                    top: chatTop, height: chatH, width: chatW,
                     child: _buildMobileChatPanel(room),
                   ),
                   // Recall tab — visible on right edge when chat is hidden
                   if (!_chatVisible)
                     Positioned(
                       right: 0,
-                      top: screenH * 0.18,
+                      top: screenH * 0.44,
                       child: GestureDetector(
                         onTap: () => setState(() => _chatVisible = true),
                         child: Container(
@@ -514,6 +515,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   setState(() => _camOn = !_camOn);
                   _webrtc?.toggleCamera(_camOn);
                   final s = context.read<AppState>();
+                  s.updateCameraPresenceFB(s.currentRoom!.id, _camOn);
                   s.sendRoomSystemEventFB(s.currentRoom!.id, s.profile.name, s.profile.initials,
                       _camOn ? 'turned on camera' : 'turned off camera');
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -568,7 +570,7 @@ class _RoomScreenState extends State<RoomScreen> {
       {BorderRadius? borderRadius}) {
     final m = room.members[i];
     final isMe = m.name == myName;
-    final showVideo = isMe ? (_localReady && _camOn) : _remoteReady;
+    final showVideo = isMe ? (_localReady && _camOn) : (_remoteReady && m.camOn);
     final renderer = isMe ? _localRenderer : _remoteRenderer;
     final br = borderRadius ?? BorderRadius.circular(11);
 

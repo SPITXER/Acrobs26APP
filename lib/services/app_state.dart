@@ -1233,8 +1233,15 @@ class AppState extends ChangeNotifier {
   Future<void> writeRoomPresence(String roomId, {required bool isHost}) async {
     if (roomId.isEmpty) return;
     final ref = _db.ref('rooms/$roomId/presence/${profile.uid}');
-    await ref.set({'name': profile.name, 'ini': profile.initials, 'isHost': isHost});
+    await ref.set({'name': profile.name, 'ini': profile.initials, 'isHost': isHost, 'camOn': true});
     await ref.onDisconnect().remove();
+  }
+
+  Future<void> updateCameraPresenceFB(String roomId, bool camOn) async {
+    if (roomId.isEmpty) return;
+    try {
+      await _db.ref('rooms/$roomId/presence/${profile.uid}/camOn').set(camOn);
+    } catch (_) {}
   }
 
   Future<void> leaveRoomFB(String roomId) async {
@@ -1275,6 +1282,7 @@ class AppState extends ChangeNotifier {
           name:     m['name']   as String? ?? 'Unknown',
           initials: m['ini']    as String? ?? '?',
           isHost:   m['isHost'] as bool?   ?? false,
+          camOn:    m['camOn']  as bool?   ?? true,
         );
       }).toList();
     });
