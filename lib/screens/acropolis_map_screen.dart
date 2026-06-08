@@ -103,22 +103,41 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
         );
       });
 
-      // After init completes, navigate back into the room if one was persisted.
+      // After init completes, restore the page/room the user was on before refresh.
       state.ready.then((_) {
         if (!mounted || _roomRestoreHandled) return;
-        if (state.currentRoom == null) return;
         _roomRestoreHandled = true;
-        // Push StoaScreen (no animation) then RoomScreen so Back goes to Stoa.
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const StoaScreen(),
+
+        if (state.currentRoom != null) {
+          // Room takes priority — push Stoa silently then Room on top.
+          Navigator.of(context)
+            .push(PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const StoaScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ))
+            .then((_) { if (mounted) state.clearLastPage(); });
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const RoomScreen()),
+          );
+          return;
+        }
+
+        // Restore last-visited page (stoa / agora / acropolis).
+        final Widget? dest = switch (state.restoredPage) {
+          'stoa'      => const StoaScreen(),
+          'agora'     => const AgoraScreen(),
+          'acropolis' => const SymposiumScreen(),
+          _           => null,
+        };
+        if (dest == null) return;
+        Navigator.of(context)
+          .push(PageRouteBuilder(
+            pageBuilder: (_, __, ___) => dest,
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
-          ),
-        );
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const RoomScreen()),
-        );
+          ))
+          .then((_) { if (mounted) state.clearLastPage(); });
       });
     });
   }
@@ -187,14 +206,16 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     Future.delayed(const Duration(milliseconds: 120), () {
       if (!mounted) return;
       setState(() => _tappedZone = null);
-      switch (zone) {
-        case AcropolisZone.agora:
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AgoraScreen()));
-        case AcropolisZone.stoa:
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StoaScreen()));
-        case AcropolisZone.acropolis:
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SymposiumScreen()));
-      }
+      final state = context.read<AppState>();
+      state.saveLastPage(zone.name); // persist so a refresh lands here
+      final Widget dest = switch (zone) {
+        AcropolisZone.agora     => const AgoraScreen(),
+        AcropolisZone.stoa      => const StoaScreen(),
+        AcropolisZone.acropolis => const SymposiumScreen(),
+      };
+      Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => dest))
+        .then((_) { if (mounted) state.clearLastPage(); });
     });
   }
 

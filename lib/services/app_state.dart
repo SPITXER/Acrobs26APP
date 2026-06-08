@@ -39,6 +39,9 @@ class AppState extends ChangeNotifier {
   // Room session timing — for hours-active stat
   DateTime? _roomEnterTime;
 
+  // Last page the user was on — restored after a browser refresh
+  String restoredPage = '';
+
   // Debate room cache — survives leaveRoom() so users can re-enter
   final Map<String, DebateRoom> _roomCache = {};
   // stoaRoomId → debateRoomId — lets side menu re-enter from stoa tile
@@ -137,6 +140,8 @@ class AppState extends ChangeNotifier {
   static const _kRoomTitle  = 'acro_room_title';
   static const _kRoomPrtNm  = 'acro_room_prt_nm';
   static const _kRoomPrtIni = 'acro_room_prt_ini';
+  // Persisted active page (stoa / agora / acropolis)
+  static const _kPage       = 'acro_page';
 
   Future<void> _loadLocalProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -158,6 +163,9 @@ class AppState extends ChangeNotifier {
         partnerIni:  prefs.getString(_kRoomPrtIni) ?? '?',
       );
     }
+
+    // Restore last-visited page (stoa / agora / acropolis)
+    restoredPage = prefs.getString(_kPage) ?? '';
 
     notifyListeners();
   }
@@ -190,6 +198,15 @@ class AppState extends ChangeNotifier {
       prefs.remove(_kRoomPrtNm);
       prefs.remove(_kRoomPrtIni);
     });
+  }
+
+  void saveLastPage(String page) {
+    SharedPreferences.getInstance().then((p) => p.setString(_kPage, page));
+  }
+
+  void clearLastPage() {
+    restoredPage = '';
+    SharedPreferences.getInstance().then((p) => p.remove(_kPage));
   }
 
   // ── 5-minute signup prompt ───────────────────────────────────────────────
