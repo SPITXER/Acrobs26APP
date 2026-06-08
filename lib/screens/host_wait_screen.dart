@@ -15,6 +15,9 @@ class HostWaitScreen extends StatefulWidget {
 
 class _HostWaitScreenState extends State<HostWaitScreen> {
   bool _entered = false;
+  // Set true on explicit back-press or room-match; false means page refreshed
+  // so dispose() should NOT clear the saved host-wait state from prefs.
+  bool _explicitlyLeft = false;
   VoidCallback? _savedCallback;
   AppState? _appState;
 
@@ -32,12 +35,18 @@ class _HostWaitScreenState extends State<HostWaitScreen> {
   @override
   void dispose() {
     _appState?.registerEnterRoomCallback(_savedCallback);
+    // Only clear the persisted wait-room when the user deliberately left.
+    // On a browser refresh, dispose() fires but _explicitlyLeft is false,
+    // so the entry survives in prefs and restores correctly on reload.
+    if (_explicitlyLeft) _appState?.clearHostWaitRoom();
     super.dispose();
   }
 
   void _handleEnter() {
     if (!mounted || _entered) return;
     _entered = true;
+    _explicitlyLeft = true;
+    _appState?.clearHostWaitRoom();
     Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const RoomScreen()));
   }
@@ -68,7 +77,10 @@ class _HostWaitScreenState extends State<HostWaitScreen> {
           backgroundColor: const Color(0xFF0B0F1A),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: AcroColors.stoneLight),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              _explicitlyLeft = true;
+              Navigator.of(context).pop();
+            },
           ),
           title: Text('⚖  THE STOA',
               style: GoogleFonts.dmSans(

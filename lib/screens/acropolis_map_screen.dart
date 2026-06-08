@@ -12,6 +12,7 @@ import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
 import 'room_screen.dart';
+import 'host_wait_screen.dart';
 
 // ── Agora-road palette ────────────────────────────────────────────────────────
 const _marble   = Color(0xFFF4E8CC);
@@ -120,6 +121,13 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const RoomScreen()),
           );
+          return;
+        }
+
+        // Restore HostWaitScreen if the user was there before the refresh.
+        if (state.restoredHostWaitRoom != null && mounted) {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => HostWaitScreen(room: state.restoredHostWaitRoom!)));
           return;
         }
 

@@ -402,6 +402,7 @@ class _RoomTile extends StatelessWidget {
               const SizedBox(width: 6),
               TextButton(
                 onPressed: () {
+                  context.read<AppState>().saveHostWaitRoom(room);
                   final nav = Navigator.of(context);
                   nav.pop();
                   nav.push(MaterialPageRoute(

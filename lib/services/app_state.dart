@@ -42,6 +42,9 @@ class AppState extends ChangeNotifier {
   // Last page the user was on — restored after a browser refresh
   String restoredPage = '';
 
+  // HostWaitScreen room saved for refresh restore
+  Map<String, dynamic>? restoredHostWaitRoom;
+
   // Debate room cache — survives leaveRoom() so users can re-enter
   final Map<String, DebateRoom> _roomCache = {};
   // stoaRoomId → debateRoomId — lets side menu re-enter from stoa tile
@@ -141,7 +144,12 @@ class AppState extends ChangeNotifier {
   static const _kRoomPrtNm  = 'acro_room_prt_nm';
   static const _kRoomPrtIni = 'acro_room_prt_ini';
   // Persisted active page (stoa / agora / acropolis)
-  static const _kPage       = 'acro_page';
+  static const _kPage          = 'acro_page';
+  // Persisted HostWaitScreen room — survives a page refresh
+  static const _kHostWaitId    = 'acro_hwait_id';
+  static const _kHostWaitTitle = 'acro_hwait_title';
+  static const _kHostWaitThesis = 'acro_hwait_thesis';
+  static const _kHostWaitCat   = 'acro_hwait_cat';
 
   Future<void> _loadLocalProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -166,6 +174,17 @@ class AppState extends ChangeNotifier {
 
     // Restore last-visited page (stoa / agora / acropolis)
     restoredPage = prefs.getString(_kPage) ?? '';
+
+    // Restore HostWaitScreen if the user was there before the refresh
+    final hwaitId = prefs.getString(_kHostWaitId) ?? '';
+    if (hwaitId.isNotEmpty) {
+      restoredHostWaitRoom = {
+        'roomId':   hwaitId,
+        'title':    prefs.getString(_kHostWaitTitle)   ?? '',
+        'thesis':   prefs.getString(_kHostWaitThesis)  ?? '',
+        'category': prefs.getString(_kHostWaitCat)     ?? '',
+      };
+    }
 
     notifyListeners();
   }
@@ -207,6 +226,25 @@ class AppState extends ChangeNotifier {
   void clearLastPage() {
     restoredPage = '';
     SharedPreferences.getInstance().then((p) => p.remove(_kPage));
+  }
+
+  void saveHostWaitRoom(Map<String, dynamic> room) {
+    SharedPreferences.getInstance().then((p) {
+      p.setString(_kHostWaitId,    room['roomId']   as String? ?? '');
+      p.setString(_kHostWaitTitle, room['title']    as String? ?? '');
+      p.setString(_kHostWaitThesis, room['thesis']  as String? ?? '');
+      p.setString(_kHostWaitCat,   room['category'] as String? ?? '');
+    });
+  }
+
+  void clearHostWaitRoom() {
+    restoredHostWaitRoom = null;
+    SharedPreferences.getInstance().then((p) {
+      p.remove(_kHostWaitId);
+      p.remove(_kHostWaitTitle);
+      p.remove(_kHostWaitThesis);
+      p.remove(_kHostWaitCat);
+    });
   }
 
   // ── 5-minute signup prompt ───────────────────────────────────────────────
@@ -384,6 +422,11 @@ class AppState extends ChangeNotifier {
     });
 
     _roomEnterTime = DateTime.now();
+    // Persist so the room is restored on the NEXT refresh even if the user
+    // got here via the side menu (which doesn't go through enterRoom).
+    if (currentRoom != null && !currentRoom!.isSpectator) {
+      _saveCurrentRoom(currentRoom!);
+    }
     notifyListeners();
   }
 
@@ -1241,8 +1284,22 @@ class AppState extends ChangeNotifier {
   Future<void> writeRoomPresence(String roomId, {required bool isHost}) async {
     if (roomId.isEmpty) return;
     final ref = _db.ref('rooms/$roomId/presence/${profile.uid}');
-    await ref.set({'name': profile.name, 'ini': profile.initials, 'isHost': isHost, 'camOn': true});
+    final data = {'name': profile.name, 'ini': profile.initials, 'isHost': isHost, 'camOn': true};
+    await ref.set(data);
     await ref.onDisconnect().remove();
+    // The previous browser tab registers an onDisconnect that removes presence.
+    // If it fires after we've written new presence it silently deletes our entry.
+    // Re-write after 2 s if presence is gone and we're still in this room.
+    Future.delayed(const Duration(seconds: 2), () async {
+      try {
+        if (currentRoom?.id != roomId) return;
+        final snap = await ref.get();
+        if (!snap.exists) {
+          await ref.set(data);
+          await ref.onDisconnect().remove();
+        }
+      } catch (_) {}
+    });
   }
 
   Future<void> updateCameraPresenceFB(String roomId, bool camOn) async {
