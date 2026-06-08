@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' show Random;
 import 'package:flutter/material.dart';
 import '../theme/acro_theme.dart';
 
@@ -74,6 +76,128 @@ class AcroAvatar extends StatelessWidget {
                 color: _fg,
                 fontSize: size * 0.38,
                 fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+// Ghost avatar with floating bob and eye-blink animations.
+// Used in video tiles when the camera is off.
+//
+// Eye coordinates derived from the 1320×1620 source images rendered via
+// BoxFit.contain in a square size×size container:
+//   rendered width  = size × 0.8148  (= 1320/1620)
+//   x-offset (centre) = size × 0.0926
+//   eye top (y)    ≈ size × 0.148   (240 / 1620)
+//   eye height     ≈ size × 0.154   (250 / 1620)
+//   left-eye left  ≈ size × 0.203   ((180/1320)×0.8148 + 0.0926)
+//   left-eye width ≈ size × 0.185
+//   right-eye left ≈ size × 0.500   ((660/1320)×0.8148 + 0.0926)
+//   right-eye width≈ size × 0.191
+class AnimatedGhostAvatar extends StatefulWidget {
+  final String initials;
+  final double size;
+  final AvatarStyle style;
+  final String seed;
+
+  const AnimatedGhostAvatar({
+    super.key,
+    required this.initials,
+    required this.seed,
+    this.size = 34,
+    this.style = AvatarStyle.gold,
+  });
+
+  @override
+  State<AnimatedGhostAvatar> createState() => _AnimatedGhostAvatarState();
+}
+
+class _AnimatedGhostAvatarState extends State<AnimatedGhostAvatar>
+    with TickerProviderStateMixin {
+  late final AnimationController _floatCtrl;
+  late final Animation<double> _floatY;
+  late final AnimationController _blinkCtrl;
+  late final Animation<double> _blinkH;
+  Timer? _blinkTimer;
+  final _rand = Random();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _floatCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2200))
+      ..repeat(reverse: true);
+    _floatY = Tween<double>(begin: -5.0, end: 5.0).animate(
+        CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut));
+
+    _blinkCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 160));
+    _blinkH = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _blinkCtrl, curve: Curves.easeIn));
+
+    _scheduleBlink();
+  }
+
+  void _scheduleBlink() {
+    final ms = 2000 + _rand.nextInt(3000);
+    _blinkTimer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      _blinkCtrl.forward().then((_) {
+        if (!mounted) return;
+        _blinkCtrl.reverse().then((_) {
+          if (mounted) _scheduleBlink();
+        });
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _blinkTimer?.cancel();
+    _floatCtrl.dispose();
+    _blinkCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.size;
+    return AnimatedBuilder(
+      animation: Listenable.merge([_floatCtrl, _blinkCtrl]),
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, _floatY.value),
+        child: SizedBox(
+          width: s,
+          height: s,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              AcroAvatar(
+                initials: widget.initials,
+                seed: widget.seed,
+                size: s,
+                style: widget.style,
+              ),
+              // Left eyelid
+              Positioned(
+                left:   s * 0.203,
+                top:    s * 0.148,
+                width:  s * 0.185,
+                height: s * 0.154 * _blinkH.value,
+                child: const ColoredBox(color: Colors.black),
+              ),
+              // Right eyelid
+              Positioned(
+                left:   s * 0.500,
+                top:    s * 0.148,
+                width:  s * 0.191,
+                height: s * 0.154 * _blinkH.value,
+                child: const ColoredBox(color: Colors.black),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

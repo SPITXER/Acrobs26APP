@@ -545,7 +545,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        AcroAvatar(
+                        AnimatedGhostAvatar(
                             initials: m.initials,
                             seed: m.name,
                             size: n <= 2 ? 60 : n <= 4 ? 48 : 38,
