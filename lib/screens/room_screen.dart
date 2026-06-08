@@ -263,7 +263,7 @@ class _RoomScreenState extends State<RoomScreen> {
           child: const Row(
             children: [
               Icon(Icons.chevron_left, color: Colors.white54, size: 16),
-              Text('Lobby', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              Text('Floor', style: TextStyle(color: Colors.white54, fontSize: 12)),
             ],
           ),
         ),
