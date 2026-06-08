@@ -494,9 +494,8 @@ class _StoaScreenState extends State<StoaScreen>
     final hostName        = room['hostName']       as String? ?? 'Anonymous';
     final category        = room['category']       as String? ?? '';
     final ts              = room['ts']             as int?    ?? 0;
-    final roomId          = room['roomId']         as String? ?? '';
-    final challengerCount = room['challengerCount'] as int?   ?? 0;
-    final occupancy       = challengerCount + 1; // +1 for host
+    final roomId       = room['roomId']         as String? ?? '';
+    final debateRoomId = room['debateRoomId']  as String? ?? 'dr_$roomId';
 
     return CloudCornerBox(
       width: 320,
@@ -543,30 +542,37 @@ class _StoaScreenState extends State<StoaScreen>
                 style: GoogleFonts.spaceMono(
                     fontSize: 9,
                     color: Colors.white.withOpacity(0.22))),
-            if (occupancy > 1) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: occupancy >= 4
-                      ? Colors.red.withOpacity(0.12)
-                      : AcroColors.gold.withOpacity(0.08),
-                  border: Border.all(
-                    color: occupancy >= 4
-                        ? Colors.red.withOpacity(0.40)
-                        : AcroColors.gold.withOpacity(0.30),
+            StreamBuilder<int>(
+              stream: context.read<AppState>().roomPresenceCountStream(debateRoomId),
+              builder: (_, snap) {
+                final n = snap.data ?? 0;
+                if (n <= 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: n >= 4
+                          ? Colors.red.withOpacity(0.12)
+                          : AcroColors.gold.withOpacity(0.08),
+                      border: Border.all(
+                        color: n >= 4
+                            ? Colors.red.withOpacity(0.40)
+                            : AcroColors.gold.withOpacity(0.30),
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Text('$n / 4',
+                        style: GoogleFonts.spaceMono(
+                            fontSize: 9,
+                            color: n >= 4
+                                ? Colors.red.withOpacity(0.70)
+                                : AcroColors.gold.withOpacity(0.70),
+                            letterSpacing: 1)),
                   ),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: Text('$occupancy / 4',
-                    style: GoogleFonts.spaceMono(
-                        fontSize: 9,
-                        color: occupancy >= 4
-                            ? Colors.red.withOpacity(0.70)
-                            : AcroColors.gold.withOpacity(0.70),
-                        letterSpacing: 1)),
-              ),
-            ],
+                );
+              },
+            ),
           ]),
           const SizedBox(height: 18),
 

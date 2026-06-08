@@ -66,7 +66,7 @@ class DebateRoom {
     required this.host,
     required this.hostInitials,
     this.category = 'Philosophy',
-    this.capacity = 2,
+    this.capacity = 4,
     this.duration = 'Open',
     this.durationSeconds = 0,
     this.isLive = false,

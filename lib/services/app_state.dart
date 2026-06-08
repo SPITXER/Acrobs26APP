@@ -1233,6 +1233,14 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Stream<int> roomPresenceCountStream(String roomId) {
+    return _db.ref('rooms/$roomId/presence').onValue.map((event) {
+      if (!event.snapshot.exists) return 0;
+      final raw = event.snapshot.value;
+      return raw is Map ? raw.length : 0;
+    });
+  }
+
   Stream<List<RoomMember>> roomPresenceStream(String roomId) {
     return _db.ref('rooms/$roomId/presence').onValue.map((event) {
       if (!event.snapshot.exists) return <RoomMember>[];
