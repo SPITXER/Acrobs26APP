@@ -78,7 +78,7 @@ class _StoaScreenState extends State<StoaScreen>
       final state = context.read<AppState>();
       state.enterRoom(state.buildRoomFromMatch(data));
       state.markMatchHandled();
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const RoomScreen()));
     });
   }

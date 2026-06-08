@@ -65,8 +65,12 @@ class AppState extends ChangeNotifier {
   })  : _navigatorKey = navigatorKey,
         _messengerKey = messengerKey {
     profile.uid = _uuid.v4();
-    _init();
+    ready = _init();
   }
+
+  // Completes when _init() finishes — used by AcropolisMapScreen to know
+  // when the persisted room (if any) has been restored to currentRoom.
+  late final Future<void> ready;
 
   Future<void> _init() async {
     await _loadLocalProfile();
@@ -123,11 +127,16 @@ class AppState extends ChangeNotifier {
 
   // ── Local storage ────────────────────────────────────────────────────────
 
-  static const _kUid       = 'acro_uid';
-  static const _kName      = 'acro_name';
-  static const _kField     = 'acro_field';
-  static const _kInterests = 'acro_interests';
-  static const _kQuote     = 'acro_quote';
+  static const _kUid        = 'acro_uid';
+  static const _kName       = 'acro_name';
+  static const _kField      = 'acro_field';
+  static const _kInterests  = 'acro_interests';
+  static const _kQuote      = 'acro_quote';
+  // Persisted active room — survives a page refresh
+  static const _kRoomId     = 'acro_room_id';
+  static const _kRoomTitle  = 'acro_room_title';
+  static const _kRoomPrtNm  = 'acro_room_prt_nm';
+  static const _kRoomPrtIni = 'acro_room_prt_ini';
 
   Future<void> _loadLocalProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -138,6 +147,18 @@ class AppState extends ChangeNotifier {
     profile.field     = prefs.getString(_kField) ?? '';
     profile.interests = prefs.getStringList(_kInterests) ?? [];
     profile.quote     = prefs.getString(_kQuote) ?? '';
+
+    // Restore room the user was in before the page refresh
+    final roomId = prefs.getString(_kRoomId) ?? '';
+    if (roomId.isNotEmpty) {
+      reenterRoom(
+        roomId,
+        title:       prefs.getString(_kRoomTitle)  ?? 'Debate',
+        partnerName: prefs.getString(_kRoomPrtNm)  ?? '',
+        partnerIni:  prefs.getString(_kRoomPrtIni) ?? '?',
+      );
+    }
+
     notifyListeners();
   }
 
@@ -150,6 +171,25 @@ class AppState extends ChangeNotifier {
       prefs.setStringList(_kInterests, profile.interests),
       prefs.setString(_kQuote, profile.quote),
     ]);
+  }
+
+  void _saveCurrentRoom(DebateRoom room) {
+    SharedPreferences.getInstance().then((prefs) {
+      final partner = room.members.where((m) => m.name != profile.name).toList();
+      prefs.setString(_kRoomId,     room.id);
+      prefs.setString(_kRoomTitle,  room.title);
+      prefs.setString(_kRoomPrtNm,  partner.isNotEmpty ? partner.first.name     : '');
+      prefs.setString(_kRoomPrtIni, partner.isNotEmpty ? partner.first.initials : '?');
+    });
+  }
+
+  void _clearSavedRoom() {
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove(_kRoomId);
+      prefs.remove(_kRoomTitle);
+      prefs.remove(_kRoomPrtNm);
+      prefs.remove(_kRoomPrtIni);
+    });
   }
 
   // ── 5-minute signup prompt ───────────────────────────────────────────────
@@ -271,6 +311,7 @@ class AppState extends ChangeNotifier {
       'partnerName': partner.isNotEmpty ? partner.first.name     : '',
       'partnerIni':  partner.isNotEmpty ? partner.first.initials : '?',
     });
+    if (!room.isSpectator) _saveCurrentRoom(room);
     notifyListeners();
   }
 
@@ -343,6 +384,7 @@ class AppState extends ChangeNotifier {
       }
       _roomEnterTime = null;
     }
+    _clearSavedRoom();
     currentRoom = null;
     notifyListeners();
   }

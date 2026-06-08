@@ -11,6 +11,7 @@ import '../widgets/signup_dialog.dart';
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
+import 'room_screen.dart';
 
 // ── Agora-road palette ────────────────────────────────────────────────────────
 const _marble   = Color(0xFFF4E8CC);
@@ -69,6 +70,8 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   ui.Image? _landmarkSelfie;
   ui.Image? _landmarkThinker;
 
+  bool _roomRestoreHandled = false;
+
   @override
   void initState() {
     super.initState();
@@ -90,12 +93,31 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       });
     _loadImages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppState>().registerSignupDialogCallback(() {
+      final state = context.read<AppState>();
+      state.registerSignupDialogCallback(() {
         if (!mounted) return;
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (_) => const SignupPromptDialog(),
+        );
+      });
+
+      // After init completes, navigate back into the room if one was persisted.
+      state.ready.then((_) {
+        if (!mounted || _roomRestoreHandled) return;
+        if (state.currentRoom == null) return;
+        _roomRestoreHandled = true;
+        // Push StoaScreen (no animation) then RoomScreen so Back goes to Stoa.
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const StoaScreen(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const RoomScreen()),
         );
       });
     });
