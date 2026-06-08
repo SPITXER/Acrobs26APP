@@ -344,9 +344,7 @@ class AppState extends ChangeNotifier {
     if (cached != null) {
       currentRoom = cached;
     } else {
-      // Reconstruct from the data we have. Read hostUid from Firebase so
-      // isHost is correct even after a page refresh (avoids both sides
-      // waiting for an offer that nobody creates).
+      // Reconstruct from the data we have; isHost corrected below.
       currentRoom = DebateRoom(
         id: roomId,
         title: title,
@@ -359,29 +357,32 @@ class AppState extends ChangeNotifier {
             RoomMember(name: partnerName, initials: partnerIni, isHost: true),
         ],
       );
-      // Async-correct isHost from the rooms node then re-notify
-      _db.ref('rooms/$roomId/hostUid').get().then((snap) {
-        if (snap.value == profile.uid && currentRoom?.id == roomId) {
-          currentRoom = DebateRoom(
-            id: roomId,
-            title: currentRoom?.title ?? title,
-            host: profile.name,
-            hostInitials: profile.initials,
-            isHost: true,
-            members: [
-              RoomMember(name: profile.name, initials: profile.initials, isHost: true),
-              if (partnerName.isNotEmpty)
-                RoomMember(name: partnerName, initials: partnerIni),
-            ],
-          );
-          // Host is back — restore live flag so guests can re-enter.
-          // endRoomFB set it to false when the host left; without this
-          // every guest re-entry would be immediately ejected.
-          _db.ref('rooms/$roomId/live').set(true);
-          notifyListeners();
-        }
-      });
     }
+
+    // Always verify host identity — the cached path skips the else block
+    // but endRoomFB may have set live=false when the host left.
+    // Writing live=true must happen every re-entry, not just on cache miss.
+    _db.ref('rooms/$roomId/hostUid').get().then((snap) {
+      if (snap.value != profile.uid || currentRoom?.id != roomId) return;
+      // Restore room for guests — without this they are immediately ejected.
+      _db.ref('rooms/$roomId/live').set(true);
+      if (currentRoom?.isHost != true) {
+        currentRoom = DebateRoom(
+          id: roomId,
+          title: currentRoom?.title ?? title,
+          host: profile.name,
+          hostInitials: profile.initials,
+          isHost: true,
+          members: [
+            RoomMember(name: profile.name, initials: profile.initials, isHost: true),
+            if (partnerName.isNotEmpty)
+              RoomMember(name: partnerName, initials: partnerIni),
+          ],
+        );
+        notifyListeners();
+      }
+    });
+
     _roomEnterTime = DateTime.now();
     notifyListeners();
   }
