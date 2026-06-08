@@ -374,6 +374,10 @@ class AppState extends ChangeNotifier {
                 RoomMember(name: partnerName, initials: partnerIni),
             ],
           );
+          // Host is back — restore live flag so guests can re-enter.
+          // endRoomFB set it to false when the host left; without this
+          // every guest re-entry would be immediately ejected.
+          _db.ref('rooms/$roomId/live').set(true);
           notifyListeners();
         }
       });
