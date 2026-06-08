@@ -166,8 +166,7 @@ class _RoomScreenState extends State<RoomScreen> {
     final messenger = ScaffoldMessenger.of(context);
     if (room != null && !room.isSpectator) {
       state.leaveRoomFB(room.id);
-      // Signal all guests/spectators to leave when the host ends the room.
-      if (room.isHost) state.endRoomFB(room.id);
+      // Host leaving no longer ends the room — guests stay until they leave.
     }
     Navigator.pop(context);
     state.leaveRoom(); // after pop — prevents blank flash during exit animation
