@@ -127,7 +127,17 @@ class _RoomScreenState extends State<RoomScreen> {
 
     _localStreamSub = _webrtc!.onLocalStream.listen((stream) {
       if (!mounted) return;
-      setState(() { _localRenderer.srcObject = stream; _localReady = true; });
+      final hasVideo = stream != null && stream.getVideoTracks().isNotEmpty;
+      setState(() {
+        _localRenderer.srcObject = stream;
+        _localReady = true;
+        if (!hasVideo) _camOn = false;
+      });
+      if (!hasVideo) {
+        final s = context.read<AppState>();
+        final r = s.currentRoom;
+        if (r != null) s.updateCameraPresenceFB(r.id, false);
+      }
     });
 
     _remoteStreamSub = _webrtc!.onRemoteStream.listen((stream) {
