@@ -429,6 +429,19 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Future<void> sendHandRaiseEventFB(String roomId, String name, String ini) async {
+    if (roomId.isEmpty) return;
+    try {
+      await _db.ref('rchats/$roomId').push().set({
+        'name': name,
+        'ini':  ini,
+        'msg':  'raised their hand',
+        'type': 'hand_raise',
+        'ts':   DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (_) {}
+  }
+
   Future<void> sendRoomChatFB(
       String roomId, String name, String ini, String text) async {
     try {

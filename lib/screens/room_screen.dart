@@ -25,6 +25,10 @@ class _RoomScreenState extends State<RoomScreen> {
   final _chatCtrl = TextEditingController();
   final _chatScroll = ScrollController();
   final List<_ChatMsg> _messages = [];
+  // hand raise animations: member name → unique trigger key
+  final Map<String, int> _handRaising = {};
+  // prevents re-triggering animation for already-seen messages on chat refresh
+  final Set<int> _processedHandRaisedTs = {};
   Timer? _timer;
   int _timeLeft = 0;
   StreamSubscription? _chatSub;
@@ -78,11 +82,21 @@ class _RoomScreenState extends State<RoomScreen> {
         setState(() {
           _messages.clear();
           for (final m in msgs) {
+            final type = m['type'] as String? ?? 'chat';
+            final ts   = m['ts']   as int?    ?? 0;
+            // Trigger hand-raise animation once per unique event
+            if (type == 'hand_raise' && _processedHandRaisedTs.add(ts)) {
+              final name = m['name'] as String? ?? '';
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _triggerHandRaise(name);
+              });
+            }
             _messages.add(_ChatMsg(
               name: m['name'] ?? '',
-              ini: m['ini'] ?? '?',
-              text: m['msg'] ?? '',
+              ini:  m['ini']  ?? '?',
+              text: m['msg']  ?? '',
               isMe: m['name'] == state.profile.name,
+              type: type,
             ));
           }
         });
@@ -94,6 +108,14 @@ class _RoomScreenState extends State<RoomScreen> {
         });
       });
     }
+  }
+
+  void _triggerHandRaise(String name) {
+    final key = DateTime.now().millisecondsSinceEpoch;
+    setState(() => _handRaising[name] = key);
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (mounted) setState(() => _handRaising.remove(name));
+    });
   }
 
   Future<void> _startWebRTC() async {
@@ -438,9 +460,14 @@ class _RoomScreenState extends State<RoomScreen> {
                 iconColor: _handRaised ? AcroColors.stone : AcroColors.gold,
                 active: true,
                 onTap: () {
+                  final wasRaised = _handRaised;
                   setState(() => _handRaised = !_handRaised);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(_handRaised ? '✋ Hand raised — host notified' : 'Hand lowered')));
+                  if (!wasRaised) {
+                    // Broadcast to all participants via chat channel
+                    final s = context.read<AppState>();
+                    s.sendHandRaiseEventFB(
+                        s.currentRoom!.id, s.profile.name, s.profile.initials);
+                  }
                 },
               ),
               GestureDetector(
@@ -558,6 +585,9 @@ class _RoomScreenState extends State<RoomScreen> {
                     bottom: 7, right: 7,
                     child: Icon(Icons.mic_off, size: 12, color: AcroColors.redLight),
                   ),
+                // Hand-raise animation overlay
+                if (_handRaising.containsKey(m.name))
+                  _HandRaiseOverlay(key: ValueKey(_handRaising[m.name])),
               ],
             ),
           ),
@@ -567,6 +597,24 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   Widget _buildChatBubble(_ChatMsg msg) {
+    // System event: hand raise
+    if (msg.type == 'hand_raise') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.back_hand, size: 13, color: AcroColors.gold),
+            const SizedBox(width: 5),
+            Text(
+              '${msg.isMe ? 'You' : msg.name} raised their hand',
+              style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.45), fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -636,5 +684,56 @@ class _RoomScreenState extends State<RoomScreen> {
 class _ChatMsg {
   final String name, ini, text;
   final bool isMe;
-  _ChatMsg({required this.name, required this.ini, required this.text, required this.isMe});
+  final String type;
+  _ChatMsg({required this.name, required this.ini, required this.text, required this.isMe, this.type = 'chat'});
+}
+
+// Rising-hand animation overlaid on a participant's video tile.
+class _HandRaiseOverlay extends StatefulWidget {
+  const _HandRaiseOverlay({super.key});
+  @override
+  State<_HandRaiseOverlay> createState() => _HandRaiseOverlayState();
+}
+
+class _HandRaiseOverlayState extends State<_HandRaiseOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _slide;   // bottom offset: 20 → 90
+  late final Animation<double> _opacity; // 1.0 → 0.0, starts fading at 50%
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+    _slide   = Tween<double>(begin: 20, end: 90).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+        CurvedAnimation(parent: _ctrl, curve: const Interval(0.45, 1.0, curve: Curves.easeIn)));
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Positioned(
+        left: 0, right: 0,
+        bottom: _slide.value,
+        child: IgnorePointer(
+          child: Opacity(
+            opacity: _opacity.value,
+            child: const Center(
+              child: Text('✋', style: TextStyle(fontSize: 38)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
