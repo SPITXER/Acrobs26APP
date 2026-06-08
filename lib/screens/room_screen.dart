@@ -35,6 +35,12 @@ class _RoomScreenState extends State<RoomScreen> {
   bool _remoteReady = false;
   StreamSubscription? _localStreamSub;
   StreamSubscription? _remoteStreamSub;
+  StreamSubscription? _presenceSub;
+  StreamSubscription? _peerDisconnectSub;
+  String? _roomId;
+  bool _isSpectator = false;
+  bool _leftExplicitly = false;
+  AppState? _appState;
 
   @override
   void initState() {
@@ -43,8 +49,20 @@ class _RoomScreenState extends State<RoomScreen> {
         .then((_) => _startWebRTC());
 
     final state = context.read<AppState>();
+    _appState = state;
     final room = state.currentRoom;
     if (room != null) {
+      _roomId      = room.id;
+      _isSpectator = room.isSpectator;
+
+      if (!room.isSpectator) {
+        state.writeRoomPresence(room.id, isHost: room.isHost);
+        _presenceSub = state.roomPresenceStream(room.id).listen((members) {
+          if (!mounted) return;
+          state.updateRoomMembers(room.id, members);
+        });
+      }
+
       _startTimer(room);
       _chatSub = state.listenToRoomChat(room.id, (msgs) {
         if (!mounted) return;
@@ -83,6 +101,11 @@ class _RoomScreenState extends State<RoomScreen> {
     _remoteStreamSub = _webrtc!.onRemoteStream.listen((stream) {
       if (!mounted) return;
       setState(() { _remoteRenderer.srcObject = stream; _remoteReady = true; });
+    });
+
+    _peerDisconnectSub = _webrtc!.onPeerDisconnected.listen((_) {
+      if (!mounted) return;
+      setState(() { _remoteReady = false; _remoteRenderer.srcObject = null; });
     });
 
     try {
@@ -128,10 +151,11 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   void _leave() {
+    _leftExplicitly = true;
     _timer?.cancel();
     final state = context.read<AppState>();
     final room = state.currentRoom;
-    if (room != null && !room.isHost) state.leaveRoomFB(room.id);
+    if (room != null && !room.isSpectator) state.leaveRoomFB(room.id);
     state.leaveRoom();
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -142,6 +166,8 @@ class _RoomScreenState extends State<RoomScreen> {
   void dispose() {
     _timer?.cancel();
     _chatSub?.cancel();
+    _presenceSub?.cancel();
+    _peerDisconnectSub?.cancel();
     _localStreamSub?.cancel();
     _remoteStreamSub?.cancel();
     _webrtc?.dispose();
@@ -149,6 +175,12 @@ class _RoomScreenState extends State<RoomScreen> {
     _remoteRenderer.dispose();
     _chatCtrl.dispose();
     _chatScroll.dispose();
+    // Safety net: remove presence if widget is disposed without _leave() (e.g. system back).
+    // Skipped when _leave() already removed it, preventing a race where dispose() fires
+    // after the new RoomScreen's initState has already re-written presence.
+    if (!_isSpectator && !_leftExplicitly && _roomId != null) {
+      _appState?.leaveRoomFB(_roomId!);
+    }
     super.dispose();
   }
 

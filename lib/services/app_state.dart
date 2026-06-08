@@ -895,6 +895,10 @@ class AppState extends ChangeNotifier {
       // Increment guest count on the debate room that the host pre-created
       'rooms/$debateRoomId/guests': ServerValue.increment(1),
     });
+
+    // Write presence immediately so the host's roomPresenceStream fires in real-time
+    // and their grid tile appears without waiting for the challenger to enter RoomScreen.
+    await writeRoomPresence(debateRoomId, isHost: false);
   }
 
   // Per-room watcher: subscribes to stoa_room_joins/$stoaRoomId.onChildAdded.
@@ -1143,6 +1147,62 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
+  // Room presence — drives live member list in RoomScreen
+  // ---------------------------------------------------------------------------
+
+  Future<void> writeRoomPresence(String roomId, {required bool isHost}) async {
+    if (roomId.isEmpty) return;
+    final ref = _db.ref('rooms/$roomId/presence/${profile.uid}');
+    await ref.set({'name': profile.name, 'ini': profile.initials, 'isHost': isHost});
+    await ref.onDisconnect().remove();
+  }
+
+  Future<void> leaveRoomFB(String roomId) async {
+    if (roomId.isEmpty) return;
+    await _db.ref('rooms/$roomId/presence/${profile.uid}').remove();
+  }
+
+  Stream<List<RoomMember>> roomPresenceStream(String roomId) {
+    return _db.ref('rooms/$roomId/presence').onValue.map((event) {
+      if (!event.snapshot.exists) return <RoomMember>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <RoomMember>[];
+      return Map<String, dynamic>.from(raw).values.map((v) {
+        final m = Map<String, dynamic>.from(v as Map);
+        return RoomMember(
+          name:     m['name']   as String? ?? 'Unknown',
+          initials: m['ini']    as String? ?? '?',
+          isHost:   m['isHost'] as bool?   ?? false,
+        );
+      }).toList();
+    });
+  }
+
+  void updateRoomMembers(String roomId, List<RoomMember> members) {
+    if (currentRoom?.id != roomId || members.isEmpty) return;
+    currentRoom = DebateRoom(
+      id:              currentRoom!.id,
+      title:           currentRoom!.title,
+      desc:            currentRoom!.desc,
+      host:            currentRoom!.host,
+      hostInitials:    currentRoom!.hostInitials,
+      category:        currentRoom!.category,
+      capacity:        currentRoom!.capacity,
+      duration:        currentRoom!.duration,
+      durationSeconds: currentRoom!.durationSeconds,
+      isLive:          currentRoom!.isLive,
+      guestCount:      currentRoom!.guestCount,
+      perms:           currentRoom!.perms,
+      isHost:          currentRoom!.isHost,
+      isSpectator:     currentRoom!.isSpectator,
+      members:         members,
+    );
+    // Keep cache current so re-entry via reenterRoom() starts with the live member list
+    _roomCache[roomId] = currentRoom!;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
   // Legacy stubs — kept so LobbyScreen (used by AppScreen feed) compiles.
   // LobbyScreen is mothballed; these are no-ops.
   // ---------------------------------------------------------------------------
@@ -1160,5 +1220,4 @@ class AppState extends ChangeNotifier {
 
   Future<void> createRoomFB(DebateRoom room) async {}
   Future<void> joinRoomFB(String roomId) async {}
-  Future<void> leaveRoomFB(String roomId) async {}
 }
