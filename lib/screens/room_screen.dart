@@ -316,25 +316,26 @@ class _RoomScreenState extends State<RoomScreen> {
       body: isMobile
           // ── Mobile: full-screen split + sliding chat overlay ──────────────
           ? Builder(builder: (ctx) {
-              final chatW = MediaQuery.of(ctx).size.width * 0.80;
+              final chatW = MediaQuery.of(ctx).size.width * 0.70;
               final screenH = MediaQuery.of(ctx).size.height;
+              final chatH = screenH * 0.58;
               return Stack(
                 children: [
                   // Edge-to-edge split video
                   Positioned.fill(child: _buildMobileVideoSplit(room)),
-                  // Faded chat panel slides in from the right
+                  // Faded chat panel slides in from the right (top portion only)
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOut,
                     right: _chatVisible ? 0 : -chatW,
-                    top: 0, bottom: 0, width: chatW,
+                    top: 0, height: chatH, width: chatW,
                     child: _buildMobileChatPanel(room),
                   ),
                   // Recall tab — visible on right edge when chat is hidden
                   if (!_chatVisible)
                     Positioned(
                       right: 0,
-                      top: screenH * 0.35,
+                      top: screenH * 0.18,
                       child: GestureDetector(
                         onTap: () => setState(() => _chatVisible = true),
                         child: Container(
@@ -671,9 +672,12 @@ class _RoomScreenState extends State<RoomScreen> {
     final n = room.members.length;
     final myName = context.read<AppState>().profile.name;
     if (n == 0) return const SizedBox.expand();
+
+    // 1: full screen
     if (n == 1) {
       return _buildTile(room, 0, myName, 80, borderRadius: BorderRadius.zero);
     }
+    // 2/4: equal halves
     if (n == 2) {
       return Column(children: [
         Expanded(child: _buildTile(room, 0, myName, 72, borderRadius: BorderRadius.zero)),
@@ -681,7 +685,17 @@ class _RoomScreenState extends State<RoomScreen> {
         Expanded(child: _buildTile(room, 1, myName, 72, borderRadius: BorderRadius.zero)),
       ]);
     }
-    // 3-4: 2×2 edge-to-edge
+    // 3/4: equal thirds stacked
+    if (n == 3) {
+      return Column(children: [
+        Expanded(child: _buildTile(room, 0, myName, 56, borderRadius: BorderRadius.zero)),
+        const SizedBox(height: 2),
+        Expanded(child: _buildTile(room, 1, myName, 56, borderRadius: BorderRadius.zero)),
+        const SizedBox(height: 2),
+        Expanded(child: _buildTile(room, 2, myName, 56, borderRadius: BorderRadius.zero)),
+      ]);
+    }
+    // 4/4: 2×2 quarters
     return GridView.builder(
       padding: EdgeInsets.zero,
       physics: const NeverScrollableScrollPhysics(),
@@ -691,7 +705,7 @@ class _RoomScreenState extends State<RoomScreen> {
         mainAxisSpacing: 2,
       ),
       itemCount: n,
-      itemBuilder: (_, i) => _buildTile(room, i, myName, 56, borderRadius: BorderRadius.zero),
+      itemBuilder: (_, i) => _buildTile(room, i, myName, 52, borderRadius: BorderRadius.zero),
     );
   }
 
@@ -699,8 +713,12 @@ class _RoomScreenState extends State<RoomScreen> {
   Widget _buildMobileChatPanel(DebateRoom room) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0F0E17).withOpacity(0.93),
-        border: Border(left: BorderSide(color: Colors.white.withOpacity(0.10))),
+        color: const Color(0xFF0F0E17).withOpacity(0.63),
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(14)),
+        border: Border(
+          left:   BorderSide(color: Colors.white.withOpacity(0.10)),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
       ),
       child: Column(
         children: [
