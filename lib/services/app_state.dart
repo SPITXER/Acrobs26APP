@@ -462,11 +462,14 @@ class AppState extends ChangeNotifier {
         final data =
             Map<dynamic, dynamic>.from(event.snapshot.value as Map);
         final entries = data.entries.toList()
-          ..sort((a, b) => ((a.value as Map)['ts'] ?? 0)
-              .compareTo((b.value as Map)['ts'] ?? 0));
+          ..sort((a, b) {
+            final aTs = ((a.value as Map)['ts'] as num?)?.toInt() ?? 0;
+            final bTs = ((b.value as Map)['ts'] as num?)?.toInt() ?? 0;
+            return aTs.compareTo(bTs);
+          });
         for (final e in entries) {
           final m = Map<String, dynamic>.from(e.value as Map);
-          m['_fbKey'] = e.key as String;
+          m['_fbKey'] = e.key.toString();
           msgs.add(m);
         }
       }

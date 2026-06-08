@@ -885,10 +885,19 @@ class _RoomScreenState extends State<RoomScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (msg.pinned)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: Icon(Icons.push_pin, size: 10, color: AcroColors.gold),
+                    if (msg.type == 'chat')
+                      GestureDetector(
+                        onTap: () => _pinMessage(msg),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.push_pin,
+                            size: 10,
+                            color: msg.pinned
+                                ? AcroColors.gold
+                                : Colors.white.withOpacity(0.2),
+                          ),
+                        ),
                       ),
                     Text(msg.isMe ? 'You' : msg.name,
                         style: const TextStyle(fontSize: 10, color: Colors.white30)),
@@ -951,7 +960,7 @@ class _RoomScreenState extends State<RoomScreen> {
             ),
           ),
           ...pinned.map((m) => GestureDetector(
-            onLongPress: () => _pinMessage(m),
+            onTap: () => _pinMessage(m),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Row(
