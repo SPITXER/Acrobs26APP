@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -218,6 +220,7 @@ class _RoomScreenState extends State<RoomScreen> {
       if (_turnLeft <= 1) {
         _turnTimer?.cancel();
         setState(() { _turnLeft = 0; _turnExpired = true; });
+        _playTimesUpSound();
       } else {
         setState(() => _turnLeft--);
       }
@@ -305,6 +308,27 @@ class _RoomScreenState extends State<RoomScreen> {
         ),
       ),
     );
+  }
+
+  void _playTimesUpSound() {
+    try {
+      final script = html.ScriptElement()
+        ..text = '(function(){'
+            'var c=new(window.AudioContext||window.webkitAudioContext)();'
+            'var o=c.createOscillator(),g=c.createGain();'
+            'o.type="sine";'
+            'o.connect(g);g.connect(c.destination);'
+            'var t=c.currentTime;'
+            'o.frequency.setValueAtTime(880,t);'
+            'o.frequency.setValueAtTime(660,t+0.13);'
+            'o.frequency.setValueAtTime(440,t+0.26);'
+            'g.gain.setValueAtTime(0.45,t);'
+            'g.gain.exponentialRampToValueAtTime(0.001,t+0.5);'
+            'o.start(t);o.stop(t+0.5);'
+            '})()';
+      html.document.head!.append(script);
+      Future.delayed(const Duration(milliseconds: 700), script.remove);
+    } catch (_) {}
   }
 
   void _sendChat() {
@@ -835,7 +859,7 @@ class _RoomScreenState extends State<RoomScreen> {
             if (_handRaising.containsKey(m.name))
               _HandRaiseOverlay(key: ValueKey(_handRaising[m.name])),
             if (isMe && _turnExpired)
-              const _TurnExpiredRing(),
+              _TurnExpiredClockOverlay(key: ValueKey('clock_$_turnDuration')),
           ],
         ),
       ),
@@ -1243,6 +1267,57 @@ class _RingingClockIconState extends State<_RingingClockIcon>
         child: Transform.rotate(angle: _shake.value, child: child),
       ),
       child: const Icon(Icons.alarm, color: AcroColors.redLight, size: 20),
+    );
+  }
+}
+
+// Rocking clock emoji overlay on the local cam tile when turn time expires —
+// mirrors the hand-raise animation style.
+class _TurnExpiredClockOverlay extends StatefulWidget {
+  const _TurnExpiredClockOverlay({super.key});
+  @override
+  State<_TurnExpiredClockOverlay> createState() => _TurnExpiredClockOverlayState();
+}
+
+class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _rock;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 650))
+      ..repeat(reverse: true);
+    _rock    = Tween<double>(begin: -0.28, end: 0.28)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _opacity = Tween<double>(begin: 0.3, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Positioned(
+        left: 0, right: 0, bottom: 55,
+        child: IgnorePointer(
+          child: Opacity(
+            opacity: _opacity.value,
+            child: Center(
+              child: Transform.rotate(
+                angle: _rock.value,
+                child: const Text('⏰', style: TextStyle(fontSize: 68)),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
