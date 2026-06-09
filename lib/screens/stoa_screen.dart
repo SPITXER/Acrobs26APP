@@ -511,7 +511,10 @@ class _StoaScreenState extends State<StoaScreen>
     final roomId       = room['roomId']         as String? ?? '';
     final debateRoomId = room['debateRoomId']  as String? ?? 'dr_$roomId';
 
-    return CloudCornerBox(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CloudCornerBox(
       width: 320,
       padding: const EdgeInsets.all(28),
       borderColor: AcroColors.gold.withOpacity(0.22),
@@ -638,6 +641,25 @@ class _StoaScreenState extends State<StoaScreen>
           _QuotePeek(roomId: roomId, room: room),
         ],
       ),
+        ),
+        // Vine — dangles from top-right corner
+        Positioned(
+          top: -18,
+          right: -10,
+          child: IgnorePointer(
+            child: Transform.rotate(
+              angle: 0.08,
+              alignment: Alignment.topCenter,
+              child: Image.asset(
+                'assets/images/vine_asset.png',
+                width: 72,
+                fit: BoxFit.fitWidth,
+                opacity: const AlwaysStoppedAnimation(0.88),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
