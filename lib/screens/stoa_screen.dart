@@ -212,15 +212,14 @@ class _StoaScreenState extends State<StoaScreen>
             fit: BoxFit.cover,
             alignment: Alignment.center,
             opacity: const AlwaysStoppedAnimation(0.48)),
-        // Clouds — flipped so they billow downward from the top,
-        // fading seamlessly into the dark background
+        // Clouds — small band at top, fading into the road skyline
         Positioned(
           top: 0, left: 0, right: 0,
           child: ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: [0.0, 0.06, 0.62, 1.0],
+              stops: [0.0, 0.08, 0.72, 1.0],
               colors: [
                 Colors.transparent,
                 Colors.white,
@@ -232,8 +231,10 @@ class _StoaScreenState extends State<StoaScreen>
             child: Transform.flip(
               flipY: true,
               child: Image.asset('assets/images/clouds.png',
-                  fit: BoxFit.fitWidth,
-                  opacity: const AlwaysStoppedAnimation(0.55)),
+                  fit: BoxFit.cover,
+                  height: 220,
+                  width: double.infinity,
+                  opacity: const AlwaysStoppedAnimation(0.45)),
             ),
           ),
         ),
