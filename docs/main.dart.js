@@ -42813,7 +42813,7 @@ d.toString
 j.push(A.bI(A.b([new A.jJ(i,36,B.dy,g,b),B.iN,f,new A.FZ(a2,J.d(e,A.b0(d,!1,h).e.a),b)],k),B.q,B.o,B.v,b))
 j.push(new A.lc(20,A.x(13,B.c.j()>>>16&255,B.c.j()>>>8&255,B.c.j()&255),b))
 j.push(new A.Vc(o,a2,b))
-return A.dV(B.aC,A.b([A.Kf(B.ag,m,l,A.by(j,B.a_,B.o,B.Z),B.oF,320),A.dP(b,A.f3(A.ui(a0,B.M,B.nc,b,B.n_,36),!0,b),b,b,-18,b,0,b),A.dP(b,A.f3(new A.Ck(1,A.ui(a0,B.M,B.nc,b,B.n_,36),b),!0,b),b,b,-18,b,100,b)],k),B.m,B.az)},
+return A.dV(B.aC,A.b([A.Kf(B.ag,m,l,A.by(j,B.a_,B.o,B.Z),B.oF,320),A.dP(b,A.f3(A.ui(a0,B.M,B.nc,b,B.n_,36),!0,b),b,b,-18,b,0,b),A.dP(b,A.f3(new A.Ck(1,A.ui(a0,B.M,B.nc,b,B.n_,36),b),!0,b),b,b,-18,b,0,b)],k),B.m,B.az)},
 Ds(a,b){var s=null,r=A.d9(b,1.5),q=A.az(3)
 return A.b5(s,A.a1(a,s,s,s,s,A.cS().$4$color$fontSize$fontWeight$letterSpacing(b,12,B.y,2),s,s),B.m,s,new A.aM(s,s,r,q,s,s,B.z),s,s,s,B.ow,s,s,s)},
 a5W(){var s=null,r=A.y4(s,B.ag,s,A.k4(s,s,B.f7,s,s,new A.avi(this),s,s,s),s,A.a1("\u2696  THE STOA",s,s,s,s,A.ce().$4$color$fontSize$fontWeight$letterSpacing(B.f,14,B.y,3),s,s)),q=A.x(10,B.c.j()>>>16&255,B.c.j()>>>8&255,B.c.j()&255),p=A.d9(A.x(64,B.f.j()>>>16&255,B.f.j()>>>8&255,B.f.j()&255),1),o=A.az(4),n=A.a1("ENTER THE STOA",s,s,s,s,A.ce().$4$color$fontSize$fontWeight$letterSpacing(B.aO,11,B.y,3),s,s),m=A.a1("State your name to take the floor.",s,s,s,s,A.b8(s,s,A.x(B.d.aj(76.5),B.c.j()>>>16&255,B.c.j()>>>8&255,B.c.j()&255),s,s,s,s,s,s,s,s,13,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s),l=A.a1("YOUR NAME",s,s,s,s,A.b8(s,s,A.x(89,B.c.j()>>>16&255,B.c.j()>>>8&255,B.c.j()&255),s,s,s,s,s,s,s,s,10,s,s,B.y,s,s,!0,s,1.5,s,s,s,s,s,s),s,s),k=A.cS().$2$color$fontSize(B.c,14),j=A.cS().$1$color(A.x(56,B.c.j()>>>16&255,B.c.j()>>>8&255,B.c.j()&255)),i=A.x(10,B.c.j()>>>16&255,B.c.j()>>>8&255,B.c.j()&255)
