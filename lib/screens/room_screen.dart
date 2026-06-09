@@ -39,6 +39,7 @@ class _RoomScreenState extends State<RoomScreen> {
   int _turnLeft = 0;
   int _turnDuration = 0;
   bool _turnExpired = false;
+  int  _turnExpiredAt = 0; // unique key per expiry so overlay restarts each time
   StreamSubscription? _chatSub;
 
   WebRTCService? _webrtc;
@@ -219,7 +220,11 @@ class _RoomScreenState extends State<RoomScreen> {
       if (!mounted) return;
       if (_turnLeft <= 1) {
         _turnTimer?.cancel();
-        setState(() { _turnLeft = 0; _turnExpired = true; });
+        setState(() {
+          _turnLeft = 0;
+          _turnExpired = true;
+          _turnExpiredAt = DateTime.now().millisecondsSinceEpoch;
+        });
         _playTimesUpSound();
       } else {
         setState(() => _turnLeft--);
@@ -859,7 +864,7 @@ class _RoomScreenState extends State<RoomScreen> {
             if (_handRaising.containsKey(m.name))
               _HandRaiseOverlay(key: ValueKey(_handRaising[m.name])),
             if (isMe && _turnExpired)
-              _TurnExpiredClockOverlay(key: ValueKey('clock_$_turnDuration')),
+              _TurnExpiredClockOverlay(key: ValueKey(_turnExpiredAt)),
           ],
         ),
       ),
@@ -1286,15 +1291,14 @@ class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
   @override
   void initState() {
     super.initState();
-    // fade-in 250ms → hold 1000ms → fade-out 250ms → pause 300ms → repeat
+    // fade in 0.2s → hold 0.3s → fade out 0.5s → done (plays once)
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat();
+        vsync: this, duration: const Duration(milliseconds: 1000))
+      ..forward();
     _opacity = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 14),
-      TweenSequenceItem(tween: ConstantTween(1.0),           weight: 55),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 14),
-      TweenSequenceItem(tween: ConstantTween(0.0),           weight: 17),
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0),           weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 50),
     ]).animate(_ctrl);
   }
 
@@ -1317,7 +1321,7 @@ class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
   }
 }
 
-// High-density pixel-art clock (40×40 grid) with Bresenham hands + tick marks.
+// High-density pixel-art alarm clock (48×48 grid) — bells, face, hands, feet.
 class _PixelClock extends StatelessWidget {
   const _PixelClock({this.size = 210});
   final double size;
@@ -1330,15 +1334,14 @@ class _PixelClock extends StatelessWidget {
 
 class _PixelClockFace extends CustomPainter {
   const _PixelClockFace();
-  static const _n = 40;
+  static const _n = 48;
 
-  // Bresenham line → stream of (col, row) pairs
   static Iterable<(int, int)> _line(
       double x0, double y0, double x1, double y1) sync* {
     int x = x0.round(), y = y0.round();
-    final ex = x1.round(), ey = y1.round();
-    final dx = (ex - x).abs(), dy = -(ey - y).abs();
-    final sx = x <= ex ? 1 : -1, sy = y <= ey ? 1 : -1;
+    final int ex = x1.round(), ey = y1.round();
+    final int dx = (ex - x).abs(), dy = -(ey - y).abs();
+    final int sx = x <= ex ? 1 : -1, sy = y <= ey ? 1 : -1;
     var err = dx + dy;
     while (true) {
       yield (x, y);
@@ -1353,9 +1356,10 @@ class _PixelClockFace extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final pw = size.width  / _n;
     final ph = size.height / _n;
-    const cx = (_n - 1) / 2.0; // 19.5
-    const cy = (_n - 1) / 2.0; // 19.5
-    const r  = 17.5;
+    // Clock face centre — shifted down to leave room for alarm bells at top
+    const double cx = 23.5;
+    const double cy = 28.0;
+    const double r  = 16.5; // face radius
 
     final p = Paint()..style = PaintingStyle.fill..color = AcroColors.gold;
     void dot(int x, int y) {
@@ -1366,35 +1370,51 @@ class _PixelClockFace extends CustomPainter {
       for (final (x, y) in _line(x0, y0, x1, y1)) dot(x, y);
     }
 
-    // Circular border — 2px thick
+    // ── Clock face border (2px thick) ─────────────────────────────────────
     for (int x = 0; x < _n; x++) {
       for (int y = 0; y < _n; y++) {
         final d = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
-        if ((d - r).abs() < 1.3) dot(x, y);
+        if ((d - r).abs() < 1.35) dot(x, y);
       }
     }
 
-    // 12 tick marks — major (12/3/6/9) longer, minor shorter
+    // ── Alarm bells — two arcs at ~10 and ~2 o'clock, protruding above face ─
+    for (final bx in [11.5, 35.5]) {
+      const double by  = 11.5;
+      const double bR  = 6.0;
+      for (int x = 0; x < _n; x++) {
+        for (int y = 0; y < _n; y++) {
+          final bd = sqrt((x - bx) * (x - bx) + (y - by) * (y - by));
+          final fd = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+          // upper arc only, outside the clock face ring
+          if ((bd - bR).abs() < 1.2 && y <= by.ceil() && fd > r - 1.0) dot(x, y);
+        }
+      }
+    }
+
+    // ── 12 tick marks ─────────────────────────────────────────────────────
     for (int h = 0; h < 12; h++) {
-      final angle = h * pi / 6;
-      final major = h % 3 == 0;
-      final rO = r - 1.5;
-      final rI = rO - (major ? 3.5 : 1.8);
+      final double angle = h * pi / 6;
+      final bool major = h % 3 == 0;
+      final double rO = r - 1.5;
+      final double rI = rO - (major ? 4.0 : 2.0);
       seg(cx + rO * sin(angle), cy - rO * cos(angle),
           cx + rI * sin(angle), cy - rI * cos(angle));
     }
 
-    // Minute hand — pointing to 12 (straight up), long
-    seg(cx, cy, cx, cy - 13.0);
+    // ── Hands at 12:00 (alarm position) ───────────────────────────────────
+    seg(cx, cy, cx, cy - 12.0);                            // minute — straight up
+    const double ha = 11.0 * pi / 6.0;                    // hour — just left of 12
+    seg(cx, cy, cx + 7.5 * sin(ha), cy - 7.5 * cos(ha));
 
-    // Hour hand — pointing to 10 (classic 10:10 open-arm position)
-    const ha = 10.0 * pi / 6.0; // 300° clockwise from top
-    seg(cx, cy, cx + 8.0 * sin(ha), cy - 8.0 * cos(ha));
+    // ── Centre dot 3×3 ────────────────────────────────────────────────────
+    for (int ddx = -1; ddx <= 1; ddx++)
+      for (int ddy = -1; ddy <= 1; ddy++)
+        dot(cx.round() + ddx, cy.round() + ddy);
 
-    // Centre dot 3×3
-    for (int dx = -1; dx <= 1; dx++)
-      for (int dy = -1; dy <= 1; dy++)
-        dot(cx.round() + dx, cy.round() + dy);
+    // ── Feet — two small diagonal lines at bottom of face ─────────────────
+    seg(cx - 7, cy + r - 1, cx - 10, cy + r + 3);
+    seg(cx + 7, cy + r - 1, cx + 10, cy + r + 3);
   }
 
   @override
