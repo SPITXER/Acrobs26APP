@@ -152,9 +152,12 @@ class _StoaScreenState extends State<StoaScreen>
     if (!_onboarded) return _buildNameEntry();
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
+      extendBodyBehindAppBar: true,
       endDrawer: const SideMenu(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0B0F1A),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AcroColors.stoneLight),
           onPressed: () => Navigator.of(context).pop(),
@@ -236,14 +239,14 @@ class _StoaScreenState extends State<StoaScreen>
             ),
           ),
         ),
-        // Top fade — soft blend from AppBar into background
+        // Top fade — covers AppBar area and dissolves into background
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: [0.0, 0.04, 0.13, 0.22],
-              colors: [bg, Color(0xCC0B0F1A), Color(0x550B0F1A), Colors.transparent],
+              stops: [0.0, 0.08, 0.16, 0.26, 0.36],
+              colors: [bg, bg, Color(0xDD0B0F1A), Color(0x660B0F1A), Colors.transparent],
             ),
           ),
         ),
