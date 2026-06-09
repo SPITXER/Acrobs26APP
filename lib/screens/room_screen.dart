@@ -1271,8 +1271,7 @@ class _RingingClockIconState extends State<_RingingClockIcon>
   }
 }
 
-// Rocking clock emoji overlay on the local cam tile when turn time expires —
-// mirrors the hand-raise animation style.
+// Pixel-art clock that fades in/out on the local cam tile when turn expires.
 class _TurnExpiredClockOverlay extends StatefulWidget {
   const _TurnExpiredClockOverlay({super.key});
   @override
@@ -1282,18 +1281,15 @@ class _TurnExpiredClockOverlay extends StatefulWidget {
 class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _rock;
   late final Animation<double> _opacity;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 650))
+        vsync: this, duration: const Duration(milliseconds: 500))
       ..repeat(reverse: true);
-    _rock    = Tween<double>(begin: -0.28, end: 0.28)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-    _opacity = Tween<double>(begin: 0.3, end: 1.0)
+    _opacity = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
@@ -1303,23 +1299,67 @@ class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, __) => Positioned(
-        left: 0, right: 0, bottom: 55,
+      animation: _opacity,
+      builder: (_, __) => Positioned.fill(
         child: IgnorePointer(
           child: Opacity(
             opacity: _opacity.value,
-            child: Center(
-              child: Transform.rotate(
-                angle: _rock.value,
-                child: const Text('⏰', style: TextStyle(fontSize: 68)),
-              ),
-            ),
+            child: const Center(child: _PixelClock(size: 200)),
           ),
         ),
       ),
     );
   }
+}
+
+// Pixel-art clock face drawn with CustomPainter — matches the app's dark/gold aesthetic.
+class _PixelClock extends StatelessWidget {
+  const _PixelClock({this.size = 200});
+  final double size;
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        size: Size(size, size),
+        painter: const _PixelClockFace(),
+      );
+}
+
+class _PixelClockFace extends CustomPainter {
+  const _PixelClockFace();
+  static const _n = 20; // grid cells
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pw = size.width  / _n;
+    final ph = size.height / _n;
+    const cx = (_n - 1) / 2.0; // 9.5
+    const cy = (_n - 1) / 2.0; // 9.5
+    const r  = 7.8;
+    const t  = 0.9;
+
+    final paint = Paint()..style = PaintingStyle.fill..color = AcroColors.gold;
+    void dot(int x, int y) =>
+        canvas.drawRect(Rect.fromLTWH(x * pw, y * ph, pw - 1.5, ph - 1.5), paint);
+
+    // Pixelated circular border
+    for (int x = 0; x < _n; x++) {
+      for (int y = 0; y < _n; y++) {
+        final d = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+        if ((d - r).abs() < t) dot(x, y);
+      }
+    }
+
+    // Minute hand — 12:00 (straight up)
+    for (int y = 3; y <= 8; y++) dot(9, y);
+
+    // Hour hand — 3:00 (right)
+    for (int x = 11; x <= 15; x++) dot(x, 9);
+
+    // 2×2 centre dot
+    dot(9, 9); dot(10, 9); dot(9, 10); dot(10, 10);
+  }
+
+  @override
+  bool shouldRepaint(_PixelClockFace _) => false;
 }
 
 // Pulsing ring shown on the local tile when the turn timer expires.
