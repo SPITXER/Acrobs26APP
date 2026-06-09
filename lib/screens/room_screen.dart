@@ -1286,11 +1286,16 @@ class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
   @override
   void initState() {
     super.initState();
+    // fade-in 250ms → hold 1000ms → fade-out 250ms → pause 300ms → repeat
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500))
-      ..repeat(reverse: true);
-    _opacity = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+        vsync: this, duration: const Duration(milliseconds: 1800))
+      ..repeat();
+    _opacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 14),
+      TweenSequenceItem(tween: ConstantTween(1.0),           weight: 55),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 14),
+      TweenSequenceItem(tween: ConstantTween(0.0),           weight: 17),
+    ]).animate(_ctrl);
   }
 
   @override
@@ -1304,7 +1309,7 @@ class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
         child: IgnorePointer(
           child: Opacity(
             opacity: _opacity.value,
-            child: const Center(child: _PixelClock(size: 200)),
+            child: const Center(child: _PixelClock(size: 210)),
           ),
         ),
       ),
@@ -1312,9 +1317,9 @@ class _TurnExpiredClockOverlayState extends State<_TurnExpiredClockOverlay>
   }
 }
 
-// Pixel-art clock face drawn with CustomPainter — matches the app's dark/gold aesthetic.
+// High-density pixel-art clock (40×40 grid) with Bresenham hands + tick marks.
 class _PixelClock extends StatelessWidget {
-  const _PixelClock({this.size = 200});
+  const _PixelClock({this.size = 210});
   final double size;
   @override
   Widget build(BuildContext context) => CustomPaint(
@@ -1325,37 +1330,71 @@ class _PixelClock extends StatelessWidget {
 
 class _PixelClockFace extends CustomPainter {
   const _PixelClockFace();
-  static const _n = 20; // grid cells
+  static const _n = 40;
+
+  // Bresenham line → stream of (col, row) pairs
+  static Iterable<(int, int)> _line(
+      double x0, double y0, double x1, double y1) sync* {
+    int x = x0.round(), y = y0.round();
+    final ex = x1.round(), ey = y1.round();
+    final dx = (ex - x).abs(), dy = -(ey - y).abs();
+    final sx = x <= ex ? 1 : -1, sy = y <= ey ? 1 : -1;
+    var err = dx + dy;
+    while (true) {
+      yield (x, y);
+      if (x == ex && y == ey) break;
+      final e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x += sx; }
+      if (e2 <= dx) { err += dx; y += sy; }
+    }
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final pw = size.width  / _n;
     final ph = size.height / _n;
-    const cx = (_n - 1) / 2.0; // 9.5
-    const cy = (_n - 1) / 2.0; // 9.5
-    const r  = 7.8;
-    const t  = 0.9;
+    const cx = (_n - 1) / 2.0; // 19.5
+    const cy = (_n - 1) / 2.0; // 19.5
+    const r  = 17.5;
 
-    final paint = Paint()..style = PaintingStyle.fill..color = AcroColors.gold;
-    void dot(int x, int y) =>
-        canvas.drawRect(Rect.fromLTWH(x * pw, y * ph, pw - 1.5, ph - 1.5), paint);
+    final p = Paint()..style = PaintingStyle.fill..color = AcroColors.gold;
+    void dot(int x, int y) {
+      if (x < 0 || x >= _n || y < 0 || y >= _n) return;
+      canvas.drawRect(Rect.fromLTWH(x * pw, y * ph, pw - 1.0, ph - 1.0), p);
+    }
+    void seg(double x0, double y0, double x1, double y1) {
+      for (final (x, y) in _line(x0, y0, x1, y1)) dot(x, y);
+    }
 
-    // Pixelated circular border
+    // Circular border — 2px thick
     for (int x = 0; x < _n; x++) {
       for (int y = 0; y < _n; y++) {
         final d = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
-        if ((d - r).abs() < t) dot(x, y);
+        if ((d - r).abs() < 1.3) dot(x, y);
       }
     }
 
-    // Minute hand — 12:00 (straight up)
-    for (int y = 3; y <= 8; y++) dot(9, y);
+    // 12 tick marks — major (12/3/6/9) longer, minor shorter
+    for (int h = 0; h < 12; h++) {
+      final θ     = h * pi / 6;
+      final major = h % 3 == 0;
+      final rO = r - 1.5;
+      final rI = rO - (major ? 3.5 : 1.8);
+      seg(cx + rO * sin(θ), cy - rO * cos(θ),
+          cx + rI * sin(θ), cy - rI * cos(θ));
+    }
 
-    // Hour hand — 3:00 (right)
-    for (int x = 11; x <= 15; x++) dot(x, 9);
+    // Minute hand — pointing to 12 (straight up), long
+    seg(cx, cy, cx, cy - 13.0);
 
-    // 2×2 centre dot
-    dot(9, 9); dot(10, 9); dot(9, 10); dot(10, 10);
+    // Hour hand — pointing to 10 (classic 10:10 open-arm position)
+    const ha = 10.0 * pi / 6.0; // 300° clockwise from top
+    seg(cx, cy, cx + 8.0 * sin(ha), cy - 8.0 * cos(ha));
+
+    // Centre dot 3×3
+    for (int dx = -1; dx <= 1; dx++)
+      for (int dy = -1; dy <= 1; dy++)
+        dot(cx.round() + dx, cy.round() + dy);
   }
 
   @override
