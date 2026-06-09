@@ -77,7 +77,81 @@ class _AgoraScreenState extends State<AgoraScreen>
         ),
         actions: const [SideMenuButton(), SizedBox(width: 4)],
       ),
-      body: _nameSet ? _buildHome() : _buildNameEntry(),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          _agoraBackground(),
+          _nameSet ? _buildHome() : _buildNameEntry(),
+        ],
+      ),
+    );
+  }
+
+  Widget _agoraBackground() {
+    const bg = Color(0xFF0B0F1A);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset('assets/images/stoaback.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            opacity: const AlwaysStoppedAnimation(0.48)),
+        Positioned(
+          top: 0, left: 0, right: 0,
+          child: ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.08, 0.72, 1.0],
+              colors: [
+                Colors.transparent,
+                Colors.white,
+                Colors.white,
+                Colors.transparent,
+              ],
+            ).createShader(bounds),
+            blendMode: BlendMode.dstIn,
+            child: Transform.flip(
+              flipY: true,
+              child: Image.asset('assets/images/clouds.png',
+                  fit: BoxFit.cover,
+                  height: 55,
+                  width: double.infinity,
+                  opacity: const AlwaysStoppedAnimation(0.45)),
+            ),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              stops: [0.0, 0.30],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              stops: [0.0, 0.28],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              stops: [0.0, 0.28],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
