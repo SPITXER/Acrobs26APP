@@ -717,11 +717,11 @@ class _StoaScreenState extends State<StoaScreen>
           ),
         ),
         Positioned(
-          top: 0,
+          top: -18,
           left: -18,
           child: IgnorePointer(
             child: RotatedBox(
-              quarterTurns: 1,
+              quarterTurns: 3,
               child: Image.asset(
                 'assets/images/vine_asset.png',
                 width: 36,
