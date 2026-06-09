@@ -34,7 +34,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           cp -r build/web/. docs/
-          git checkout -- build/
+          git restore .
           git pull origin main
           git add docs/
           if git diff --staged --quiet; then
