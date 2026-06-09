@@ -232,7 +232,7 @@ class _StoaScreenState extends State<StoaScreen>
               flipY: true,
               child: Image.asset('assets/images/clouds.png',
                   fit: BoxFit.cover,
-                  height: 220,
+                  height: 110,
                   width: double.infinity,
                   opacity: const AlwaysStoppedAnimation(0.45)),
             ),
