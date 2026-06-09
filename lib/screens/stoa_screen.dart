@@ -236,6 +236,17 @@ class _StoaScreenState extends State<StoaScreen>
             ),
           ),
         ),
+        // Top fade — soft blend from AppBar into background
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.04, 0.13, 0.22],
+              colors: [bg, Color(0xCC0B0F1A), Color(0x550B0F1A), Colors.transparent],
+            ),
+          ),
+        ),
         // Bottom fade
         Container(
           decoration: const BoxDecoration(
