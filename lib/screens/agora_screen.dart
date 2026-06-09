@@ -288,7 +288,7 @@ class _AgoraScreenState extends State<AgoraScreen>
           width: 180,
           height: 180,
           decoration: BoxDecoration(
-            color: AcroColors.gold.withOpacity(0.08),
+            color: const Color(0xFF0B0F1A),
             border: Border.all(
               color: AcroColors.gold.withOpacity(0.5 + 0.3 * t),
               width: 2,
