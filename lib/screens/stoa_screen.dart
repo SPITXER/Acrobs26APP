@@ -207,22 +207,37 @@ class _StoaScreenState extends State<StoaScreen>
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(
-          'assets/images/stoaback.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          opacity: const AlwaysStoppedAnimation(0.48),
-        ),
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
+        // Road / street
+        Image.asset('assets/images/stoaback.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            opacity: const AlwaysStoppedAnimation(0.48)),
+        // Clouds — flipped so they billow downward from the top,
+        // fading seamlessly into the dark background
+        Positioned(
+          top: 0, left: 0, right: 0,
+          child: ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: [0.0, 0.40],
-              colors: [bg, Colors.transparent],
+              stops: [0.0, 0.06, 0.62, 1.0],
+              colors: [
+                Colors.transparent,
+                Colors.white,
+                Colors.white,
+                Colors.transparent,
+              ],
+            ).createShader(bounds),
+            blendMode: BlendMode.dstIn,
+            child: Transform.flip(
+              flipY: true,
+              child: Image.asset('assets/images/clouds.png',
+                  fit: BoxFit.fitWidth,
+                  opacity: const AlwaysStoppedAnimation(0.55)),
             ),
           ),
         ),
+        // Bottom fade
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -233,6 +248,7 @@ class _StoaScreenState extends State<StoaScreen>
             ),
           ),
         ),
+        // Side fades
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
