@@ -720,13 +720,16 @@ class _StoaScreenState extends State<StoaScreen>
           top: -18,
           left: -18,
           child: IgnorePointer(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: Image.asset(
-                'assets/images/vine_asset.png',
-                width: 36,
-                fit: BoxFit.fitWidth,
-                opacity: const AlwaysStoppedAnimation(0.88),
+            child: Transform.flip(
+              flipY: true,
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: Image.asset(
+                  'assets/images/vine_asset.png',
+                  width: 36,
+                  fit: BoxFit.fitWidth,
+                  opacity: const AlwaysStoppedAnimation(0.88),
+                ),
               ),
             ),
           ),
