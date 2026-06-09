@@ -717,7 +717,7 @@ class _StoaScreenState extends State<StoaScreen>
           ),
         ),
         Positioned(
-          top: 100,
+          top: 0,
           left: -18,
           child: IgnorePointer(
             child: RotatedBox(
