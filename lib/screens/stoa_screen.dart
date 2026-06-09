@@ -291,7 +291,8 @@ class _StoaScreenState extends State<StoaScreen>
 
       // Card — fills remaining space; buttons live below, never overlapping
       Expanded(
-        child: Center(
+        child: Align(
+          alignment: const Alignment(0, -0.28),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onHorizontalDragUpdate: (d) {
