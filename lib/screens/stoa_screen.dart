@@ -707,20 +707,16 @@ class _StoaScreenState extends State<StoaScreen>
         ],
       ),
         ),
-        // Vine — dangles from top-left corner
+        // Vine — runs down the left border, flower at the corner
         Positioned(
           top: 0,
-          left: -8,
+          left: -18,
           child: IgnorePointer(
-            child: Transform.rotate(
-              angle: -0.08,
-              alignment: Alignment.topCenter,
-              child: Image.asset(
-                'assets/images/vine_asset.png',
-                width: 36,
-                fit: BoxFit.fitWidth,
-                opacity: const AlwaysStoppedAnimation(0.88),
-              ),
+            child: Image.asset(
+              'assets/images/vine_asset.png',
+              width: 36,
+              fit: BoxFit.fitWidth,
+              opacity: const AlwaysStoppedAnimation(0.88),
             ),
           ),
         ),
