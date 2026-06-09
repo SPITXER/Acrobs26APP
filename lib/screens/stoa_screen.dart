@@ -190,10 +190,71 @@ class _StoaScreenState extends State<StoaScreen>
         stream: state.stoaRoomsStream(),
         builder: (ctx, snap) {
           final all = snap.data ?? [];
-          return all.isEmpty ? _emptyFloor(false) : _swipeArea(all);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              _stoaBackground(),
+              all.isEmpty ? _emptyFloor(false) : _swipeArea(all),
+            ],
+          );
         },
       );
     });
+  }
+
+  Widget _stoaBackground() {
+    const bg = Color(0xFF0B0F1A);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          'assets/images/stoaback.png',
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          opacity: const AlwaysStoppedAnimation(0.48),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.40],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              stops: [0.0, 0.30],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              stops: [0.0, 0.28],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              stops: [0.0, 0.28],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _swipeArea(List<Map<String, dynamic>> rooms) {
@@ -511,15 +572,18 @@ class _StoaScreenState extends State<StoaScreen>
     final roomId       = room['roomId']         as String? ?? '';
     final debateRoomId = room['debateRoomId']  as String? ?? 'dr_$roomId';
 
-    return CloudCornerBox(
-      width: 320,
-      padding: const EdgeInsets.all(28),
-      borderColor: AcroColors.gold.withOpacity(0.22),
-      borderRadius: BorderRadius.circular(8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CloudCornerBox(
+          width: 320,
+          padding: const EdgeInsets.all(28),
+          borderColor: AcroColors.gold.withOpacity(0.22),
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // ── Top row: category / viewers / countdown ──────────────────
           Row(children: [
             if (category.isNotEmpty)
@@ -638,6 +702,20 @@ class _StoaScreenState extends State<StoaScreen>
           _QuotePeek(roomId: roomId, room: room),
         ],
       ),
+        ),
+        Positioned(
+          top: 0,
+          left: -18,
+          child: IgnorePointer(
+            child: Image.asset(
+              'assets/images/vine_asset.png',
+              width: 36,
+              fit: BoxFit.fitWidth,
+              opacity: const AlwaysStoppedAnimation(0.88),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
