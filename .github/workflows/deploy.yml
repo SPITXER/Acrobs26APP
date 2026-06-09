@@ -34,6 +34,7 @@ jobs:
           cp -r build/web/. docs/
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
           git add docs/
           git diff --staged --quiet && echo "No changes to deploy." || \
             git commit -m "Deploy: rebuild docs/ [skip ci]" && git push
