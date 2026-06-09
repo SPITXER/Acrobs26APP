@@ -190,75 +190,10 @@ class _StoaScreenState extends State<StoaScreen>
         stream: state.stoaRoomsStream(),
         builder: (ctx, snap) {
           final all = snap.data ?? [];
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              _stoaBackground(),
-              all.isEmpty ? _emptyFloor(false) : _swipeArea(all),
-            ],
-          );
+          return all.isEmpty ? _emptyFloor(false) : _swipeArea(all);
         },
       );
     });
-  }
-
-  Widget _stoaBackground() {
-    const bg = Color(0xFF0B0F1A);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          'assets/images/stoaback.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          opacity: const AlwaysStoppedAnimation(0.48),
-        ),
-        // Top fade
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: [0.0, 0.40],
-              colors: [bg, Colors.transparent],
-            ),
-          ),
-        ),
-        // Bottom fade
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              stops: [0.0, 0.30],
-              colors: [bg, Colors.transparent],
-            ),
-          ),
-        ),
-        // Left fade
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              stops: [0.0, 0.28],
-              colors: [bg, Colors.transparent],
-            ),
-          ),
-        ),
-        // Right fade
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-              stops: [0.0, 0.28],
-              colors: [bg, Colors.transparent],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _swipeArea(List<Map<String, dynamic>> rooms) {
@@ -291,8 +226,7 @@ class _StoaScreenState extends State<StoaScreen>
 
       // Card — fills remaining space; buttons live below, never overlapping
       Expanded(
-        child: Align(
-          alignment: const Alignment(0, -0.55),
+        child: Center(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onHorizontalDragUpdate: (d) {
@@ -526,76 +460,46 @@ class _StoaScreenState extends State<StoaScreen>
     }
 
     // Default: SKIP + CHALLENGE for new challengers on open rooms.
-    final vPad  = kIsWeb ? 9.0 : 14.0;
+    final vPad = kIsWeb ? 9.0 : 14.0;
     final fSize = kIsWeb ? 11.0 : 12.0;
-    final hasLiveRoom = debateRoomId.isNotEmpty;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => _skip(total),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AcroColors.stoneLight,
-                side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                padding: EdgeInsets.symmetric(vertical: vPad),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              child: Text('SKIP',
-                  style: GoogleFonts.dmSans(
-                      fontSize: fSize,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2)),
-            ),
+    return Row(children: [
+      Expanded(
+        child: OutlinedButton(
+          onPressed: () => _skip(total),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AcroColors.stoneLight,
+            side: BorderSide(color: Colors.white.withOpacity(0.15)),
+            padding: EdgeInsets.symmetric(vertical: vPad),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2)),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _challenge(room),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AcroColors.gold,
-                foregroundColor: AcroColors.stone,
-                padding: EdgeInsets.symmetric(vertical: vPad),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2)),
-                textStyle: GoogleFonts.dmSans(
-                    fontSize: fSize,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2),
-              ),
-              child: const Text('CHALLENGE'),
-            ),
+          child: Text('SKIP',
+              style: GoogleFonts.dmSans(
+                  fontSize: fSize,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2)),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () => _challenge(room),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AcroColors.gold,
+            foregroundColor: AcroColors.stone,
+            padding: EdgeInsets.symmetric(vertical: vPad),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2)),
+            textStyle: GoogleFonts.dmSans(
+                fontSize: fSize,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2),
           ),
-        ]),
-        if (hasLiveRoom) ...[
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () {
-              context.read<AppState>().joinAsSpectator(
-                  debateRoomId, title);
-              Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RoomScreen()));
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.hearing_outlined,
-                    size: 12, color: Colors.white.withOpacity(0.30)),
-                const SizedBox(width: 6),
-                Text('LISTEN IN',
-                    style: GoogleFonts.spaceMono(
-                        fontSize: 9,
-                        color: Colors.white.withOpacity(0.30),
-                        letterSpacing: 2)),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
+          child: const Text('CHALLENGE'),
+        ),
+      ),
+    ]);
   }
 
   Widget _roomCard(Map<String, dynamic> room) {
@@ -607,10 +511,7 @@ class _StoaScreenState extends State<StoaScreen>
     final roomId       = room['roomId']         as String? ?? '';
     final debateRoomId = room['debateRoomId']  as String? ?? 'dr_$roomId';
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        CloudCornerBox(
+    return CloudCornerBox(
       width: 320,
       padding: const EdgeInsets.all(28),
       borderColor: AcroColors.gold.withOpacity(0.22),
@@ -737,21 +638,6 @@ class _StoaScreenState extends State<StoaScreen>
           _QuotePeek(roomId: roomId, room: room),
         ],
       ),
-        ),
-        // Vine — runs down the left border, flower at the corner
-        Positioned(
-          top: 0,
-          left: -18,
-          child: IgnorePointer(
-            child: Image.asset(
-              'assets/images/vine_asset.png',
-              width: 36,
-              fit: BoxFit.fitWidth,
-              opacity: const AlwaysStoppedAnimation(0.88),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
