@@ -703,19 +703,28 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                   child: _turnExpired
                       ? const _RingingClockIcon()
-                      : _turnDuration > 0
-                          ? Center(
-                              child: Text(
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.alarm,
+                                color: _turnDuration > 0 && _turnLeft <= 10
+                                    ? AcroColors.redLight
+                                    : Colors.white,
+                                size: _turnDuration > 0 ? 13 : 18),
+                            if (_turnDuration > 0) ...[
+                              const SizedBox(height: 1),
+                              Text(
                                 _turnText.replaceFirst('⏱ ', ''),
                                 style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                     color: _turnLeft <= 10
                                         ? AcroColors.redLight
                                         : Colors.white),
                               ),
-                            )
-                          : const Icon(Icons.alarm, color: Colors.white, size: 18),
+                            ],
+                          ],
+                        ),
                 ),
               ),
               GestureDetector(
@@ -1208,14 +1217,17 @@ class _RingingClockIconState extends State<_RingingClockIcon>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _shake;
+  late final Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 420))
+        vsync: this, duration: const Duration(milliseconds: 550))
       ..repeat(reverse: true);
-    _shake = Tween<double>(begin: -0.22, end: 0.22)
+    _shake = Tween<double>(begin: -0.28, end: 0.28)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _fade = Tween<double>(begin: 0.25, end: 1.0)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
@@ -1225,10 +1237,10 @@ class _RingingClockIconState extends State<_RingingClockIcon>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _shake,
-      builder: (_, child) => Transform.rotate(
-        angle: _shake.value,
-        child: child,
+      animation: _ctrl,
+      builder: (_, child) => Opacity(
+        opacity: _fade.value,
+        child: Transform.rotate(angle: _shake.value, child: child),
       ),
       child: const Icon(Icons.alarm, color: AcroColors.redLight, size: 20),
     );
