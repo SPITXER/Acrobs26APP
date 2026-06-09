@@ -526,46 +526,76 @@ class _StoaScreenState extends State<StoaScreen>
     }
 
     // Default: SKIP + CHALLENGE for new challengers on open rooms.
-    final vPad = kIsWeb ? 9.0 : 14.0;
+    final vPad  = kIsWeb ? 9.0 : 14.0;
     final fSize = kIsWeb ? 11.0 : 12.0;
+    final hasLiveRoom = debateRoomId.isNotEmpty;
 
-    return Row(children: [
-      Expanded(
-        child: OutlinedButton(
-          onPressed: () => _skip(total),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AcroColors.stoneLight,
-            side: BorderSide(color: Colors.white.withOpacity(0.15)),
-            padding: EdgeInsets.symmetric(vertical: vPad),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(2)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _skip(total),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AcroColors.stoneLight,
+                side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                padding: EdgeInsets.symmetric(vertical: vPad),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              child: Text('SKIP',
+                  style: GoogleFonts.dmSans(
+                      fontSize: fSize,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2)),
+            ),
           ),
-          child: Text('SKIP',
-              style: GoogleFonts.dmSans(
-                  fontSize: fSize,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2)),
-        ),
-      ),
-      const SizedBox(width: 12),
-      Expanded(
-        child: ElevatedButton(
-          onPressed: () => _challenge(room),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AcroColors.gold,
-            foregroundColor: AcroColors.stone,
-            padding: EdgeInsets.symmetric(vertical: vPad),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(2)),
-            textStyle: GoogleFonts.dmSans(
-                fontSize: fSize,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _challenge(room),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AcroColors.gold,
+                foregroundColor: AcroColors.stone,
+                padding: EdgeInsets.symmetric(vertical: vPad),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(2)),
+                textStyle: GoogleFonts.dmSans(
+                    fontSize: fSize,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2),
+              ),
+              child: const Text('CHALLENGE'),
+            ),
           ),
-          child: const Text('CHALLENGE'),
-        ),
-      ),
-    ]);
+        ]),
+        if (hasLiveRoom) ...[
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () {
+              context.read<AppState>().joinAsSpectator(
+                  debateRoomId, title);
+              Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const RoomScreen()));
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.hearing_outlined,
+                    size: 12, color: Colors.white.withOpacity(0.30)),
+                const SizedBox(width: 6),
+                Text('LISTEN IN',
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 9,
+                        color: Colors.white.withOpacity(0.30),
+                        letterSpacing: 2)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _roomCard(Map<String, dynamic> room) {
