@@ -33,6 +33,10 @@ class _RoomScreenState extends State<RoomScreen> {
   late final int _joinedAt;
   Timer? _timer;
   int _timeLeft = 0;
+  Timer? _turnTimer;
+  int _turnLeft = 0;
+  int _turnDuration = 0;
+  bool _turnExpired = false;
   StreamSubscription? _chatSub;
 
   WebRTCService? _webrtc;
@@ -199,6 +203,110 @@ class _RoomScreenState extends State<RoomScreen> {
     return '⏱ $m:${s.toString().padLeft(2, '0')}';
   }
 
+  String get _turnText {
+    if (_turnLeft == 0) return '⏱ 0:00';
+    final m = _turnLeft ~/ 60;
+    final s = _turnLeft % 60;
+    return '⏱ $m:${s.toString().padLeft(2, '0')}';
+  }
+
+  void _startTurnTimer(int seconds) {
+    _turnTimer?.cancel();
+    setState(() { _turnDuration = seconds; _turnLeft = seconds; _turnExpired = false; });
+    _turnTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_turnLeft <= 1) {
+        _turnTimer?.cancel();
+        setState(() { _turnLeft = 0; _turnExpired = true; });
+      } else {
+        setState(() => _turnLeft--);
+      }
+    });
+  }
+
+  void _showTurnPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F0E17),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('TIMED TURNS',
+                  style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 10,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final s in [30, 60, 90, 120])
+                    GestureDetector(
+                      onTap: () { Navigator.pop(context); _startTurnTimer(s); },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _turnDuration == s
+                              ? AcroColors.gold.withOpacity(0.15)
+                              : Colors.transparent,
+                          border: Border.all(
+                              color: _turnDuration == s
+                                  ? AcroColors.gold
+                                  : Colors.white24),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          s < 60 ? '${s}s' : '${s ~/ 60} min',
+                          style: TextStyle(
+                              color: _turnDuration == s
+                                  ? AcroColors.gold
+                                  : Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  if (_turnDuration > 0)
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _turnTimer?.cancel();
+                        setState(() {
+                          _turnDuration = 0;
+                          _turnLeft = 0;
+                          _turnExpired = false;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white24),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('OFF',
+                            style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _sendChat() {
     final text = _chatCtrl.text.trim();
     if (text.isEmpty) return;
@@ -212,6 +320,7 @@ class _RoomScreenState extends State<RoomScreen> {
   void _leave() {
     _leftExplicitly = true;
     _timer?.cancel();
+    _turnTimer?.cancel();
     final state     = context.read<AppState>();
     final room      = state.currentRoom;
     final messenger = ScaffoldMessenger.of(context);
@@ -244,6 +353,7 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _turnTimer?.cancel();
     _chatSub?.cancel();
     _presenceSub?.cancel();
     _peerDisconnectSub?.cancel();
@@ -312,16 +422,35 @@ class _RoomScreenState extends State<RoomScreen> {
               child: const Text('WATCHING',
                   style: TextStyle(fontSize: 10, color: Colors.amberAccent, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
             ),
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
-            decoration: BoxDecoration(
-              color: AcroColors.gold.withOpacity(0.1),
-              border: Border.all(color: AcroColors.gold.withOpacity(0.2)),
-              borderRadius: BorderRadius.circular(16),
+          GestureDetector(
+            onTap: _showTurnPicker,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
+              decoration: BoxDecoration(
+                color: _turnExpired
+                    ? AcroColors.redLight.withOpacity(0.15)
+                    : _turnDuration > 0 && _turnLeft <= 10
+                        ? AcroColors.redLight.withOpacity(0.1)
+                        : AcroColors.gold.withOpacity(0.1),
+                border: Border.all(
+                    color: _turnExpired
+                        ? AcroColors.redLight.withOpacity(0.5)
+                        : _turnDuration > 0 && _turnLeft <= 10
+                            ? AcroColors.redLight.withOpacity(0.35)
+                            : AcroColors.gold.withOpacity(0.2)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _turnDuration > 0 ? _turnText : _timerText,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: _turnExpired || (_turnDuration > 0 && _turnLeft <= 10)
+                        ? AcroColors.redLight
+                        : AcroColors.gold,
+                    fontWeight: FontWeight.w600),
+              ),
             ),
-            child: Text(_timerText,
-                style: const TextStyle(fontSize: 12, color: AcroColors.gold, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 8),
           Text('${room.members.length}/${room.capacity}',
@@ -671,6 +800,8 @@ class _RoomScreenState extends State<RoomScreen> {
               ),
             if (_handRaising.containsKey(m.name))
               _HandRaiseOverlay(key: ValueKey(_handRaising[m.name])),
+            if (isMe && _turnExpired)
+              const _TurnExpiredRing(),
           ],
         ),
       ),
@@ -1039,6 +1170,62 @@ class _ChatMsg {
     this.fbKey  = '',
     this.pinned = false,
   });
+}
+
+// Pulsing ring shown on the local tile when the turn timer expires.
+class _TurnExpiredRing extends StatefulWidget {
+  const _TurnExpiredRing();
+  @override
+  State<_TurnExpiredRing> createState() => _TurnExpiredRingState();
+}
+
+class _TurnExpiredRingState extends State<_TurnExpiredRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.2, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (_, __) => Positioned.fill(
+        child: IgnorePointer(
+          child: Opacity(
+            opacity: _opacity.value,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: AcroColors.redLight, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AcroColors.redLight.withOpacity(0.55),
+                    blurRadius: 20,
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // Rising-hand animation overlaid on a participant's video tile.
