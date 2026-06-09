@@ -422,35 +422,19 @@ class _RoomScreenState extends State<RoomScreen> {
               child: const Text('WATCHING',
                   style: TextStyle(fontSize: 10, color: Colors.amberAccent, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
             ),
-          GestureDetector(
-            onTap: _showTurnPicker,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
-              decoration: BoxDecoration(
-                color: _turnExpired
-                    ? AcroColors.redLight.withOpacity(0.15)
-                    : _turnDuration > 0 && _turnLeft <= 10
-                        ? AcroColors.redLight.withOpacity(0.1)
-                        : AcroColors.gold.withOpacity(0.1),
-                border: Border.all(
-                    color: _turnExpired
-                        ? AcroColors.redLight.withOpacity(0.5)
-                        : _turnDuration > 0 && _turnLeft <= 10
-                            ? AcroColors.redLight.withOpacity(0.35)
-                            : AcroColors.gold.withOpacity(0.2)),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                _turnDuration > 0 ? _turnText : _timerText,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: _turnExpired || (_turnDuration > 0 && _turnLeft <= 10)
-                        ? AcroColors.redLight
-                        : AcroColors.gold,
-                    fontWeight: FontWeight.w600),
-              ),
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
+            decoration: BoxDecoration(
+              color: AcroColors.gold.withOpacity(0.1),
+              border: Border.all(color: AcroColors.gold.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(16),
             ),
+            child: Text(_timerText,
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: AcroColors.gold,
+                    fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 8),
           Text('${room.members.length}/${room.capacity}',
@@ -692,6 +676,47 @@ class _RoomScreenState extends State<RoomScreen> {
                         s.currentRoom!.id, s.profile.name, s.profile.initials);
                   }
                 },
+              ),
+              // ── Turn timer button ──────────────────────────────────────
+              GestureDetector(
+                onTap: () {
+                  if (_turnDuration > 0) {
+                    // stop / reset
+                    _turnTimer?.cancel();
+                    setState(() { _turnDuration = 0; _turnLeft = 0; _turnExpired = false; });
+                  } else {
+                    _showTurnPicker();
+                  }
+                },
+                child: Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(
+                    color: _turnExpired
+                        ? AcroColors.redLight.withOpacity(0.20)
+                        : _turnDuration > 0 && _turnLeft <= 10
+                            ? AcroColors.redLight.withOpacity(0.15)
+                            : Colors.white.withOpacity(0.10),
+                    shape: BoxShape.circle,
+                    boxShadow: _turnExpired
+                        ? [BoxShadow(color: AcroColors.redLight.withOpacity(0.35), blurRadius: 12, spreadRadius: 1)]
+                        : null,
+                  ),
+                  child: _turnExpired
+                      ? const _RingingClockIcon()
+                      : _turnDuration > 0
+                          ? Center(
+                              child: Text(
+                                _turnText.replaceFirst('⏱ ', ''),
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _turnLeft <= 10
+                                        ? AcroColors.redLight
+                                        : Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.alarm, color: Colors.white, size: 18),
+                ),
               ),
               GestureDetector(
                 onTap: _leave,
@@ -1170,6 +1195,44 @@ class _ChatMsg {
     this.fbKey  = '',
     this.pinned = false,
   });
+}
+
+// Ringing alarm clock icon shown in the turn timer button when time is up.
+class _RingingClockIcon extends StatefulWidget {
+  const _RingingClockIcon();
+  @override
+  State<_RingingClockIcon> createState() => _RingingClockIconState();
+}
+
+class _RingingClockIconState extends State<_RingingClockIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _shake;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 420))
+      ..repeat(reverse: true);
+    _shake = Tween<double>(begin: -0.22, end: 0.22)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shake,
+      builder: (_, child) => Transform.rotate(
+        angle: _shake.value,
+        child: child,
+      ),
+      child: const Icon(Icons.alarm, color: AcroColors.redLight, size: 20),
+    );
+  }
 }
 
 // Pulsing ring shown on the local tile when the turn timer expires.
