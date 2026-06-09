@@ -190,10 +190,75 @@ class _StoaScreenState extends State<StoaScreen>
         stream: state.stoaRoomsStream(),
         builder: (ctx, snap) {
           final all = snap.data ?? [];
-          return all.isEmpty ? _emptyFloor(false) : _swipeArea(all);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              _stoaBackground(),
+              all.isEmpty ? _emptyFloor(false) : _swipeArea(all),
+            ],
+          );
         },
       );
     });
+  }
+
+  Widget _stoaBackground() {
+    const bg = Color(0xFF0B0F1A);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          'assets/images/stoaback.png',
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          opacity: const AlwaysStoppedAnimation(0.48),
+        ),
+        // Top fade
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.40],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        // Bottom fade
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              stops: [0.0, 0.30],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        // Left fade
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              stops: [0.0, 0.28],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+        // Right fade
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              stops: [0.0, 0.28],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _swipeArea(List<Map<String, dynamic>> rooms) {
