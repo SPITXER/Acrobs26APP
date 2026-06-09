@@ -207,34 +207,17 @@ class _StoaScreenState extends State<StoaScreen>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Road / street
         Image.asset('assets/images/stoaback.png',
             fit: BoxFit.cover,
             alignment: Alignment.center,
             opacity: const AlwaysStoppedAnimation(0.48)),
-        // Clouds — small band at top, fading into the road skyline
-        Positioned(
-          top: 0, left: 0, right: 0,
-          child: ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: [0.0, 0.08, 0.72, 1.0],
-              colors: [
-                Colors.transparent,
-                Colors.white,
-                Colors.white,
-                Colors.transparent,
-              ],
-            ).createShader(bounds),
-            blendMode: BlendMode.dstIn,
-            child: Transform.flip(
-              flipY: true,
-              child: Image.asset('assets/images/clouds.png',
-                  fit: BoxFit.cover,
-                  height: 28,
-                  width: double.infinity,
-                  opacity: const AlwaysStoppedAnimation(0.45)),
+              stops: [0.0, 0.40],
+              colors: [bg, Colors.transparent],
             ),
           ),
         ),
