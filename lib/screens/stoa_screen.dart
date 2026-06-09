@@ -732,8 +732,8 @@ class _StoaScreenState extends State<StoaScreen>
           ),
         ),
         Positioned(
-          top: -18,
-          left: -18,
+          top: -12,
+          left: -12,
           child: IgnorePointer(
             child: Transform.flip(
               flipY: true,
@@ -741,7 +741,7 @@ class _StoaScreenState extends State<StoaScreen>
                 quarterTurns: 3,
                 child: Image.asset(
                   'assets/images/vine_asset.png',
-                  width: 36,
+                  width: 23,
                   fit: BoxFit.fitWidth,
                   opacity: const AlwaysStoppedAnimation(0.88),
                 ),
