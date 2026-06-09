@@ -236,6 +236,17 @@ class _StoaScreenState extends State<StoaScreen>
             ),
           ),
         ),
+        // Top fade — blends AppBar bottom into cloud background
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.07],
+              colors: [bg, Colors.transparent],
+            ),
+          ),
+        ),
         // Bottom fade
         Container(
           decoration: const BoxDecoration(
