@@ -1376,12 +1376,12 @@ class _PixelClockFace extends CustomPainter {
 
     // 12 tick marks — major (12/3/6/9) longer, minor shorter
     for (int h = 0; h < 12; h++) {
-      final θ     = h * pi / 6;
+      final angle = h * pi / 6;
       final major = h % 3 == 0;
       final rO = r - 1.5;
       final rI = rO - (major ? 3.5 : 1.8);
-      seg(cx + rO * sin(θ), cy - rO * cos(θ),
-          cx + rI * sin(θ), cy - rI * cos(θ));
+      seg(cx + rO * sin(angle), cy - rO * cos(angle),
+          cx + rI * sin(angle), cy - rI * cos(angle));
     }
 
     // Minute hand — pointing to 12 (straight up), long
