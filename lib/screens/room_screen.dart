@@ -43,6 +43,7 @@ class _RoomScreenState extends State<RoomScreen> {
   StreamSubscription? _chatSub;
 
   WebRTCService? _webrtc;
+  DebateRoom? _cachedRoom; // last valid room — used to keep UI alive during exit animation
   final _localRenderer = RTCVideoRenderer();
   final _remoteRenderer = RTCVideoRenderer();
   bool _localReady = false;
@@ -142,6 +143,7 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   Future<void> _startWebRTC() async {
+    if (_webrtc != null) return; // already running
     final room = context.read<AppState>().currentRoom;
     if (room == null) return;
     if (room.isSpectator) return; // spectators watch without a WebRTC connection
@@ -361,7 +363,8 @@ class _RoomScreenState extends State<RoomScreen> {
       // Host leaving no longer ends the room — guests stay until they leave.
     }
     Navigator.pop(context);
-    state.leaveRoom(); // after pop — prevents blank flash during exit animation
+    // leaveRoom() is deferred to dispose() so currentRoom stays valid
+    // during the exit animation — prevents a white-screen flash.
     messenger.showSnackBar(
         const SnackBar(content: Text('You have left the debate room.')));
   }
@@ -376,7 +379,7 @@ class _RoomScreenState extends State<RoomScreen> {
     final messenger = ScaffoldMessenger.of(context);
     if (!_isSpectator && _roomId != null) state.leaveRoomFB(_roomId!);
     Navigator.pop(context);
-    state.leaveRoom(); // after pop — prevents blank flash during exit animation
+    // leaveRoom() deferred to dispose() — same reason as _leave().
     messenger.showSnackBar(
         const SnackBar(content: Text('The host ended the debate.')));
   }
@@ -402,12 +405,35 @@ class _RoomScreenState extends State<RoomScreen> {
     if (!_isSpectator && !_leftExplicitly && _roomId != null) {
       _appState?.leaveRoomFB(_roomId!);
     }
+    // Clear currentRoom here (not in _leave/_ejectFromRoom) so the room UI
+    // stays valid throughout the exit animation and only disappears after
+    // the widget is fully removed from the tree.
+    if (_appState?.currentRoom?.id == _roomId) {
+      _appState?.leaveRoom();
+    }
     super.dispose();
+  }
+
+  Future<void> _restartWebRtcAsHost() async {
+    final state = context.read<AppState>();
+    final room  = state.currentRoom;
+    if (room == null) return;
+    state.writeRoomPresence(room.id, isHost: true);
+    final old = _webrtc;
+    _webrtc = null;
+    _peerDisconnectSub?.cancel();
+    _localStreamSub?.cancel();
+    _remoteStreamSub?.cancel();
+    setState(() { _localReady = false; _remoteReady = false; _remoteRenderer.srcObject = null; });
+    await old?.dispose();
+    if (mounted) await _startWebRTC();
   }
 
   @override
   Widget build(BuildContext context) {
-    final room = context.watch<AppState>().currentRoom;
+    final liveRoom = context.watch<AppState>().currentRoom;
+    if (liveRoom != null) _cachedRoom = liveRoom;
+    final room = liveRoom ?? _cachedRoom;
     if (room == null) return const SizedBox();
 
     // reenterRoom() initially sets isHost=false then corrects it async.
@@ -417,6 +443,12 @@ class _RoomScreenState extends State<RoomScreen> {
       _liveSubCancelled = true;
       _roomLiveSub?.cancel();
       _roomLiveSub = null;
+      // If WebRTC started as guest before isHost was corrected, restart as host.
+      if (_webrtc != null && !_webrtc!.isHost && !_isSpectator) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _restartWebRtcAsHost();
+        });
+      }
     }
 
     final isMobile = MediaQuery.of(context).size.width < 700;

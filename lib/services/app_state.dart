@@ -382,17 +382,19 @@ class AppState extends ChangeNotifier {
     if (cached != null) {
       currentRoom = cached;
     } else {
-      // Reconstruct from the data we have; isHost corrected below.
+      // _stoaToDebateRoom only contains rooms where this user is the host,
+      // so a membership check gives us the correct role without a Firebase round-trip.
+      final isKnownHost = _stoaToDebateRoom.values.contains(roomId);
       currentRoom = DebateRoom(
         id: roomId,
         title: title,
-        host: partnerName.isNotEmpty ? partnerName : profile.name,
-        hostInitials: partnerName.isNotEmpty ? partnerIni : profile.initials,
-        isHost: false,
+        host:         isKnownHost ? profile.name     : (partnerName.isNotEmpty ? partnerName : profile.name),
+        hostInitials: isKnownHost ? profile.initials : (partnerName.isNotEmpty ? partnerIni  : profile.initials),
+        isHost: isKnownHost,
         members: [
-          RoomMember(name: profile.name, initials: profile.initials),
+          RoomMember(name: profile.name, initials: profile.initials, isHost: isKnownHost),
           if (partnerName.isNotEmpty)
-            RoomMember(name: partnerName, initials: partnerIni, isHost: true),
+            RoomMember(name: partnerName, initials: partnerIni, isHost: !isKnownHost),
         ],
       );
     }
