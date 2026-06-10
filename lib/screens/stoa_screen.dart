@@ -10,7 +10,6 @@ import '../widgets/avatar.dart';
 import '../widgets/cloud_corner_box.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
-import 'host_wait_screen.dart';
 
 const _kCategories = [
   'Philosophy', 'Politics', 'Science', 'Ethics',
@@ -35,12 +34,15 @@ class _StoaScreenState extends State<StoaScreen>
   double _dragOffset = 0;
   StreamSubscription? _matchSub;
   String? _currentCardRoomId;
+  bool _viewerCallbackPending = false;
+  AppState? _appState;
 
   bool get _onboarded => context.read<AppState>().profile.name.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    _appState = context.read<AppState>();
     _snapCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 280));
     _snapAnim = const AlwaysStoppedAnimation(0);
@@ -51,7 +53,7 @@ class _StoaScreenState extends State<StoaScreen>
     // Register callback so AppState snackbar can navigate here
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AppState>().registerEnterRoomCallback(() {
+      _appState!.registerEnterRoomCallback(() {
         if (!mounted) return;
         Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const RoomScreen()));
@@ -65,7 +67,7 @@ class _StoaScreenState extends State<StoaScreen>
     _nameCtrl.dispose();
     _matchSub?.cancel();
     if (_currentCardRoomId != null) {
-      context.read<AppState>().leaveStoaViewer(_currentCardRoomId!);
+      _appState?.leaveStoaViewer(_currentCardRoomId!);
     }
     super.dispose();
   }
@@ -288,16 +290,18 @@ class _StoaScreenState extends State<StoaScreen>
     final room  = rooms[idx];
     final isOwn = room['hostUid'] == context.read<AppState>().profile.uid;
 
-    // Viewer presence — fire after frame to avoid side effects during build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final newId = room['roomId'] as String? ?? '';
-      if (newId == _currentCardRoomId) return;
-      final state = context.read<AppState>();
-      if (_currentCardRoomId != null) state.leaveStoaViewer(_currentCardRoomId!);
-      if (newId.isNotEmpty) state.joinStoaViewer(newId);
-      _currentCardRoomId = newId;
-    });
+    // Viewer presence — fire once per card change, not every build frame.
+    final newId = room['roomId'] as String? ?? '';
+    if (newId != _currentCardRoomId && !_viewerCallbackPending) {
+      _viewerCallbackPending = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _viewerCallbackPending = false;
+        if (!mounted || newId == _currentCardRoomId) return;
+        if (_currentCardRoomId != null) _appState?.leaveStoaViewer(_currentCardRoomId!);
+        if (newId.isNotEmpty) _appState?.joinStoaViewer(newId);
+        _currentCardRoomId = newId;
+      });
+    }
 
     return Column(children: [
       // Counter

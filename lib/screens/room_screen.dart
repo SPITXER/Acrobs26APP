@@ -55,6 +55,7 @@ class _RoomScreenState extends State<RoomScreen> {
   String? _roomId;
   bool _isSpectator = false;
   bool _leftExplicitly = false;
+  bool _liveSubCancelled = false;
   AppState? _appState;
 
   @override
@@ -185,9 +186,10 @@ class _RoomScreenState extends State<RoomScreen> {
     if (room.durationSeconds == 0) return;
     _timeLeft = room.durationSeconds;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
       if (_timeLeft <= 0) {
         _timer?.cancel();
-        if (mounted) setState(() {});
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Time is up! Debate concluded.')));
       } else {
@@ -411,11 +413,10 @@ class _RoomScreenState extends State<RoomScreen> {
     // reenterRoom() initially sets isHost=false then corrects it async.
     // Once the correction arrives, drop the live-end watcher — hosts never
     // get ejected by it and it would fire incorrectly if endRoomFB runs.
-    if (room.isHost && _roomLiveSub != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _roomLiveSub?.cancel();
-        _roomLiveSub = null;
-      });
+    if (room.isHost && !_liveSubCancelled) {
+      _liveSubCancelled = true;
+      _roomLiveSub?.cancel();
+      _roomLiveSub = null;
     }
 
     final isMobile = MediaQuery.of(context).size.width < 700;

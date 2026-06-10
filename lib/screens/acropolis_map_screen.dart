@@ -70,6 +70,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
   ui.Image? _landmarkColumn;
   ui.Image? _landmarkSelfie;
   ui.Image? _landmarkThinker;
+  ui.Image? _vineImg;
 
   bool _roomRestoreHandled = false;
 
@@ -169,6 +170,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       _loadImg('assets/images/landmark_column.png',  256, (v) => _landmarkColumn  = v),
       _loadImg('assets/images/landmark_selfie.png',  256, (v) => _landmarkSelfie  = v),
       _loadImg('assets/images/landmark_thinker.png', 256, (v) => _landmarkThinker = v),
+      _loadImg('assets/images/vine.png',             512, (v) => _vineImg         = v),
     ]);
   }
 
@@ -189,7 +191,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
       _templeImg, _stoaImg, _agoraImg, _earthTile, _roadTile,
       _cypress, _statue, _brokenCol, _olive, _amphora, _brazier,
       _roadVertImg, _flowerBushImg, _hermImg,
-      _landmarkColumn, _landmarkSelfie, _landmarkThinker,
+      _landmarkColumn, _landmarkSelfie, _landmarkThinker, _vineImg,
     ]) { img?.dispose(); }
     super.dispose();
   }
@@ -395,6 +397,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
             title: s.title, sub: s.sub,
             img: s.img, bw: bw, botFrac: s.botFrac,
             hot: hot, pulseT: _pulse.value,
+            overlayImg: s.zone == AcropolisZone.stoa ? _vineImg : null,
           ),
         ),
       );
@@ -507,36 +510,52 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
                           offset: Offset(0, hot ? -0.05 : 0),
                           duration: const Duration(milliseconds: 120),
                           curve: Curves.easeOut,
-                          child: ColorFiltered(
-                            colorFilter: hot
-                                ? const ColorFilter.matrix(<double>[
-                                    1.06, 0, 0, 0, 0,
-                                    0, 1.06, 0, 0, 0,
-                                    0, 0, 1.06, 0, 0,
-                                    0, 0, 0, 1,    0,
-                                  ])
-                                : const ColorFilter.matrix(<double>[
-                                    1, 0, 0, 0, 0,
-                                    0, 1, 0, 0, 0,
-                                    0, 0, 1, 0, 0,
-                                    0, 0, 0, 1, 0,
-                                  ]),
-                            // Clip transparent bottom padding so plaque
-                            // appears right below the visible art.
-                            child: ClipRect(
-                              child: Align(
-                                alignment: Alignment.topCenter,
-                                heightFactor: s.botFrac,
-                                child: s.img != null
-                                    ? RawImage(
-                                        image: s.img,
-                                        width: bw,
-                                        filterQuality: FilterQuality.none,
-                                        fit: BoxFit.contain,
-                                      )
-                                    : SizedBox(width: bw, height: bw),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              ColorFiltered(
+                                colorFilter: hot
+                                    ? const ColorFilter.matrix(<double>[
+                                        1.06, 0, 0, 0, 0,
+                                        0, 1.06, 0, 0, 0,
+                                        0, 0, 1.06, 0, 0,
+                                        0, 0, 0, 1,    0,
+                                      ])
+                                    : const ColorFilter.matrix(<double>[
+                                        1, 0, 0, 0, 0,
+                                        0, 1, 0, 0, 0,
+                                        0, 0, 1, 0, 0,
+                                        0, 0, 0, 1, 0,
+                                      ]),
+                                // Clip transparent bottom padding so plaque
+                                // appears right below the visible art.
+                                child: ClipRect(
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    heightFactor: s.botFrac,
+                                    child: s.img != null
+                                        ? RawImage(
+                                            image: s.img,
+                                            width: bw,
+                                            filterQuality: FilterQuality.none,
+                                            fit: BoxFit.contain,
+                                          )
+                                        : SizedBox(width: bw, height: bw),
+                                  ),
+                                ),
                               ),
-                            ),
+                              if (s.zone == AcropolisZone.stoa && _vineImg != null)
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  child: RawImage(
+                                    image: _vineImg,
+                                    width: bw * 0.30,
+                                    filterQuality: FilterQuality.none,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 5),
@@ -663,6 +682,7 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
 class _Stop extends StatelessWidget {
   final String title, sub;
   final ui.Image? img;
+  final ui.Image? overlayImg;
   final double bw, pulseT, botFrac;
   final bool hot;
 
@@ -670,6 +690,7 @@ class _Stop extends StatelessWidget {
     required this.title, required this.sub,
     required this.img, required this.bw, required this.botFrac,
     required this.hot, required this.pulseT,
+    this.overlayImg,
   });
 
   @override
@@ -686,7 +707,7 @@ class _Stop extends StatelessWidget {
             offset: Offset(0, hot ? -8 / (bw > 0 ? bw : 1) : 0),
             duration: const Duration(milliseconds: 350),
             curve: Curves.easeOutCubic,
-            child: Stack(alignment: Alignment.center, children: [
+            child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
               if (hot)
                 Container(
                   width: bw * 1.1, height: bw * 1.1,
@@ -728,6 +749,17 @@ class _Stop extends StatelessWidget {
                   ),
                 ),
               ),
+              if (overlayImg != null)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  child: RawImage(
+                    image: overlayImg,
+                    width: bw * 0.30,
+                    filterQuality: FilterQuality.none,
+                    fit: BoxFit.contain,
+                  ),
+                ),
             ]),
           ),
           const SizedBox(height: 4),

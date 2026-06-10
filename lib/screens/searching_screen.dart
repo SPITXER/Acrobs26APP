@@ -51,6 +51,12 @@ class _SearchingScreenState extends State<SearchingScreen>
 
   void _onMatchFound(Map<String, dynamic> matchData) {
     _matched = true;
+    // Cancel immediately so no further Firebase events arrive after match.
+    _queueWatcher?.cancel();
+    _matchListener?.cancel();
+    _queueWatcher = null;
+    _matchListener = null;
+
     final state = context.read<AppState>();
     final room = state.buildRoomFromMatch(matchData);
     state.enterRoom(room);

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Color, Colors, GlobalKey, NavigatorState, ScaffoldMessengerState, SnackBar, SnackBarAction, Text, TextStyle;
+import 'package:flutter/material.dart' show GlobalKey, NavigatorState, ScaffoldMessengerState;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -531,15 +531,17 @@ class AppState extends ChangeNotifier {
   }
 
   void addArgument(String postId, Argument arg) {
-    final post = posts.firstWhere((p) => p.id == postId);
-    post.arguments = [...post.arguments, arg];
-    post.replyCount++;
+    final idx = posts.indexWhere((p) => p.id == postId);
+    if (idx == -1) return;
+    posts[idx].arguments = [...posts[idx].arguments, arg];
+    posts[idx].replyCount++;
     notifyListeners();
   }
 
   void addChatMessage(String postId, ChatMessage msg) {
-    final post = posts.firstWhere((p) => p.id == postId);
-    post.chats = [...post.chats, msg];
+    final idx = posts.indexWhere((p) => p.id == postId);
+    if (idx == -1) return;
+    posts[idx].chats = [...posts[idx].chats, msg];
     notifyListeners();
   }
 
