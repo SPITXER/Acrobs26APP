@@ -162,12 +162,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             : null,
       ),
       endDrawer: const SideMenu(),
-      body: Column(
-        children: [
-          _courtroomBanner(),
-          Expanded(child: _onboarded ? _buildHome() : _buildOnboarding()),
-        ],
-      ),
+      body: _onboarded ? _buildHome() : _buildOnboarding(),
     );
   }
 
@@ -177,91 +172,99 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
   Widget _buildOnboarding() {
     return SingleChildScrollView(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            width: 440,
-            padding: const EdgeInsets.all(36),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _sectionLabel('CREATE YOUR SYMPOSIUM PROFILE'),
-                const SizedBox(height: 4),
-                Text(
-                  'Your full profile is visible to others. Make it count.',
-                  style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.35)),
-                ),
-                const SizedBox(height: 28),
-
-                _fieldLabel('NAME'),
-                _input(_nameCtrl, 'Your full name…'),
-
-                _fieldLabel('FIELD / EXPERTISE'),
-                _input(_fieldCtrl, 'e.g. Classical Studies, Cognitive Science…'),
-
-                _fieldLabel('OPENING STATEMENT  (optional)'),
-                _input(_quoteCtrl, 'A thought, question, or position…', maxLines: 2),
-
-                _fieldLabel('INTERESTS  (pick a few)'),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _kInterests.map((interest) {
-                    final sel = _selectedInterests.contains(interest);
-                    return GestureDetector(
-                      onTap: () => setState(() =>
-                          sel ? _selectedInterests.remove(interest) : _selectedInterests.add(interest)),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: sel ? AcroColors.gold.withOpacity(0.15) : Colors.transparent,
-                          border: Border.all(
-                            color: sel ? AcroColors.gold : AcroColors.gold.withOpacity(0.2),
-                          ),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: Text(
-                          interest,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                            color: sel ? AcroColors.gold : Colors.white.withOpacity(0.45),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 28),
-
-                SizedBox(
+      child: Column(
+        children: [
+          _courtroomBanner(),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Container(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _completeOnboarding,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AcroColors.gold,
-                      foregroundColor: AcroColors.stone,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
-                      textStyle: GoogleFonts.dmSans(
-                        fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 2,
+                  padding: const EdgeInsets.all(36),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.04),
+                    border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionLabel('CREATE YOUR SYMPOSIUM PROFILE'),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your full profile is visible to others. Make it count.',
+                        style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.35)),
                       ),
-                    ),
-                    child: const Text('ENTER THE SYMPOSIUM'),
+                      const SizedBox(height: 28),
+
+                      _fieldLabel('NAME'),
+                      _input(_nameCtrl, 'Your full name…'),
+
+                      _fieldLabel('FIELD / EXPERTISE'),
+                      _input(_fieldCtrl, 'e.g. Classical Studies, Cognitive Science…'),
+
+                      _fieldLabel('OPENING STATEMENT  (optional)'),
+                      _input(_quoteCtrl, 'A thought, question, or position…', maxLines: 2),
+
+                      _fieldLabel('INTERESTS  (pick a few)'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _kInterests.map((interest) {
+                          final sel = _selectedInterests.contains(interest);
+                          return GestureDetector(
+                            onTap: () => setState(() =>
+                                sel ? _selectedInterests.remove(interest) : _selectedInterests.add(interest)),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 120),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: sel ? AcroColors.gold.withOpacity(0.15) : Colors.transparent,
+                                border: Border.all(
+                                  color: sel ? AcroColors.gold : AcroColors.gold.withOpacity(0.2),
+                                ),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                interest,
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  color: sel ? AcroColors.gold : Colors.white.withOpacity(0.45),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 28),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _completeOnboarding,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AcroColors.gold,
+                            foregroundColor: AcroColors.stone,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                            textStyle: GoogleFonts.dmSans(
+                              fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 2,
+                            ),
+                          ),
+                          child: const Text('ENTER THE SYMPOSIUM'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -314,9 +317,14 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   // ---------------------------------------------------------------------------
 
   Widget _buildHome() {
-    return TabBarView(
-      controller: _tabs,
-      children: [_buildDiscover(), _buildInbox(), _buildCanon()],
+    return NestedScrollView(
+      headerSliverBuilder: (_, __) => [
+        SliverToBoxAdapter(child: _courtroomBanner()),
+      ],
+      body: TabBarView(
+        controller: _tabs,
+        children: [_buildDiscover(), _buildInbox(), _buildCanon()],
+      ),
     );
   }
 
