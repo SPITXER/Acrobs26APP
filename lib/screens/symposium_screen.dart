@@ -595,8 +595,9 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: context.read<AppState>().nominationsStream(),
       builder: (context, snap) {
-        final allScrolls = snap.data ?? [];
-        final legendary  = allScrolls.take(3).toList();
+        final allScrolls  = snap.data ?? [];
+        final legendary   = allScrolls.take(3).toList();
+        final hallScrolls = allScrolls.skip(3).toList(); // non-legendary feed
 
         return CustomScrollView(
           slivers: [
@@ -614,43 +615,60 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                   : _emptyPlatform(context),
             ),
 
-            // ── "THE HALL" divider ──────────────────────────────────────
+            // ── THE HALL heading ────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-                child: Row(children: [
-                  Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Text(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.30))),
+                    ]),
+                    const SizedBox(height: 12),
+                    Text(
                       'THE HALL',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 8,
-                        color: Colors.white.withOpacity(0.25),
-                        letterSpacing: 2,
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 3,
                       ),
                     ),
-                  ),
-                  Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
-                ]),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Scrolls of the Assembly — ranked by the Forum',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.35),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
-            // ── Feed ────────────────────────────────────────────────────
+            // ── Feed — non-legendary HallScroll cards ───────────────────
             if (allScrolls.isEmpty)
-              SliverFillRemaining(
-                child: _hallEmptyState(context),
+              SliverFillRemaining(child: _hallEmptyState(context))
+            else if (hallScrolls.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: _emptyState('📜', 'All scrolls are legendary.',
+                      'New nominations from the Stoa will appear here.'),
+                ),
               )
             else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => _scrollCard(allScrolls[i], rank: i),
-                    childCount: allScrolls.length,
-                  ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => _hallScrollCard(hallScrolls[i]),
+                  childCount: hallScrolls.length,
                 ),
               ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         );
       },
@@ -720,169 +738,167 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     );
   }
 
-  Widget _scrollCard(Map<String, dynamic> nom, {int rank = 99}) {
-    final nomId    = nom['nomId']            as String? ?? '';
-    final title    = nom['title']            as String? ?? 'Untitled';
-    final thesis   = nom['thesis']           as String? ?? '';
-    final category = nom['category']         as String? ?? '';
-    final hostName = nom['hostName']         as String? ?? 'Anonymous';
-    final byName   = nom['nominatedByName']  as String? ?? '';
-    final votes    = (nom['votes']           as int?)   ?? 0;
-    final isLegendary = rank < 3;
+  // HallScroll.png layout constants — source image is 600×600 px.
+  // Rendered card size: 320×320.  Scale = 320/600 = 0.5333.
+  //
+  //  Category label  ≈ (90,  108) → (48,  57)
+  //  Circle centre   ≈ (185, 261)  radius ≈ 100 → chip centre (98.7, 139.2) r=53.3
+  //  [PLAYER]        ≈ (300, 190) → (160, 101)
+  //  topic name      ≈ (300, 245) → (160, 131)
+  //  ⭐ row          ≈ (93,  393) → (50,  210)
+  //  ⚡ row          ≈ (93,  453) → (50,  242)
+
+  static const double _hCardSz = 320.0;
+  static const double _hS      = _hCardSz / 600; // 0.5333
+
+  Widget _hallScrollCard(Map<String, dynamic> nom) {
+    final nomId    = nom['nomId']    as String? ?? '';
+    final title    = nom['title']    as String? ?? 'Untitled';
+    final category = nom['category'] as String? ?? '';
+    final hostName = nom['hostName'] as String? ?? 'Anonymous';
+    final votes    = (nom['votes']   as int?)   ?? 0;
+    final visitors = (nom['visitors'] as int?)  ?? 0;
+
+    // Avatar constants
+    const double avatarCx = 185 * _hS; // ≈ 98.7
+    const double avatarCy = 261 * _hS; // ≈ 139.2
+    const double avatarR  = 97  * _hS; // ≈ 51.7  → diam ≈ 103
 
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => ScrollThreadPage(scroll: nom)),
       ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isLegendary
-                ? [const Color(0xFF1A1506), const Color(0xFF0D0B04)]
-                : [const Color(0xFF131826), const Color(0xFF0D1020)],
-          ),
-          border: Border.all(
-            color: isLegendary
-                ? AcroColors.gold.withOpacity(0.50)
-                : AcroColors.gold.withOpacity(0.22),
-          ),
-          borderRadius: BorderRadius.circular(2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top strip
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-              child: Row(children: [
-                if (isLegendary) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AcroColors.gold.withOpacity(0.15),
-                      border: Border.all(color: AcroColors.gold.withOpacity(0.6)),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('⭐', style: TextStyle(fontSize: 8)),
-                      const SizedBox(width: 4),
-                      Text('LEGENDARY', style: GoogleFonts.spaceMono(fontSize: 8, color: AcroColors.gold, letterSpacing: 1.5)),
-                    ]),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Center(
+          child: SizedBox(
+            width: _hCardSz,
+            height: _hCardSz,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // ── Parchment background ───────────────────────────
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/HallScroll.png',
+                    fit: BoxFit.fill,
                   ),
-                  const SizedBox(width: 8),
-                ],
-                if (category.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AcroColors.gold.withOpacity(0.35)),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: Text(
-                      category.toUpperCase(),
-                      style: GoogleFonts.spaceMono(fontSize: 8, color: AcroColors.gold, letterSpacing: 2),
-                    ),
-                  ),
-                const Spacer(),
-                const Icon(Icons.stars, size: 10, color: AcroColors.gold),
-                const SizedBox(width: 4),
-                Text('SCROLL', style: GoogleFonts.spaceMono(fontSize: 8, color: AcroColors.gold.withOpacity(0.55), letterSpacing: 1.5)),
-              ]),
-            ),
-
-            // Title
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-              child: Text(
-                title,
-                style: GoogleFonts.cormorant(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1.25,
                 ),
-              ),
-            ),
 
-            // Thesis excerpt
-            if (thesis.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AcroColors.gold.withOpacity(0.04),
-                    border: Border(left: BorderSide(color: AcroColors.gold.withOpacity(0.4), width: 2)),
-                  ),
+                // ── Category label (top text slot) ─────────────────
+                Positioned(
+                  left:  90  * _hS,
+                  top:   108 * _hS,
+                  right: 20 * _hS,
                   child: Text(
-                    '"$thesis"',
-                    maxLines: 3,
+                    category.toUpperCase(),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5), fontStyle: FontStyle.italic, height: 1.45),
-                  ),
-                ),
-              ),
-
-            // Bottom bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-              child: Row(children: [
-                AcroAvatar(initials: _initials(hostName), seed: hostName, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(hostName, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.6))),
-                      if (byName.isNotEmpty)
-                        Text('nom. by $byName', style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.25))),
-                    ],
-                  ),
-                ),
-                // Vote button
-                GestureDetector(
-                  onTap: nomId.isNotEmpty
-                      ? () => context.read<AppState>().upvoteNomination(nomId)
-                      : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AcroColors.gold.withOpacity(0.07),
-                      border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
-                      borderRadius: BorderRadius.circular(2),
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF3B2500),
+                      letterSpacing: 1.5,
                     ),
+                  ),
+                ),
+
+                // ── Avatar inside the dashed circle ────────────────
+                Positioned(
+                  left: avatarCx - avatarR,
+                  top:  avatarCy - avatarR,
+                  child: ClipOval(
+                    child: SizedBox(
+                      width:  avatarR * 2,
+                      height: avatarR * 2,
+                      child: AcroAvatar(
+                        initials: _initials(hostName),
+                        seed: hostName,
+                        size: avatarR * 2,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ── Host name ([PLAYER] slot) ──────────────────────
+                Positioned(
+                  left:  300 * _hS,
+                  top:   190 * _hS,
+                  right: 24 * _hS,
+                  child: Text(
+                    hostName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 9,
+                      color: const Color(0xFF3B2500),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+
+                // ── Scroll title (topic name slot) ─────────────────
+                Positioned(
+                  left:  300 * _hS,
+                  top:   240 * _hS,
+                  right: 24 * _hS,
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1E1000),
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+
+                // ── ⭐ upvote count (tappable) ─────────────────────
+                Positioned(
+                  left: 93 * _hS,
+                  top:  390 * _hS,
+                  child: GestureDetector(
+                    onTap: nomId.isNotEmpty
+                        ? () => context.read<AppState>().upvoteNomination(nomId)
+                        : null,
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.keyboard_arrow_up_rounded, size: 14, color: AcroColors.gold),
-                      const SizedBox(width: 3),
+                      const Text('⭐', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 6),
                       Text(
-                        '$votes',
-                        style: GoogleFonts.spaceMono(fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700),
+                        '+$votes',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF4A2D00),
+                        ),
                       ),
                     ]),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Row(children: [
-                  Text('OPEN', style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: AcroColors.gold, letterSpacing: 1.5)),
-                  const SizedBox(width: 3),
-                  const Icon(Icons.arrow_forward, size: 12, color: AcroColors.gold),
-                ]),
-              ]),
-            ),
 
-            // Bottom accent line
-            Container(height: 2, decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                AcroColors.gold.withOpacity(0),
-                AcroColors.gold.withOpacity(isLegendary ? 0.5 : 0.25),
-                AcroColors.gold.withOpacity(0),
-              ]),
-            )),
-          ],
+                // ── ⚡ active visitors ──────────────────────────────
+                Positioned(
+                  left: 93 * _hS,
+                  top:  452 * _hS,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('⚡', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$visitors',
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF4A2D00),
+                      ),
+                    ),
+                  ]),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
