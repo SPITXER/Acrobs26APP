@@ -1,4 +1,4 @@
-
+jj
 this is for our project in 2026
 its private
 DSADAS
@@ -178,6 +178,7 @@ Both participants open the same file
 Type prompts there, then paste them into Claude — clunky but works if terminal sharing isn't available
 The terminal approach is the most seamless. The VS Code extension's chat panel itself cannot be shared through Live Share since it's a UI panel, not a file or terminal.
 
+to do list:
 
 Side room\Open Table addition Our feed version
 subfunctions - thumbs up or down ✓
@@ -191,8 +192,15 @@ and take it to the
 Ranking system ✓
 - Socartes participant badges (built on a voting system? or Merit - Number of hours on the app) system combo
 Agora - Sohpisticated ideas generally for fun things ✓
-Bcla
-
+6/10/2026:
+1-work on the sign-up
+2-restructure the design for symposium
+3- work on the discover/user page/dm
+4- canon/hall feed stle and scroll design
+5- design for the symposium gates (gamefied and interesting)
+6- premium subscriptions
+7- scroll design features: stats , meters, and ranking, interactive or not, popular or not
+8- inside each scroll, there is a space for members to post i media in general ( under debate are) Scroll Research.
 
 Hours of active participant 50
 number of qoutes 20
@@ -202,19 +210,45 @@ variety of topics 10?
 Socrates (the polymath master), Plato (politics and ethics), Aristotle (science and religion), Pythagoras (science and math) 
 
 
- Symposium: Unique story line 
+ 
 
- -expand to a bigger room. 
- - Stat bar for new sym cards
- - idea in chats ( stick, up vote.etc)
- Ai features dedicated sym  by rasie hand
- Share screen in symposion
- ledger book / notebook i s
-6/1/26
+
 Safety notes:
 -Stress Test 
 -Seemless funcionality funnel
 -Lock server/Github/Claude Api
 -Privcy Agreemnts/Data handling.
 Motto- Freespeach is ""
-i do
+i do 
+
+
+stoa updates: 
+room exit real time termnation.
+Room Reenter visablity and avaalsilablity
+make everything in real time no need to continuously refresh
+
+card info doesn't match the room info
+user id is not unique ( keeps adding users to count)
+move the live and view options of host to the side bar
+
+symposium design:
+
+Symposium: Unique story line (claude start reading here)
+ Personlized\User Focused
+
+ -expand to a bigger room. 
+ - Stat bar for new sym cards : Popularity, Compatibility, ?
+ - idea in chats ( stick, up vote.etc)
+ Ai features dedicated sym  by rasie hand
+ Share screen in symposion
+ ledger book / notebook i st
+6/1/26
+
+
+1- for any room in the stoa to be launched to the symposium hall, it needs to be nominated by three different level three accounts
+2- in the chance a user cant wait to get to level three, they need to purchase a subscription so they bypass the level three requirement
+3- the symposium layout is divided into two tabs: hall and discover, the hall is in feed style scrolls that were evolved from the stoa cards
+and discover will subsume both the discover and inbox tabs to accomodate the social function only people with level 3 /or premium
+are visible on the discover.
+
+claude end reading here)

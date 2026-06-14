@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import '../services/app_state.dart';
 import '../widgets/news_ticker.dart';
 import '../widgets/side_menu.dart';
-import '../widgets/signup_dialog.dart';
 import 'agora_screen.dart';
 import 'stoa_screen.dart';
 import 'symposium_screen.dart';
@@ -96,15 +95,6 @@ class _AcropolisMapScreenState extends State<AcropolisMapScreen>
     _loadImages();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = context.read<AppState>();
-      state.registerSignupDialogCallback(() {
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const SignupPromptDialog(),
-        );
-      });
-
       // After init completes, restore the page/room the user was on before refresh.
       state.ready.then((_) {
         if (!mounted || _roomRestoreHandled) return;

@@ -26,11 +26,6 @@ class AppState extends ChangeNotifier {
   // Firebase Auth
   User? firebaseUser;
 
-  // 5-minute signup prompt
-  bool _promptShown = false;
-  Timer? _activityTimer;
-  VoidCallback? _signupDialogCallback; // registered by map screen
-
   // Room navigation — registered by StoaScreen / any active screen
   VoidCallback? _enterRoomCallback;
   VoidCallback? get enterRoomCallback => _enterRoomCallback;
@@ -83,13 +78,8 @@ class AppState extends ChangeNotifier {
     firebaseUser = FirebaseAuth.instance.currentUser;
     FirebaseAuth.instance.authStateChanges().listen((user) {
       firebaseUser = user;
-      if (user != null) _activityTimer?.cancel();
       notifyListeners();
     });
-    // Start timer if user already has a name (returning user)
-    if (profile.name.isNotEmpty && firebaseUser == null) {
-      _startActivityTimer();
-    }
     // Restore in-memory stoa state from Firebase so re-entry and
     // match notifications work correctly after a page refresh.
     if (profile.name.isNotEmpty) {
@@ -247,24 +237,6 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  // ── 5-minute signup prompt ───────────────────────────────────────────────
-
-  void registerSignupDialogCallback(VoidCallback cb) {
-    _signupDialogCallback = cb;
-  }
-
-  void _startActivityTimer() {
-    if (_promptShown || firebaseUser != null) return;
-    _activityTimer?.cancel();
-    _activityTimer = Timer(const Duration(minutes: 5), () {
-      if (firebaseUser != null || _promptShown) return;
-      _promptShown = true;
-      _signupDialogCallback?.call();
-    });
-  }
-
-  void dismissSignupPrompt() { /* no-op — dialog closed by caller */ }
-
   // ── Firebase Auth ────────────────────────────────────────────────────────
 
   Future<void> signInWithGoogle() async {
@@ -315,6 +287,38 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> signInWithEmail(String email, String password) async {
+    final cred = await FirebaseAuth.instance
+        .signInWithEmailAndPassword(email: email, password: password);
+    final user = cred.user;
+    if (user == null) return;
+    profile.uid = user.uid;
+    // Restore name/field/etc. from Firebase if not already set locally
+    if (profile.name.isEmpty) {
+      final snap = await _db.ref('users/${user.uid}').get();
+      if (snap.exists && snap.value is Map) {
+        final data = Map<String, dynamic>.from(snap.value as Map);
+        profile.name      = data['name']      as String? ?? '';
+        profile.field     = data['field']     as String? ?? '';
+        profile.quote     = data['quote']     as String? ?? '';
+        profile.interests = (data['interests'] as List?)
+            ?.map((e) => e.toString()).toList() ?? [];
+      }
+    }
+    await _saveLocalProfile();
+    notifyListeners();
+  }
+
+  Future<void> syncProfileToFirebase() async {
+    if (!isPermanentAccount) return;
+    await _db.ref('users/${profile.uid}').update({
+      'name':      profile.name,
+      'field':     profile.field,
+      'interests': profile.interests,
+      'quote':     profile.quote,
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Profile
   // ---------------------------------------------------------------------------
@@ -330,7 +334,6 @@ class AppState extends ChangeNotifier {
     if (mode != null) profile.mode = mode;
     if (interests.isNotEmpty) profile.interests = interests;
     _saveLocalProfile();
-    _startActivityTimer();
     notifyListeners();
   }
 

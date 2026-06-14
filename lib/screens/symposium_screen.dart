@@ -17,6 +17,8 @@ const _kInterests = [
   'Psychology', 'Art', 'Mathematics', 'Theology',
 ];
 
+enum _AuthMode { createAccount, signIn }
+
 class SymposiumScreen extends StatefulWidget {
   const SymposiumScreen({super.key});
 
@@ -26,14 +28,24 @@ class SymposiumScreen extends StatefulWidget {
 
 class _SymposiumScreenState extends State<SymposiumScreen>
     with SingleTickerProviderStateMixin {
-  // Onboarding
-  final _nameCtrl = TextEditingController();
+
+  // Profile setup form (shown after auth if no profile set)
+  final _nameCtrl  = TextEditingController();
   final _fieldCtrl = TextEditingController();
   final _quoteCtrl = TextEditingController();
   final _selectedInterests = <String>{};
   bool _onboarded = false;
+  bool _enterScheduled = false;
 
-  // Tabs
+  // Auth wall state
+  bool _showEmailAuth = false;
+  _AuthMode _authMode = _AuthMode.createAccount;
+  bool _authLoading = false;
+  String? _authError;
+  final _authEmailCtrl = TextEditingController();
+  final _authPassCtrl  = TextEditingController();
+
+  // Tabs (Discover / Inbox / Canon)
   late TabController _tabs;
 
   // Sent requests (local tracking to prevent double-tap)
@@ -47,9 +59,10 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
 
-    final profile = context.read<AppState>().profile;
-    if (profile.name.isNotEmpty && profile.mode == AcroMode.symposium) {
+    final state = context.read<AppState>();
+    if (state.isPermanentAccount && state.profile.name.isNotEmpty) {
       _onboarded = true;
+      _enterScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _startListening());
     }
   }
@@ -59,12 +72,74 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     _nameCtrl.dispose();
     _fieldCtrl.dispose();
     _quoteCtrl.dispose();
+    _authEmailCtrl.dispose();
+    _authPassCtrl.dispose();
     _tabs.dispose();
     _matchSub?.cancel();
     if (_onboarded) {
       context.read<AppState>().removeFromSymposiumPool();
     }
     super.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Auth actions
+  // ---------------------------------------------------------------------------
+
+  Future<void> _googleSignIn() async {
+    setState(() { _authLoading = true; _authError = null; });
+    try {
+      await context.read<AppState>().signInWithGoogle();
+      // Widget rebuilds via context.watch — auth wall disappears automatically
+    } catch (_) {
+      if (mounted) setState(() { _authLoading = false; _authError = 'Google sign-in failed. Try again.'; });
+    }
+  }
+
+  Future<void> _emailAuth() async {
+    final email = _authEmailCtrl.text.trim();
+    final pass  = _authPassCtrl.text;
+    if (email.isEmpty || pass.length < 6) {
+      setState(() => _authError = 'Enter a valid email and password (6+ chars).');
+      return;
+    }
+    setState(() { _authLoading = true; _authError = null; });
+    try {
+      final state = context.read<AppState>();
+      if (_authMode == _AuthMode.createAccount) {
+        await state.signUpWithEmail(email, pass);
+      } else {
+        await state.signInWithEmail(email, pass);
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString();
+        setState(() {
+          _authLoading = false;
+          if (msg.contains('email-already-in-use')) {
+            _authError = 'That email is already registered. Try signing in instead.';
+          } else if (msg.contains('user-not-found') || msg.contains('wrong-password') || msg.contains('invalid-credential')) {
+            _authError = 'Incorrect email or password.';
+          } else {
+            _authError = 'Authentication failed. Try again.';
+          }
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Symposium entry (called once auth + profile are confirmed)
+  // ---------------------------------------------------------------------------
+
+  Future<void> _enterSymposium() async {
+    if (_enterScheduled) return;
+    _enterScheduled = true;
+    await context.read<AppState>().publishToSymposiumPool();
+    if (mounted) {
+      setState(() => _onboarded = true);
+      _startListening();
+    }
   }
 
   Future<void> _completeOnboarding() async {
@@ -79,13 +154,12 @@ class _SymposiumScreenState extends State<SymposiumScreen>
       interests: _selectedInterests.toList(),
     );
     state.updateProfileDetails(quote: _quoteCtrl.text.trim());
-
-    await state.publishToSymposiumPool();
-    setState(() => _onboarded = true);
-    _startListening();
+    await state.syncProfileToFirebase();
+    await _enterSymposium();
   }
 
   void _startListening() {
+    _matchSub?.cancel();
     _matchSub = context.read<AppState>().matchStream().listen((matchData) {
       if (matchData != null && mounted) _navigateToRoom(matchData);
     });
@@ -120,9 +194,25 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   }
 
   // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+
+    // Gate: permanent account required
+    if (!state.isPermanentAccount) {
+      return _buildAuthScaffold();
+    }
+
+    // Auto-enter if profile already set (returning user or after Google sign-in)
+    if (!_enterScheduled && state.profile.name.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _enterSymposium();
+      });
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
       appBar: AppBar(
@@ -162,15 +252,222 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             : null,
       ),
       endDrawer: const SideMenu(),
-      body: _onboarded ? _buildHome() : _buildOnboarding(),
+      body: _onboarded ? _buildHome() : _buildProfileSetup(),
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Onboarding
+  // Auth wall (not signed in)
   // ---------------------------------------------------------------------------
 
-  Widget _buildOnboarding() {
+  Widget _buildAuthScaffold() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0F1A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B0F1A),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AcroColors.stoneLight),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          '🍷  SYMPOSIUM',
+          style: GoogleFonts.dmSans(
+            color: AcroColors.gold,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 3,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _courtroomBanner(),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(36),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.04),
+                      border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _sectionLabel('ENTER THE SYMPOSIUM'),
+                        const SizedBox(height: 4),
+                        Text(
+                          'The Symposium requires a permanent account. Your profile and history are preserved across sessions.',
+                          style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.35), height: 1.5),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Google button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _authLoading ? null : _googleSignIn,
+                            icon: const Text('G',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Colors.black87)),
+                            label: const Text('CONTINUE WITH GOOGLE'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black87,
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                              textStyle: GoogleFonts.dmSans(
+                                  fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Divider
+                        Row(children: [
+                          Expanded(child: Divider(color: Colors.white.withOpacity(0.10))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('or',
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.white.withOpacity(0.25))),
+                          ),
+                          Expanded(child: Divider(color: Colors.white.withOpacity(0.10))),
+                        ]),
+                        const SizedBox(height: 16),
+
+                        // Email toggle
+                        if (!_showEmailAuth)
+                          Center(
+                            child: TextButton(
+                              onPressed: () => setState(() => _showEmailAuth = true),
+                              child: Text('Use email instead',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withOpacity(0.40))),
+                            ),
+                          ),
+
+                        // Email form
+                        if (_showEmailAuth) ...[
+                          // Sign-in / Create-account toggle
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _authModeChip('CREATE ACCOUNT', _AuthMode.createAccount),
+                              const SizedBox(width: 8),
+                              _authModeChip('SIGN IN', _AuthMode.signIn),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _authField(_authEmailCtrl, 'Email address', TextInputType.emailAddress),
+                          _authField(_authPassCtrl,  'Password (6+ chars)', TextInputType.visiblePassword, obscure: true),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _authLoading ? null : _emailAuth,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AcroColors.gold,
+                                foregroundColor: AcroColors.stone,
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                                textStyle: GoogleFonts.dmSans(
+                                    fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1),
+                              ),
+                              child: Text(_authLoading
+                                  ? 'PLEASE WAIT…'
+                                  : (_authMode == _AuthMode.createAccount ? 'CREATE ACCOUNT' : 'SIGN IN')),
+                            ),
+                          ),
+                        ],
+
+                        if (_authError != null) ...[
+                          const SizedBox(height: 12),
+                          Text(_authError!,
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                        ],
+
+                        if (_authLoading) ...[
+                          const SizedBox(height: 16),
+                          const Center(child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation(AcroColors.gold), strokeWidth: 2)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _authModeChip(String label, _AuthMode mode) {
+    final selected = _authMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() { _authMode = mode; _authError = null; }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AcroColors.gold.withOpacity(0.15) : Colors.transparent,
+          border: Border.all(
+            color: selected ? AcroColors.gold : AcroColors.gold.withOpacity(0.22),
+          ),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10,
+                letterSpacing: 1.5,
+                color: selected ? AcroColors.gold : Colors.white.withOpacity(0.40))),
+      ),
+    );
+  }
+
+  Widget _authField(TextEditingController ctrl, String hint, TextInputType type,
+      {bool obscure = false}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: TextField(
+          controller: ctrl,
+          keyboardType: type,
+          obscureText: obscure,
+          style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'monospace'),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.22), fontFamily: 'monospace'),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.04),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(2),
+                borderSide: BorderSide(color: AcroColors.gold.withOpacity(0.2))),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(2),
+                borderSide: BorderSide(color: AcroColors.gold.withOpacity(0.2))),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(2),
+                borderSide: const BorderSide(color: AcroColors.gold)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+      );
+
+  // ---------------------------------------------------------------------------
+  // Profile setup (authenticated but no profile yet)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildProfileSetup() {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -277,7 +574,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        // Show a cinematic strip: full width, ~28% of a 16:9 viewport height
         final h = (w * 9 / 16 * 0.42).clamp(160.0, 320.0);
         return SizedBox(
           width: w,
@@ -290,7 +586,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
               ),
-              // Gradient fade into the screen background
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -363,7 +658,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final ini = _initials(name);
     final sent = _sentTo.contains(uid);
 
-    // Badge from pool entry (computed when user published)
     final badgeId = card['badgeId'] as String? ?? '';
     final badge   = BadgeEngine.fromId(badgeId);
     final badgeInfo = BadgeEngine.infoFor(badge);
@@ -380,7 +674,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             AcroAvatar(initials: ini, seed: uid, size: 54),
             const SizedBox(width: 16),
 
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,7 +693,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     style: TextStyle(fontSize: 12, color: AcroColors.stoneLight),
                   ),
                 ],
-                // Badge pill
                 ...[
                   const SizedBox(height: 6),
                   Row(mainAxisSize: MainAxisSize.min, children: [
