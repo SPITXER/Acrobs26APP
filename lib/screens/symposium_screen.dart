@@ -576,7 +576,13 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   Widget _buildHome() {
     return TabBarView(
       controller: _tabs,
-      children: [_buildTheHall(), _buildTheAssembly()],
+      // _KeepAlivePage prevents TabBarView from destroying each tab's widget
+      // tree when switching — streams stay subscribed, scroll positions persist,
+      // and animations don't reset.
+      children: [
+        _KeepAlivePage(child: _buildTheHall()),
+        _KeepAlivePage(child: _buildTheAssembly()),
+      ],
     );
   }
 
@@ -942,8 +948,8 @@ class _SymposiumScreenState extends State<SymposiumScreen>
           child: TabBarView(
             controller: _assembly,
             children: [
-              _buildRanksPanel(showHeader: false),
-              _buildInboxPanel(showHeader: false),
+              _KeepAlivePage(child: _buildRanksPanel(showHeader: false)),
+              _KeepAlivePage(child: _buildInboxPanel(showHeader: false)),
             ],
           ),
         ),
@@ -2001,6 +2007,31 @@ class _CloudPainter extends CustomPainter {
   @override
   bool shouldRepaint(_CloudPainter old) =>
       old.color != color || old.borderColor != borderColor;
+}
+
+// ── Keep-alive wrapper for TabBarView children ──────────────────────────────
+// Flutter's TabBarView destroys off-screen pages by default. This wrapper
+// opts the page into AutomaticKeepAlive so streams stay subscribed, scroll
+// positions are remembered, and animations don't reset when switching tabs.
+
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // required by the mixin
+    return widget.child;
+  }
 }
 
 // ── Inbox list item discriminated union ─────────────────────────────────────
