@@ -45665,39 +45665,39 @@ while(true)switch(s){case 0:s=3
 return A.o(A.l5(),$async$yp)
 case 3:i=b.a
 h=J.a6(i)
-g=A.S(h.h(i,"acro_name"))
-if(g==null)g=""
-if(g.length===0){s=1
-break}o=p.e
+g=A.S(h.h(i,"acro_page"))
+p.Q=g==null?"":g
+o=A.S(h.h(i,"acro_name"))
+if(o==null)o=""
+if(o.length===0){s=1
+break}g=p.e
 n=A.S(h.h(i,"acro_uid"))
-o.a=n==null?o.a:n
-o.b=g
+g.a=n==null?g.a:n
+g.b=o
 n=A.S(h.h(i,"acro_field"))
-o.c=n==null?"":n
+g.c=n==null?"":n
 m=t.kc.a(h.h(i,"acro_interests"))
 m=m==null?null:J.jh(m,t.N)
 n=m==null?null:m.dB(m)
 t.Xb.a(n)
-o.f=n==null?A.b([],t.s):n
+g.f=n==null?A.b([],t.s):n
 n=A.S(h.h(i,"acro_quote"))
-o.e=n==null?"":n
+g.e=n==null?"":n
 l=A.S(h.h(i,"acro_room_id"))
 if(l==null)l=""
-if(l.length!==0){o=A.S(h.h(i,"acro_room_title"))
-if(o==null)o="Debate"
+if(l.length!==0){g=A.S(h.h(i,"acro_room_title"))
+if(g==null)g="Debate"
 n=A.S(h.h(i,"acro_room_prt_nm"))
 if(n==null)n=""
 k=A.S(h.h(i,"acro_room_prt_ini"))
-p.wg(l,k==null?"?":k,n,o)}o=A.S(h.h(i,"acro_page"))
-p.Q=o==null?"":o
-j=A.S(h.h(i,"acro_hwait_id"))
+p.wg(l,k==null?"?":k,n,g)}j=A.S(h.h(i,"acro_hwait_id"))
 if(j==null)j=""
-if(j.length!==0){o=A.S(h.h(i,"acro_hwait_title"))
-if(o==null)o=""
+if(j.length!==0){g=A.S(h.h(i,"acro_hwait_title"))
+if(g==null)g=""
 n=A.S(h.h(i,"acro_hwait_thesis"))
 if(n==null)n=""
 i=A.S(h.h(i,"acro_hwait_cat"))
-p.as=A.Y(["roomId",j,"title",o,"thesis",n,"category",i==null?"":i],t.N,t.z)}p.am()
+p.as=A.Y(["roomId",j,"title",g,"thesis",n,"category",i==null?"":i],t.N,t.z)}p.am()
 case 1:return A.u(q,r)}})
 return A.v($async$yp,r)},
 jX(){var s=0,r=A.w(t.H),q=this,p,o
