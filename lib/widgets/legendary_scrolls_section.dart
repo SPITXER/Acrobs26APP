@@ -127,7 +127,7 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
 
   Widget _buildStack(double w, double h) {
     final cx = w * 0.50;
-    final cy = h * 0.67;
+    final cy = h * 0.50; // raised from 0.67 so island sits higher in the clouds
 
     // Wider orbit — rx raised from 0.215 to 0.30; cap raised from 80 to 115.
     final rx = min(w * 0.30, 115.0);
@@ -148,7 +148,7 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
           child: Image.asset(
             'assets/images/Legendisland.png',
             fit: BoxFit.contain,
-            alignment: const Alignment(0, 0.80),
+            alignment: const Alignment(0, 0.10), // raised from 0.80
           ),
         ),
 

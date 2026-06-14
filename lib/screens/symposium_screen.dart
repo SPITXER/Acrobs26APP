@@ -712,19 +712,19 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                               'New nominations from the Stoa will appear here.'),
                         )
                       else
-                        GestureDetector(
-                          onPanDown: (_) => setState(() => _hallUserScrolling = true),
-                          onPanEnd: (_) => setState(() => _hallUserScrolling = false),
-                          onPanCancel: () => setState(() => _hallUserScrolling = false),
+                        NotificationListener<ScrollNotification>(
+                          onNotification: (n) {
+                            if (n is ScrollStartNotification) {
+                              setState(() => _hallUserScrolling = true);
+                            } else if (n is ScrollEndNotification) {
+                              setState(() => _hallUserScrolling = false);
+                            }
+                            return false;
+                          },
                           child: SizedBox(
                             height: 360,
                             child: ScrollConfiguration(
-                              behavior: ScrollConfiguration.of(context).copyWith(
-                                dragDevices: {
-                                  PointerDeviceKind.mouse,
-                                  PointerDeviceKind.touch,
-                                },
-                              ),
+                              behavior: _MouseDragBehavior(),
                               child: ListView.builder(
                                 controller: _hallScrollCtrl,
                                 scrollDirection: Axis.horizontal,
@@ -2242,6 +2242,18 @@ class _KeepAlivePageState extends State<_KeepAlivePage>
     super.build(context); // required by the mixin
     return widget.child;
   }
+}
+
+// ── Mouse-drag scroll behavior for web ──────────────────────────────────────
+// MaterialScrollBehavior subclass that opts mouse drags into the scroll arena.
+// Unlike copyWith(), a subclass override is guaranteed to apply at all times.
+
+class _MouseDragBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+  };
 }
 
 // ── Inbox list item discriminated union ─────────────────────────────────────
