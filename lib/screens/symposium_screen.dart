@@ -638,7 +638,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                           builder: (_) => ScrollThreadPage(scroll: scroll)),
                     ),
                   )
-                : _emptyPlatform(),
+                : _emptyPlatform(context),
 
             // ── Section divider ─────────────────────────────────────────
             Padding(
@@ -663,18 +663,14 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             // ── Feed ────────────────────────────────────────────────────
             if (allScrolls.isEmpty)
               Expanded(
-                child: _emptyState(
-                  '📜',
-                  'The Hall awaits its first scroll.',
-                  'Arguments nominated in the Stoa are enshrined here.',
-                ),
+                child: _hallEmptyState(context),
               )
             else
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                   itemCount: allScrolls.length,
-                  itemBuilder: (_, i) => _scrollCard(allScrolls[i]),
+                  itemBuilder: (_, i) => _scrollCard(allScrolls[i], rank: i),
                 ),
               ),
           ],
@@ -683,7 +679,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     );
   }
 
-  Widget _emptyPlatform() {
+  Widget _emptyPlatform(BuildContext ctx) {
     return SizedBox(
       height: 290,
       child: Stack(
@@ -696,13 +692,16 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             ),
           ),
           Center(
-            child: Text(
-              'No legendary scrolls yet',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.30),
-                fontFamily: 'monospace',
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'No scrolls enshrined yet',
+                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.30), fontFamily: 'monospace'),
+                ),
+                const SizedBox(height: 10),
+                _seedButton(ctx),
+              ],
             ),
           ),
         ],
@@ -710,12 +709,48 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     );
   }
 
-  Widget _scrollCard(Map<String, dynamic> nom) {
-    final title    = nom['title']           as String? ?? 'Untitled';
+  Widget _hallEmptyState(BuildContext ctx) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('📜', style: TextStyle(fontSize: 44)),
+          const SizedBox(height: 16),
+          Text('The Hall awaits its first scroll.',
+              style: TextStyle(fontFamily: 'monospace', fontSize: 13, color: Colors.white.withOpacity(0.4))),
+          const SizedBox(height: 6),
+          Text('Arguments nominated in the Stoa are enshrined here.',
+              style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.2)), textAlign: TextAlign.center),
+          const SizedBox(height: 20),
+          _seedButton(ctx),
+        ],
+      ),
+    );
+  }
+
+  Widget _seedButton(BuildContext ctx) {
+    return OutlinedButton.icon(
+      onPressed: () => ctx.read<AppState>().seedTestScrolls(),
+      icon: const Icon(Icons.auto_awesome, size: 13, color: AcroColors.gold),
+      label: Text('SEED TEST SCROLLS',
+          style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: AcroColors.gold)),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: AcroColors.gold.withOpacity(0.45)),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+      ),
+    );
+  }
+
+  Widget _scrollCard(Map<String, dynamic> nom, {int rank = 99}) {
+    final nomId    = nom['nomId']            as String? ?? '';
+    final title    = nom['title']            as String? ?? 'Untitled';
     final thesis   = nom['thesis']           as String? ?? '';
     final category = nom['category']         as String? ?? '';
     final hostName = nom['hostName']         as String? ?? 'Anonymous';
     final byName   = nom['nominatedByName']  as String? ?? '';
+    final votes    = (nom['votes']           as int?)   ?? 0;
+    final isLegendary = rank < 3;
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -728,9 +763,15 @@ class _SymposiumScreenState extends State<SymposiumScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFF131826), const Color(0xFF0D1020)],
+            colors: isLegendary
+                ? [const Color(0xFF1A1506), const Color(0xFF0D0B04)]
+                : [const Color(0xFF131826), const Color(0xFF0D1020)],
           ),
-          border: Border.all(color: AcroColors.gold.withOpacity(0.22)),
+          border: Border.all(
+            color: isLegendary
+                ? AcroColors.gold.withOpacity(0.50)
+                : AcroColors.gold.withOpacity(0.22),
+          ),
           borderRadius: BorderRadius.circular(2),
         ),
         child: Column(
@@ -740,6 +781,22 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
               child: Row(children: [
+                if (isLegendary) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AcroColors.gold.withOpacity(0.15),
+                      border: Border.all(color: AcroColors.gold.withOpacity(0.6)),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('⭐', style: TextStyle(fontSize: 8)),
+                      const SizedBox(width: 4),
+                      Text('LEGENDARY', style: GoogleFonts.spaceMono(fontSize: 8, color: AcroColors.gold, letterSpacing: 1.5)),
+                    ]),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 if (category.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -808,19 +865,42 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ],
                   ),
                 ),
+                // Vote button
+                GestureDetector(
+                  onTap: nomId.isNotEmpty
+                      ? () => context.read<AppState>().upvoteNomination(nomId)
+                      : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AcroColors.gold.withOpacity(0.07),
+                      border: Border.all(color: AcroColors.gold.withOpacity(0.30)),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.keyboard_arrow_up_rounded, size: 14, color: AcroColors.gold),
+                      const SizedBox(width: 3),
+                      Text(
+                        '$votes',
+                        style: GoogleFonts.spaceMono(fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Row(children: [
-                  Text('OPEN THREAD', style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: AcroColors.gold, letterSpacing: 1.5)),
-                  const SizedBox(width: 4),
+                  Text('OPEN', style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: AcroColors.gold, letterSpacing: 1.5)),
+                  const SizedBox(width: 3),
                   const Icon(Icons.arrow_forward, size: 12, color: AcroColors.gold),
                 ]),
               ]),
             ),
 
-            // Thread-entry gradient line at the bottom
+            // Bottom accent line
             Container(height: 2, decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
                 AcroColors.gold.withOpacity(0),
-                AcroColors.gold.withOpacity(0.3),
+                AcroColors.gold.withOpacity(isLegendary ? 0.5 : 0.25),
                 AcroColors.gold.withOpacity(0),
               ]),
             )),

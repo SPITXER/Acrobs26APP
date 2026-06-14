@@ -1306,9 +1306,72 @@ class AppState extends ChangeNotifier {
           .values
           .map((v) => Map<String, dynamic>.from(v as Map))
           .toList()
-        ..sort((a, b) =>
-            ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int));
+        ..sort((a, b) {
+          // Primary: votes descending (top 3 become legendary)
+          final vA = (a['votes'] as int?) ?? 0;
+          final vB = (b['votes'] as int?) ?? 0;
+          if (vA != vB) return vB.compareTo(vA);
+          // Secondary: newest first
+          return ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int);
+        });
     });
+  }
+
+  Future<void> upvoteNomination(String nomId) async {
+    await _db.ref('nominations/$nomId/votes').set(ServerValue.increment(1));
+  }
+
+  Future<void> seedTestScrolls() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final seeds = [
+      {
+        'nomId': 'seed_scroll_001',
+        'roomId': 'seed_room_001',
+        'title': 'The Hard Problem of Consciousness',
+        'thesis': 'No physical account can explain why there is something it is like to be conscious. Qualia remain outside the reach of neuroscience.',
+        'category': 'Philosophy',
+        'hostUid': 'seed_uid_001',
+        'hostName': 'Symposium',
+        'nominatedBy': 'seed_uid_001',
+        'nominatedByName': 'The Assembly',
+        'ts': now,
+        'originalTs': now,
+        'votes': 42,
+      },
+      {
+        'nomId': 'seed_scroll_002',
+        'roomId': 'seed_room_002',
+        'title': "Democracy's Fatal Flaw",
+        'thesis': 'Rule of the uninformed majority is not wisdom — it is organised ignorance dressed in the language of freedom.',
+        'category': 'Politics',
+        'hostUid': 'seed_uid_002',
+        'hostName': 'Symposium',
+        'nominatedBy': 'seed_uid_002',
+        'nominatedByName': 'The Assembly',
+        'ts': now - 1000,
+        'originalTs': now - 1000,
+        'votes': 38,
+      },
+      {
+        'nomId': 'seed_scroll_003',
+        'roomId': 'seed_room_003',
+        'title': 'The Singularity Is a Myth',
+        'thesis': 'Exponential growth in computation does not guarantee exponential growth in intelligence. The two are not the same thing.',
+        'category': 'Science',
+        'hostUid': 'seed_uid_003',
+        'hostName': 'Symposium',
+        'nominatedBy': 'seed_uid_003',
+        'nominatedByName': 'The Assembly',
+        'ts': now - 2000,
+        'originalTs': now - 2000,
+        'votes': 31,
+      },
+    ];
+    final updates = <String, dynamic>{};
+    for (final s in seeds) {
+      updates['nominations/${s['nomId']}'] = s;
+    }
+    await _db.ref().update(updates);
   }
 
   Stream<Map<String, int>> nominationStatsStream() {
