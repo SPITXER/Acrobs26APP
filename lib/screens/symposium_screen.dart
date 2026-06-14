@@ -254,8 +254,13 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
+      // Body extends behind the AppBar so the island top is not clipped.
+      // The dark→transparent gradient in the Hall canvas covers the AppBar area.
+      extendBodyBehindAppBar: _onboarded,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0B0F1A),
+        backgroundColor: _onboarded ? Colors.transparent : const Color(0xFF0B0F1A),
+        elevation: 0,
+        scrolledUnderElevation: 0,
         toolbarHeight: kToolbarHeight * 0.5, // 50 % shorter toolbar
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 18, color: AcroColors.stoneLight),
@@ -598,6 +603,11 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   // ---------------------------------------------------------------------------
 
   Widget _buildHome() {
+    // AppBar total height = toolbar(28) + tabs(24) = 52 px.
+    // Hall tab: CustomScrollView starts at y=0 (extendBodyBehindAppBar) so
+    //           no top padding needed — the gradient covers the AppBar area.
+    // Assembly tab: plain content, needs explicit top padding to stay below AppBar.
+    const double appBarH = kToolbarHeight * 0.5 + 24.0;
     return TabBarView(
       controller: _tabs,
       // _KeepAlivePage prevents TabBarView from destroying each tab's widget
@@ -605,7 +615,12 @@ class _SymposiumScreenState extends State<SymposiumScreen>
       // and animations don't reset.
       children: [
         _KeepAlivePage(child: _buildTheHall()),
-        _KeepAlivePage(child: _buildTheAssembly()),
+        _KeepAlivePage(
+          child: Padding(
+            padding: const EdgeInsets.only(top: appBarH),
+            child: _buildTheAssembly(),
+          ),
+        ),
       ],
     );
   }
@@ -622,21 +637,11 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         final legendary   = allScrolls.take(3).toList();
         final hallScrolls = allScrolls.skip(3).toList(); // non-legendary feed
 
-        // 16 % of the viewport height — island is pulled this far above the
-        // canvas top. The AppBar (same dark colour) covers the overflow
-        // seamlessly. A matching SizedBox placeholder in the Column keeps
-        // the heading/feed butted right up against the island's visual bottom.
-        final islandLift = MediaQuery.of(context).size.height * 0.16;
-        final islandH    = legendary.isNotEmpty
-            ? kLegendSectionHeight
-            : 290.0; // _emptyPlatform height
-
         return CustomScrollView(
           slivers: [
             // ── Island + feed on one shared background canvas ────────────
             SliverToBoxAdapter(
               child: Stack(
-                clipBehavior: Clip.none, // island overflows upward into AppBar
                 children: [
                   // ── hallback.png background ─────────────────────────────
                   Positioned(
@@ -658,9 +663,9 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ),
                   ),
 
-                  // ── Top fade into header colour ─────────────────────────
+                  // ── Top fade — covers the transparent AppBar area ───────
                   Positioned(
-                    top: 0, left: 0, right: 0, height: 56,
+                    top: 0, left: 0, right: 0, height: 72,
                     child: const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -672,14 +677,31 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ),
                   ),
 
-                  // ── Layout column (determines Stack height) ─────────────
-                  // The island is Positioned separately above; this column
-                  // starts with a placeholder SizedBox of (islandH - islandLift)
-                  // so the heading lines up with the island's visual bottom.
+                  // ── Content column ──────────────────────────────────────
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: islandH - islandLift),
+                      // Island — starts at y=0 (top of screen), fully visible.
+                      // ShaderMask dissolves the bottom 5 % into the sky.
+                      ShaderMask(
+                        blendMode: BlendMode.dstIn,
+                        shaderCallback: (bounds) => const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.0, 0.95, 1.0],
+                          colors: [Colors.white, Colors.white, Colors.transparent],
+                        ).createShader(bounds),
+                        child: legendary.isNotEmpty
+                            ? LegendaryScrollsSection(
+                                scrolls: legendary,
+                                onScrollTap: (scroll) => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => ScrollThreadPage(scroll: scroll)),
+                                ),
+                              )
+                            : _emptyPlatform(context),
+                      ),
 
                       // THE HALL heading
                       Padding(
@@ -746,35 +768,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
                       const SizedBox(height: 40),
                     ],
-                  ),
-
-                  // ── Island — floated 16 % above the canvas top ──────────
-                  // ShaderMask fades the bottom 5 % of the island to
-                  // transparent so it dissolves into the sky/clouds behind it.
-                  Positioned(
-                    top: -islandLift,
-                    left: 0,
-                    right: 0,
-                    height: islandH,
-                    child: ShaderMask(
-                      blendMode: BlendMode.dstIn,
-                      shaderCallback: (bounds) => const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        stops: [0.0, 0.95, 1.0],
-                        colors: [Colors.white, Colors.white, Colors.transparent],
-                      ).createShader(bounds),
-                      child: legendary.isNotEmpty
-                          ? LegendaryScrollsSection(
-                              scrolls: legendary,
-                              onScrollTap: (scroll) => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => ScrollThreadPage(scroll: scroll)),
-                              ),
-                            )
-                          : _emptyPlatform(context),
-                    ),
                   ),
                 ],
               ),
