@@ -76,16 +76,19 @@ class AppState extends ChangeNotifier {
 
   Future<void> _init() async {
     await _loadLocalProfile();
-    firebaseUser = FirebaseAuth.instance.currentUser;
+    // On Flutter web, currentUser is null until Firebase restores auth state
+    // from IndexedDB asynchronously. Await the first authStateChanges emission
+    // so isPermanentAccount is correct before any screen renders.
+    firebaseUser = await FirebaseAuth.instance.authStateChanges().first;
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      firebaseUser = user;
+      notifyListeners();
+    });
     // If already signed in but local profile is empty (e.g. different device /
     // browser), pull their profile from Firebase before anything else renders.
     if (firebaseUser != null && profile.name.isEmpty) {
       await _syncProfileFromFirebase(firebaseUser!);
     }
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      firebaseUser = user;
-      notifyListeners();
-    });
     await _handleGoogleRedirectResult();
     // Restore in-memory stoa state from Firebase so re-entry and
     // match notifications work correctly after a page refresh.
@@ -284,10 +287,10 @@ class AppState extends ChangeNotifier {
       final result = await FirebaseAuth.instance.getRedirectResult();
       final user = result.user;
       if (user == null) return;
+      firebaseUser = user; // ensure isPermanentAccount is true immediately
       await _syncProfileFromFirebase(user);
       // Migrate any stoa rooms created under the temp uid to the Firebase uid
       final tempRooms = List<String>.of(_myStoaRoomIds);
-      final oldUid = profile.uid;
       profile.uid = user.uid;
       await _saveLocalProfile();
       for (final roomId in tempRooms) {
