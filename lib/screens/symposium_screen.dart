@@ -8,6 +8,7 @@ import '../services/badge_engine.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/cloud_corner_box.dart';
+import '../widgets/legendary_scrolls_section.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
 import 'scroll_thread_page.dart';
@@ -576,43 +577,136 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   }
 
   // ---------------------------------------------------------------------------
-  // Home — 2 main tabs
+  // Home — 2 main tabs (no banner, flat page)
   // ---------------------------------------------------------------------------
 
   Widget _buildHome() {
-    return NestedScrollView(
-      headerSliverBuilder: (_, __) => [
-        SliverToBoxAdapter(child: _courtroomBanner()),
-      ],
-      body: TabBarView(
-        controller: _tabs,
-        children: [_buildTheHall(), _buildTheAssembly()],
-      ),
+    return TabBarView(
+      controller: _tabs,
+      children: [_buildTheHall(), _buildTheAssembly()],
     );
   }
 
   // ===========================================================================
-  // THE HALL — Scrolls feed (formerly Canon)
+  // THE HALL — Legendary platform + Scrolls feed
   // ===========================================================================
 
   Widget _buildTheHall() {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: context.read<AppState>().nominationsStream(),
       builder: (context, snap) {
-        final scrolls = snap.data ?? [];
-        if (scrolls.isEmpty) {
-          return _emptyState(
-            '📜',
-            'The Hall awaits its first scroll.',
-            'Arguments nominated in the Stoa are enshrined here.',
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          itemCount: scrolls.length,
-          itemBuilder: (_, i) => _scrollCard(scrolls[i]),
+        final allScrolls = snap.data ?? [];
+        final legendary  = allScrolls.take(3).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Legendary Scrolls header ────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+              child: Row(children: [
+                Text('⭐', style: TextStyle(fontSize: 13, color: AcroColors.gold.withOpacity(0.9))),
+                const SizedBox(width: 8),
+                Text(
+                  'LEGENDARY SCROLLS',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AcroColors.stoneLight,
+                    letterSpacing: 3,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${legendary.length} enshrined',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.25),
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ]),
+            ),
+
+            // ── Rotating platform ───────────────────────────────────────
+            legendary.isNotEmpty
+                ? LegendaryScrollsSection(
+                    scrolls: legendary,
+                    onScrollTap: (scroll) => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ScrollThreadPage(scroll: scroll)),
+                    ),
+                  )
+                : _emptyPlatform(),
+
+            // ── Section divider ─────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+              child: Row(children: [
+                Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Text(
+                    'THE HALL',
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 8,
+                      color: Colors.white.withOpacity(0.25),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
+              ]),
+            ),
+
+            // ── Feed ────────────────────────────────────────────────────
+            if (allScrolls.isEmpty)
+              Expanded(
+                child: _emptyState(
+                  '📜',
+                  'The Hall awaits its first scroll.',
+                  'Arguments nominated in the Stoa are enshrined here.',
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                  itemCount: allScrolls.length,
+                  itemBuilder: (_, i) => _scrollCard(allScrolls[i]),
+                ),
+              ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _emptyPlatform() {
+    return SizedBox(
+      height: 290,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Legendisland.png',
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+            ),
+          ),
+          Center(
+            child: Text(
+              'No legendary scrolls yet',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.30),
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
