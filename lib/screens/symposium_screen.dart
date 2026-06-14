@@ -617,14 +617,23 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         final legendary   = allScrolls.take(3).toList();
         final hallScrolls = allScrolls.skip(3).toList(); // non-legendary feed
 
+        // 13 % of the viewport height — island is pulled this far above the
+        // canvas top. The AppBar (same dark colour) covers the overflow
+        // seamlessly. A matching SizedBox placeholder in the Column keeps
+        // the heading/feed butted right up against the island's visual bottom.
+        final islandLift = MediaQuery.of(context).size.height * 0.13;
+        final islandH    = legendary.isNotEmpty
+            ? kLegendSectionHeight
+            : 290.0; // _emptyPlatform height
+
         return CustomScrollView(
           slivers: [
-            // ── Island + feed merged into one background canvas ──────────
+            // ── Island + feed on one shared background canvas ────────────
             SliverToBoxAdapter(
               child: Stack(
+                clipBehavior: Clip.none, // island overflows upward into AppBar
                 children: [
-                  // hallback.png — fitWidth keeps natural aspect ratio
-                  // (appears ~50% smaller than BoxFit.cover which cropped/zoomed)
+                  // ── hallback.png background ─────────────────────────────
                   Positioned(
                     top: 0, left: 0, right: 0,
                     child: Image.asset(
@@ -635,7 +644,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ),
                   ),
 
-                  // Dark overlay for legibility
+                  // ── Dark overlay ────────────────────────────────────────
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -644,7 +653,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ),
                   ),
 
-                  // Top fade — blends background into the header (0xFF0B0F1A)
+                  // ── Top fade into header colour ─────────────────────────
                   Positioned(
                     top: 0, left: 0, right: 0, height: 56,
                     child: const DecoratedBox(
@@ -658,23 +667,16 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ),
                   ),
 
-                  // Content column — island floats on clouds, feed below
+                  // ── Layout column (determines Stack height) ─────────────
+                  // The island is Positioned separately above; this column
+                  // starts with a placeholder SizedBox of (islandH - islandLift)
+                  // so the heading lines up with the island's visual bottom.
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Legendary island (merged with background clouds) ──
-                      legendary.isNotEmpty
-                          ? LegendaryScrollsSection(
-                              scrolls: legendary,
-                              onScrollTap: (scroll) => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => ScrollThreadPage(scroll: scroll)),
-                              ),
-                            )
-                          : _emptyPlatform(context),
+                      SizedBox(height: islandH - islandLift),
 
-                      // ── THE HALL heading ─────────────────────────────────
+                      // THE HALL heading
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                         child: Column(
@@ -702,7 +704,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                         ),
                       ),
 
-                      // ── Horizontal scrolling feed ────────────────────────
+                      // ── Horizontal scrolling feed ──────────────────────
                       if (allScrolls.isEmpty)
                         SizedBox(height: 280, child: _hallEmptyState(context))
                       else if (hallScrolls.isEmpty)
@@ -728,7 +730,8 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                               child: ListView.builder(
                                 controller: _hallScrollCtrl,
                                 scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
                                 itemCount: hallScrolls.length,
                                 itemBuilder: (_, i) => _hallScrollCard(hallScrolls[i]),
                               ),
@@ -738,6 +741,24 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
                       const SizedBox(height: 40),
                     ],
+                  ),
+
+                  // ── Island — floated 13 % above the canvas top ──────────
+                  Positioned(
+                    top: -islandLift,
+                    left: 0,
+                    right: 0,
+                    height: islandH,
+                    child: legendary.isNotEmpty
+                        ? LegendaryScrollsSection(
+                            scrolls: legendary,
+                            onScrollTap: (scroll) => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => ScrollThreadPage(scroll: scroll)),
+                            ),
+                          )
+                        : _emptyPlatform(context),
                   ),
                 ],
               ),
