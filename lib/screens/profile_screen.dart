@@ -129,6 +129,30 @@ class ProfileScreen extends StatelessWidget {
               _SectionLabel('SUBSCRIPTION'),
               const SizedBox(height: 12),
               _ComingSoonCard('Subscription tiers'),
+              const SizedBox(height: 36),
+
+              // ── Sign out ───────────────────────────────────────────────────
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.logout, size: 14),
+                label: Text('SIGN OUT',
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5)),
+                style: TextButton.styleFrom(
+                  foregroundColor:
+                      Colors.redAccent.shade100.withOpacity(0.65),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 0, vertical: 12),
+                  alignment: Alignment.centerLeft,
+                ),
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await context.read<AppState>().signOut();
+                },
+              ),
             ],
           );
         },

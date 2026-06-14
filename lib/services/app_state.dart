@@ -277,6 +277,29 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> signOut() async {
+    await removeFromSymposiumPool();
+    await FirebaseAuth.instance.signOut();
+    firebaseUser = null;
+    profile
+      ..uid       = _uuid.v4()
+      ..name      = ''
+      ..field     = ''
+      ..interests = []
+      ..quote     = '';
+    activeDebates.clear();
+    stoaNotifications.clear();
+    for (final sub in _stoaJoinWatchers.values) sub.cancel();
+    _stoaJoinWatchers.clear();
+    _myStoaRoomIds.clear();
+    _roomCache.clear();
+    _stoaToDebateRoom.clear();
+    restoredPage = '';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    notifyListeners();
+  }
+
   // Loads the user's profile from Firebase DB, falling back to their Google
   // display name for brand-new accounts that have no DB record yet.
   Future<void> _syncProfileFromFirebase(User user) async {

@@ -34,6 +34,10 @@ class SideMenu extends StatelessWidget {
                 _ActiveDebates(state: state),
               ]),
             ),
+            if (state.isPermanentAccount) ...[
+              const Divider(color: Colors.white10, height: 1),
+              _LogoutButton(),
+            ],
           ]),
         ),
       );
@@ -614,6 +618,33 @@ class _ActiveDebates extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _LogoutButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: TextButton.icon(
+        icon: const Icon(Icons.logout, size: 14),
+        label: Text('SIGN OUT',
+            style: GoogleFonts.dmSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5)),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.redAccent.shade100.withOpacity(0.70),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          alignment: Alignment.centerLeft,
+        ),
+        onPressed: () async {
+          Navigator.of(context).pop();
+          await context.read<AppState>().signOut();
+        },
+      ),
     );
   }
 }
