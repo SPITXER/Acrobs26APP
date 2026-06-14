@@ -150,6 +150,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadLocalProfile() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Always restore navigation state — even for new users with no name yet,
+    // so the Google redirect returns them to the right page (e.g. Symposium).
+    restoredPage = prefs.getString(_kPage) ?? '';
+
     final name = prefs.getString(_kName) ?? '';
     if (name.isEmpty) return;
     profile.uid       = prefs.getString(_kUid) ?? profile.uid;
@@ -168,9 +173,6 @@ class AppState extends ChangeNotifier {
         partnerIni:  prefs.getString(_kRoomPrtIni) ?? '?',
       );
     }
-
-    // Restore last-visited page (stoa / agora / acropolis)
-    restoredPage = prefs.getString(_kPage) ?? '';
 
     // Restore HostWaitScreen if the user was there before the refresh
     final hwaitId = prefs.getString(_kHostWaitId) ?? '';
