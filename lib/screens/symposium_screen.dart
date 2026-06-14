@@ -207,7 +207,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         if (googleErr.contains('unauthorized-domain'))  msg = 'Domain not authorized for Google sign-in.';
         else if (googleErr.contains('operation-not-allowed')) msg = 'Google sign-in not enabled. Contact support.';
         else if (googleErr.contains('popup-closed') || googleErr.contains('cancelled')) msg = 'Sign-in cancelled.';
-        setState(() { _authLoading = false; _authError = '$msg\n[${_extractCode(googleErr)}]'; });
+        setState(() { _authLoading = false; _authError = msg; });
       });
     }
 
@@ -419,12 +419,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         ),
       ),
     );
-  }
-
-  // Extracts the Firebase error code (e.g. "auth/unauthorized-domain") from the full error string.
-  String _extractCode(String err) {
-    final match = RegExp(r'\[([^\]]+)\]').firstMatch(err);
-    return match?.group(1) ?? err.split('\n').first;
   }
 
   Widget _authModeChip(String label, _AuthMode mode) {
