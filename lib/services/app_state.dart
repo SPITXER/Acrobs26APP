@@ -264,19 +264,23 @@ class AppState extends ChangeNotifier {
   Future<void> _syncProfileFromFirebase(User user) async {
     try {
       final snap = await _db.ref('users/${user.uid}').get();
+      // Best-effort name: Google display name → email prefix → 'User'
+      final fallback = user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!
+          : (user.email?.split('@').first ?? 'User');
+      profile.uid = user.uid;
       if (snap.exists && snap.value is Map) {
         final data = Map<String, dynamic>.from(snap.value as Map);
-        profile.uid       = user.uid;
-        if (profile.name.isEmpty)
-          profile.name    = (data['name'] as String?) ?? user.displayName ?? '';
-        if (profile.field.isEmpty)
-          profile.field   = (data['field'] as String?) ?? '';
-        if (profile.interests.isEmpty)
-          profile.interests = (data['interests'] as List?)?.cast<String>() ?? [];
-      } else if (profile.name.isEmpty && user.displayName != null) {
-        profile.uid  = user.uid;
-        profile.name = user.displayName!;
+        final saved = (data['name'] as String?) ?? '';
+        profile.name      = saved.isNotEmpty ? saved : fallback;
+        profile.field     = (data['field'] as String?) ?? '';
+        profile.interests = (data['interests'] as List?)?.cast<String>() ?? [];
+        profile.quote     = (data['quote'] as String?) ?? '';
+      } else {
+        profile.name = fallback;
       }
+      if (profile.field.isEmpty) profile.field = 'Intellectual';
+      if (profile.mode == null)   profile.mode  = AcroMode.symposium;
       await _saveLocalProfile();
       notifyListeners();
     } catch (_) {}

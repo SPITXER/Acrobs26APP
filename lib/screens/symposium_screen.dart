@@ -63,7 +63,11 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     if (state.isPermanentAccount && state.profile.name.isNotEmpty) {
       _onboarded = true;
       _enterScheduled = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _startListening());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await context.read<AppState>().publishToSymposiumPool();
+        _startListening();
+      });
     }
   }
 
