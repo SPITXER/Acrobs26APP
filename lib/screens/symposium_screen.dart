@@ -1140,29 +1140,9 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
         Divider(height: 1, color: Colors.white.withOpacity(0.07)),
 
-        // ── Incoming requests label ────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
-          child: Text('REQUESTS',
-              style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
-        ),
-
-        // ── DM request rows ────────────────────────────────────────────
+        // ── Notifications + requests unified list ──────────────────────
         Expanded(
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: state.requestsStream(),
-            builder: (context, snap) {
-              final requests = snap.data ?? [];
-              if (requests.isEmpty) {
-                return _emptyState('📬', 'No requests yet.', 'Others in the Symposium can invite you.');
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 24),
-                itemCount: requests.length,
-                itemBuilder: (_, i) => _dmRow(requests[i]),
-              );
-            },
-          ),
+          child: _buildNotifAndRequestList(state),
         ),
       ],
     );
@@ -1207,6 +1187,134 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.70))),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotifAndRequestList(AppState state) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: state.notificationsStream(),
+      builder: (context, notifSnap) {
+        final notifs = notifSnap.data ?? [];
+        return StreamBuilder<List<Map<String, dynamic>>>(
+          stream: state.requestsStream(),
+          builder: (context, reqSnap) {
+            final requests = reqSnap.data ?? [];
+            if (notifs.isEmpty && requests.isEmpty) {
+              return _emptyState('📬', 'No requests yet.', 'Others in the Symposium can invite you.');
+            }
+            // Build unified item list: [notif section header], ...notifs, [requests section header], ...requests
+            final items = <_InboxItem>[];
+            if (notifs.isNotEmpty) {
+              items.add(_InboxItem.header('NOTIFICATIONS'));
+              for (final n in notifs) items.add(_InboxItem.notif(n));
+            }
+            if (requests.isNotEmpty) {
+              items.add(_InboxItem.header('REQUESTS'));
+              for (final r in requests) items.add(_InboxItem.request(r));
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: items.length,
+              itemBuilder: (_, i) {
+                final item = items[i];
+                if (item.isHeader) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+                    child: Text(item.header!,
+                        style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+                  );
+                }
+                if (item.isNotif) return _notifRow(item.data!);
+                return _dmRow(item.data!);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _notifRow(Map<String, dynamic> notif) {
+    final notifId   = notif['notifId']   as String? ?? '';
+    final fromUid   = notif['fromUid']   as String? ?? '';
+    final fromName  = notif['fromName']  as String? ?? 'Someone';
+    final fromField = notif['fromField'] as String? ?? '';
+    final ts        = (notif['ts']       as int?)   ?? 0;
+    final read      = notif['read']      as bool?   ?? false;
+    final ini       = _initials(fromName);
+    final timeLabel = _relativeTime(ts);
+
+    return Dismissible(
+      key: ValueKey(notifId),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.white.withOpacity(0.05),
+        child: Icon(Icons.check, size: 18, color: Colors.white.withOpacity(0.40)),
+      ),
+      onDismissed: (_) => context.read<AppState>().clearNotification(notifId),
+      child: InkWell(
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _UserProfilePopup(
+            state: context.read<AppState>(),
+            uid: fromUid, name: fromName, field: fromField, badgeId: '', score: 0,
+          ),
+        ),
+        splashColor: AcroColors.gold.withOpacity(0.05),
+        highlightColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: read ? Colors.transparent : AcroColors.gold.withOpacity(0.04),
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(children: [
+            Stack(clipBehavior: Clip.none, children: [
+              AcroAvatar(initials: ini, seed: fromUid, size: 44),
+              if (!read)
+                Positioned(
+                  top: 0, right: 0,
+                  child: Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(
+                      color: AcroColors.gold,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF0B0F1A), width: 2),
+                    ),
+                  ),
+                ),
+            ]),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(fromName,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: read ? FontWeight.w500 : FontWeight.w700,
+                          color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text('Added you as a friend',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: read
+                              ? Colors.white.withOpacity(0.35)
+                              : AcroColors.gold.withOpacity(0.75))),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(timeLabel,
+                style: GoogleFonts.spaceMono(fontSize: 9, color: Colors.white.withOpacity(0.28))),
+          ]),
         ),
       ),
     );
@@ -1741,4 +1849,20 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
       ),
     );
   }
+}
+
+// ── Inbox list item discriminated union ─────────────────────────────────────
+
+class _InboxItem {
+  final String? header;
+  final Map<String, dynamic>? data;
+  final bool isNotif;
+
+  const _InboxItem._({this.header, this.data, this.isNotif = false});
+
+  factory _InboxItem.header(String label) => _InboxItem._(header: label);
+  factory _InboxItem.notif(Map<String, dynamic> d) => _InboxItem._(data: d, isNotif: true);
+  factory _InboxItem.request(Map<String, dynamic> d) => _InboxItem._(data: d);
+
+  bool get isHeader => header != null;
 }

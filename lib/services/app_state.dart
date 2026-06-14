@@ -1336,6 +1336,73 @@ class AppState extends ChangeNotifier {
       'friends/${profile.uid}/$uid': {'uid': uid, 'name': name, 'field': field, 'ts': ServerValue.timestamp},
       'friends/$uid/${profile.uid}': {'uid': profile.uid, 'name': profile.name, 'field': profile.field, 'ts': ServerValue.timestamp},
     });
+    // Notify recipient: in-app + email queue
+    final emailSnap = await _db.ref('users/$uid/email').get();
+    final email = emailSnap.exists ? (emailSnap.value as String? ?? '') : '';
+    await _sendFriendNotification(toUid: uid, toEmail: email, toName: name);
+  }
+
+  Future<void> _sendFriendNotification({
+    required String toUid,
+    required String toEmail,
+    required String toName,
+  }) async {
+    final notifId = _uuid.v4();
+    final updates = <String, dynamic>{
+      // In-app notification (streams to inbox)
+      'notifications/$toUid/$notifId': {
+        'notifId':   notifId,
+        'type':      'friend_added',
+        'fromUid':   profile.uid,
+        'fromName':  profile.name,
+        'fromField': profile.field,
+        'ts':        ServerValue.timestamp,
+        'read':      false,
+      },
+    };
+    // Email job — processed by the Cloud Function in functions/index.js
+    if (toEmail.isNotEmpty) {
+      updates['mail_queue/$notifId'] = {
+        'to':      toEmail,
+        'subject': '${profile.name} added you as a friend on Acropolis',
+        'html': '''
+<div style="font-family:Georgia,serif;max-width:520px;margin:auto;color:#1a1a2e;padding:32px 24px;">
+  <p style="font-size:22px;font-weight:bold;color:#c9a84c;">Acropolis</p>
+  <hr style="border:none;border-top:1px solid #e0d4a0;margin:16px 0;">
+  <p style="font-size:16px;">Hi $toName,</p>
+  <p style="font-size:15px;line-height:1.6;">
+    <strong>${profile.name}</strong> has added you as a friend on <strong>Acropolis</strong>.
+  </p>
+  <p style="font-size:14px;color:#555;line-height:1.6;">
+    Open the Acropolis Assembly to see their profile, follow back, or start a conversation.
+  </p>
+  <br>
+  <p style="font-size:11px;color:#aaa;">— The Acropolis Assembly</p>
+</div>''',
+        'processed': false,
+        'ts':        ServerValue.timestamp,
+      };
+    }
+    await _db.ref().update(updates);
+  }
+
+  Stream<List<Map<String, dynamic>>> notificationsStream() {
+    if (!isPermanentAccount) return Stream.value([]);
+    return _db.ref('notifications/${profile.uid}').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      return Map<String, dynamic>.from(raw)
+          .values
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList()
+        ..sort((a, b) => ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int));
+    });
+  }
+
+  Future<void> clearNotification(String notifId) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('notifications/${profile.uid}/$notifId').remove();
   }
 
   Future<void> removeFriend(String uid) async {
