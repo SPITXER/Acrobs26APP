@@ -256,36 +256,41 @@ class _SymposiumScreenState extends State<SymposiumScreen>
       backgroundColor: const Color(0xFF0B0F1A),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0F1A),
+        toolbarHeight: kToolbarHeight * 0.5, // 50 % shorter toolbar
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AcroColors.stoneLight),
+          icon: const Icon(Icons.arrow_back, size: 18, color: AcroColors.stoneLight),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           '🍷  SYMPOSIUM',
           style: GoogleFonts.dmSans(
             color: AcroColors.gold,
-            fontSize: 14,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
             letterSpacing: 3,
           ),
         ),
         actions: const [SideMenuButton(), SizedBox(width: 4)],
         bottom: _onboarded
-            ? TabBar(
-                controller: _tabs,
-                labelColor: AcroColors.gold,
-                unselectedLabelColor: AcroColors.stoneLight,
-                indicatorColor: AcroColors.gold,
-                indicatorSize: TabBarIndicatorSize.label,
-                labelStyle: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(24),
+                child: TabBar(
+                  controller: _tabs,
+                  labelColor: AcroColors.gold,
+                  unselectedLabelColor: AcroColors.stoneLight,
+                  indicatorColor: AcroColors.gold,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelPadding: EdgeInsets.zero,
+                  labelStyle: GoogleFonts.dmSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                  ),
+                  tabs: const [
+                    Tab(height: 24, text: 'THE HALL'),
+                    Tab(height: 24, text: 'THE ASSEMBLY'),
+                  ],
                 ),
-                tabs: const [
-                  Tab(text: 'THE HALL'),
-                  Tab(text: 'THE ASSEMBLY'),
-                ],
               )
             : null,
       ),
@@ -617,11 +622,11 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         final legendary   = allScrolls.take(3).toList();
         final hallScrolls = allScrolls.skip(3).toList(); // non-legendary feed
 
-        // 13 % of the viewport height — island is pulled this far above the
+        // 16 % of the viewport height — island is pulled this far above the
         // canvas top. The AppBar (same dark colour) covers the overflow
         // seamlessly. A matching SizedBox placeholder in the Column keeps
         // the heading/feed butted right up against the island's visual bottom.
-        final islandLift = MediaQuery.of(context).size.height * 0.13;
+        final islandLift = MediaQuery.of(context).size.height * 0.16;
         final islandH    = legendary.isNotEmpty
             ? kLegendSectionHeight
             : 290.0; // _emptyPlatform height
@@ -743,22 +748,33 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                     ],
                   ),
 
-                  // ── Island — floated 13 % above the canvas top ──────────
+                  // ── Island — floated 16 % above the canvas top ──────────
+                  // ShaderMask fades the bottom 5 % of the island to
+                  // transparent so it dissolves into the sky/clouds behind it.
                   Positioned(
                     top: -islandLift,
                     left: 0,
                     right: 0,
                     height: islandH,
-                    child: legendary.isNotEmpty
-                        ? LegendaryScrollsSection(
-                            scrolls: legendary,
-                            onScrollTap: (scroll) => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => ScrollThreadPage(scroll: scroll)),
-                            ),
-                          )
-                        : _emptyPlatform(context),
+                    child: ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (bounds) => const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.0, 0.95, 1.0],
+                        colors: [Colors.white, Colors.white, Colors.transparent],
+                      ).createShader(bounds),
+                      child: legendary.isNotEmpty
+                          ? LegendaryScrollsSection(
+                              scrolls: legendary,
+                              onScrollTap: (scroll) => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => ScrollThreadPage(scroll: scroll)),
+                              ),
+                            )
+                          : _emptyPlatform(context),
+                    ),
                   ),
                 ],
               ),
