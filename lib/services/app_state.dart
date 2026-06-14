@@ -1337,6 +1337,7 @@ class AppState extends ChangeNotifier {
         'ts': now,
         'originalTs': now,
         'votes': 42,
+        'visitors': 310,
       },
       {
         'nomId': 'seed_scroll_002',
@@ -1351,6 +1352,7 @@ class AppState extends ChangeNotifier {
         'ts': now - 1000,
         'originalTs': now - 1000,
         'votes': 38,
+        'visitors': 247,
       },
       {
         'nomId': 'seed_scroll_003',
@@ -1365,6 +1367,7 @@ class AppState extends ChangeNotifier {
         'ts': now - 2000,
         'originalTs': now - 2000,
         'votes': 31,
+        'visitors': 189,
       },
     ];
     final updates = <String, dynamic>{};

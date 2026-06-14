@@ -598,79 +598,57 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         final allScrolls = snap.data ?? [];
         final legendary  = allScrolls.take(3).toList();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Legendary Scrolls header ────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
-              child: Row(children: [
-                Text('⭐', style: TextStyle(fontSize: 13, color: AcroColors.gold.withOpacity(0.9))),
-                const SizedBox(width: 8),
-                Text(
-                  'LEGENDARY SCROLLS',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AcroColors.stoneLight,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${legendary.length} enshrined',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.white.withOpacity(0.25),
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ]),
+        return CustomScrollView(
+          slivers: [
+            // ── Rotating platform (title baked inside) ──────────────────
+            SliverToBoxAdapter(
+              child: legendary.isNotEmpty
+                  ? LegendaryScrollsSection(
+                      scrolls: legendary,
+                      onScrollTap: (scroll) => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => ScrollThreadPage(scroll: scroll)),
+                      ),
+                    )
+                  : _emptyPlatform(context),
             ),
 
-            // ── Rotating platform ───────────────────────────────────────
-            legendary.isNotEmpty
-                ? LegendaryScrollsSection(
-                    scrolls: legendary,
-                    onScrollTap: (scroll) => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => ScrollThreadPage(scroll: scroll)),
-                    ),
-                  )
-                : _emptyPlatform(context),
-
-            // ── Section divider ─────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
-              child: Row(children: [
-                Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Text(
-                    'THE HALL',
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 8,
-                      color: Colors.white.withOpacity(0.25),
-                      letterSpacing: 2,
+            // ── "THE HALL" divider ──────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+                child: Row(children: [
+                  Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text(
+                      'THE HALL',
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 8,
+                        color: Colors.white.withOpacity(0.25),
+                        letterSpacing: 2,
+                      ),
                     ),
                   ),
-                ),
-                Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
-              ]),
+                  Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.15))),
+                ]),
+              ),
             ),
 
             // ── Feed ────────────────────────────────────────────────────
             if (allScrolls.isEmpty)
-              Expanded(
+              SliverFillRemaining(
                 child: _hallEmptyState(context),
               )
             else
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                  itemCount: allScrolls.length,
-                  itemBuilder: (_, i) => _scrollCard(allScrolls[i], rank: i),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => _scrollCard(allScrolls[i], rank: i),
+                    childCount: allScrolls.length,
+                  ),
                 ),
               ),
           ],

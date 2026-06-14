@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/acro_theme.dart';
+import 'avatar.dart';
+
+// Height of the entire legendary section (island + scrolls + title)
+const double kLegendSectionHeight = 520.0;
 
 class LegendaryScrollsSection extends StatefulWidget {
   final List<Map<String, dynamic>> scrolls;
@@ -21,7 +25,7 @@ class LegendaryScrollsSection extends StatefulWidget {
 
 class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
     with SingleTickerProviderStateMixin {
-  double _angle = -pi / 6; // start with front scroll facing viewer
+  double _angle = -pi / 6;
   double _velocity = 0.0;
   late Ticker _ticker;
   Duration? _lastTick;
@@ -78,7 +82,7 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
       onPanUpdate: _onPanUpdate,
       onPanEnd: _onPanEnd,
       child: SizedBox(
-        height: 290,
+        height: kLegendSectionHeight,
         child: LayoutBuilder(
           builder: (context, constraints) =>
               _buildStack(constraints.maxWidth, constraints.maxHeight),
@@ -88,17 +92,17 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
   }
 
   Widget _buildStack(double w, double h) {
-    // Platform surface centre — the brick floor sits roughly here
+    // Orbit center sits on the platform brick surface.
+    // Island image is shifted down ~20 % via alignment → surface ≈ 57 % of h.
     final cx = w * 0.50;
-    final cy = h * 0.54;
+    final cy = h * 0.60;
 
-    // Ellipse radii — tight to fit inside the columns
-    final rx = w * 0.20;
-    final ry = h * 0.095;
+    // Ellipse: cap rx so it doesn't explode on wide screens
+    final rx = min(w * 0.25, 110.0);
+    final ry = h * 0.078;
 
     final count = widget.scrolls.length.clamp(1, 3);
 
-    // Compute positions and sort back→front (ascending sinA)
     final items = List.generate(count, (i) {
       final a = _angle + (i * 2 * pi / 3);
       return _ScrollItem(index: i, angle: a);
@@ -107,16 +111,42 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Platform image — fills the section
+        // ── Legendisland platform (shifted down) ──────────────────────
         Positioned.fill(
           child: Image.asset(
             'assets/images/Legendisland.png',
             fit: BoxFit.contain,
-            alignment: Alignment.center,
+            // positive y moves the image toward the bottom
+            alignment: const Alignment(0, 0.55),
           ),
         ),
 
-        // Rotating scrolls
+        // ── "LEGENDARY SCROLLS" title overlay ─────────────────────────
+        Positioned(
+          top: 18,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('✦', style: TextStyle(fontSize: 10, color: AcroColors.gold.withOpacity(0.7))),
+              const SizedBox(width: 10),
+              Text(
+                'LEGENDARY SCROLLS',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AcroColors.stoneLight,
+                  letterSpacing: 3.5,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text('✦', style: TextStyle(fontSize: 10, color: AcroColors.gold.withOpacity(0.7))),
+            ],
+          ),
+        ),
+
+        // ── Rotating scroll chips ─────────────────────────────────────
         for (final item in items) _positionedScroll(item, cx, cy, rx, ry),
       ],
     );
@@ -124,27 +154,26 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
 
   Widget _positionedScroll(
       _ScrollItem item, double cx, double cy, double rx, double ry) {
-    final sinA = sin(item.angle);
-    final cosA = cos(item.angle);
-
-    final px = cx + cosA * rx;
-    final py = cy + sinA * ry;
+    final sinA  = sin(item.angle);
+    final cosA  = cos(item.angle);
+    final px    = cx + cosA * rx;
+    final py    = cy + sinA * ry;
 
     // Depth: back=0, front=1
-    final depth = (sinA + 1) / 2;
-    final scale = 0.70 + 0.30 * depth;
-    final opacity = 0.60 + 0.40 * depth;
+    final depth   = (sinA + 1) / 2;
+    final scale   = 0.68 + 0.32 * depth;
+    final opacity = 0.55 + 0.45 * depth;
 
-    const cardW = 126.0;
-    const cardH = 82.0;
+    const chipW = 178.0;
+    const chipH = 168.0;
 
     final scroll = item.index < widget.scrolls.length
         ? widget.scrolls[item.index]
         : null;
 
     return Positioned(
-      left: px - (cardW * scale) / 2,
-      top: py - (cardH * scale) / 2,
+      left: px - (chipW * scale) / 2,
+      top:  py - (chipH * scale) / 2,
       child: Opacity(
         opacity: opacity,
         child: Transform.scale(
@@ -152,7 +181,7 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
           alignment: Alignment.topLeft,
           child: GestureDetector(
             onTap: scroll != null ? () => widget.onScrollTap(scroll) : null,
-            child: _ScrollChip(scroll: scroll),
+            child: _LegendScrollChip(scroll: scroll),
           ),
         ),
       ),
@@ -160,95 +189,138 @@ class _LegendaryScrollsSectionState extends State<LegendaryScrollsSection>
   }
 }
 
-// ── Individual scroll card that sits on the platform ─────────────────────────
+// ── Scroll chip — uses Scroll.png as template background ─────────────────────
+//
+// Scroll.png is 600×600. Content layout mapped to a 178×168 chip:
+//   x-scale = 178/600 = 0.2967
+//   y-scale = 168/600 = 0.2800
+//
+//   Avatar circle centre ≈ (175, 258) → chip (52, 72), r≈22 → left=30,top=50,size=44
+//   [PLAYER] text         ≈ (268, 178) → chip (80, 50)
+//   TOPIC NAME            ≈ (268, 228) → chip (80, 64)
+//   Stars row             ≈ (76,  350) → chip (23, 98)
+//   Lightning bolt        ≈ (298, 350) → chip (88, 98)
 
-class _ScrollChip extends StatelessWidget {
+class _LegendScrollChip extends StatelessWidget {
   final Map<String, dynamic>? scroll;
-  const _ScrollChip({this.scroll});
+  const _LegendScrollChip({this.scroll});
 
   @override
   Widget build(BuildContext context) {
-    final title    = scroll?['title']    as String? ?? 'Untitled Scroll';
-    final category = scroll?['category'] as String? ?? '';
+    final hostName = scroll?['hostName']  as String? ?? 'Anon';
+    final title    = scroll?['title']     as String? ?? 'Untitled';
+    final votes    = (scroll?['votes']    as int?)   ?? 0;
+    final visitors = (scroll?['visitors'] as int?)   ?? 0;
 
-    return Container(
-      width: 126,
-      height: 82,
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1C1608), Color(0xFF0E0B04)],
-        ),
-        border: Border.all(color: AcroColors.gold.withOpacity(0.65), width: 0.9),
-        borderRadius: BorderRadius.circular(2),
-        boxShadow: [
-          BoxShadow(
-            color: AcroColors.gold.withOpacity(0.25),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final initials = _initials(hostName);
+
+    return SizedBox(
+      width:  178,
+      height: 168,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Category / Legendary badge row
-          Row(children: [
-            if (category.isNotEmpty) ...[
-              Flexible(
-                child: Text(
-                  category.toUpperCase(),
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 7,
-                    color: AcroColors.gold.withOpacity(0.75),
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 5),
-            ],
-            Text(
-              '⭐',
-              style: TextStyle(fontSize: 8, color: AcroColors.gold.withOpacity(0.9)),
+          // Parchment background
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Scroll.png',
+              fit: BoxFit.fill,
             ),
-          ]),
-          const SizedBox(height: 5),
+          ),
 
-          // Title
-          Expanded(
+          // Avatar — sits inside the dashed circle on the left
+          Positioned(
+            left: 30,
+            top:  50,
+            child: AcroAvatar(initials: initials, seed: hostName, size: 44),
+          ),
+
+          // Host name ([PLAYER])
+          Positioned(
+            left:  80,
+            top:   46,
+            right: 10,
+            child: Text(
+              hostName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceMono(
+                fontSize: 8,
+                color: const Color(0xFF3B2500),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+
+          // Topic title (TOPIC NAME)
+          Positioned(
+            left:  80,
+            top:   58,
+            right: 8,
             child: Text(
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cormorant(
-                fontSize: 13,
+              style: GoogleFonts.spaceMono(
+                fontSize: 8.5,
                 fontWeight: FontWeight.w700,
-                color: Colors.white.withOpacity(0.92),
-                height: 1.2,
+                color: const Color(0xFF1E1000),
+                height: 1.25,
               ),
             ),
           ),
 
-          // Footer
-          const SizedBox(height: 4),
-          Row(children: [
-            const Text('📜', style: TextStyle(fontSize: 8)),
-            const SizedBox(width: 4),
-            Text(
-              'LEGENDARY',
-              style: GoogleFonts.spaceMono(
-                fontSize: 6.5,
-                color: AcroColors.gold.withOpacity(0.50),
-                letterSpacing: 1,
-              ),
+          // Stars + upvote count
+          Positioned(
+            left: 20,
+            top:  108,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('⭐', style: TextStyle(fontSize: 10)),
+                const Text('⭐', style: TextStyle(fontSize: 10)),
+                const Text('⭐', style: TextStyle(fontSize: 10)),
+                const SizedBox(width: 3),
+                Text(
+                  '+$votes',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF4A2D00),
+                  ),
+                ),
+              ],
             ),
-          ]),
+          ),
+
+          // Lightning bolt + visitors
+          Positioned(
+            left: 106,
+            top:  108,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('⚡', style: TextStyle(fontSize: 11)),
+                const SizedBox(width: 2),
+                Text(
+                  '$visitors',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF4A2D00),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    return parts.take(2).map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').join();
   }
 }
 
