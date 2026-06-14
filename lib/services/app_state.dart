@@ -77,6 +77,11 @@ class AppState extends ChangeNotifier {
   Future<void> _init() async {
     await _loadLocalProfile();
     firebaseUser = FirebaseAuth.instance.currentUser;
+    // If already signed in but local profile is empty (e.g. different device /
+    // browser), pull their profile from Firebase before anything else renders.
+    if (firebaseUser != null && profile.name.isEmpty) {
+      await _syncProfileFromFirebase(firebaseUser!);
+    }
     FirebaseAuth.instance.authStateChanges().listen((user) {
       firebaseUser = user;
       notifyListeners();
@@ -249,15 +254,38 @@ class AppState extends ChangeNotifier {
     await FirebaseAuth.instance.signInWithRedirect(GoogleAuthProvider());
   }
 
+  // Loads the user's profile from Firebase DB, falling back to their Google
+  // display name for brand-new accounts that have no DB record yet.
+  Future<void> _syncProfileFromFirebase(User user) async {
+    try {
+      final snap = await _db.ref('users/${user.uid}').get();
+      if (snap.exists && snap.value is Map) {
+        final data = Map<String, dynamic>.from(snap.value as Map);
+        profile.uid       = user.uid;
+        if (profile.name.isEmpty)
+          profile.name    = (data['name'] as String?) ?? user.displayName ?? '';
+        if (profile.field.isEmpty)
+          profile.field   = (data['field'] as String?) ?? '';
+        if (profile.interests.isEmpty)
+          profile.interests = (data['interests'] as List?)?.cast<String>() ?? [];
+      } else if (profile.name.isEmpty && user.displayName != null) {
+        profile.uid  = user.uid;
+        profile.name = user.displayName!;
+      }
+      await _saveLocalProfile();
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> _handleGoogleRedirectResult() async {
     try {
       final result = await FirebaseAuth.instance.getRedirectResult();
       final user = result.user;
       if (user == null) return;
-      if (profile.name.isEmpty && user.displayName != null) {
-        profile.name = user.displayName!;
-      }
+      await _syncProfileFromFirebase(user);
+      // Migrate any stoa rooms created under the temp uid to the Firebase uid
       final tempRooms = List<String>.of(_myStoaRoomIds);
+      final oldUid = profile.uid;
       profile.uid = user.uid;
       await _saveLocalProfile();
       for (final roomId in tempRooms) {
