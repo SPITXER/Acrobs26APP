@@ -1200,40 +1200,50 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
   Widget _buildNotifAndRequestList(AppState state) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: state.notificationsStream(),
-      builder: (context, notifSnap) {
-        final notifs = notifSnap.data ?? [];
+      stream: state.friendRequestsStream(),
+      builder: (context, frSnap) {
+        final friendReqs = frSnap.data ?? [];
         return StreamBuilder<List<Map<String, dynamic>>>(
-          stream: state.requestsStream(),
-          builder: (context, reqSnap) {
-            final requests = reqSnap.data ?? [];
-            if (notifs.isEmpty && requests.isEmpty) {
-              return _emptyState('📬', 'No requests yet.', 'Others in the Symposium can invite you.');
-            }
-            // Build unified item list: [notif section header], ...notifs, [requests section header], ...requests
-            final items = <_InboxItem>[];
-            if (notifs.isNotEmpty) {
-              items.add(_InboxItem.header('NOTIFICATIONS'));
-              for (final n in notifs) items.add(_InboxItem.notif(n));
-            }
-            if (requests.isNotEmpty) {
-              items.add(_InboxItem.header('REQUESTS'));
-              for (final r in requests) items.add(_InboxItem.request(r));
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.only(bottom: 24),
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final item = items[i];
-                if (item.isHeader) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
-                    child: Text(item.header!,
-                        style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
-                  );
+          stream: state.notificationsStream(),
+          builder: (context, notifSnap) {
+            final notifs = notifSnap.data ?? [];
+            return StreamBuilder<List<Map<String, dynamic>>>(
+              stream: state.requestsStream(),
+              builder: (context, reqSnap) {
+                final requests = reqSnap.data ?? [];
+                if (friendReqs.isEmpty && notifs.isEmpty && requests.isEmpty) {
+                  return _emptyState('📬', 'No requests yet.', 'Others in the Symposium can invite you.');
                 }
-                if (item.isNotif) return _notifRow(item.data!);
-                return _dmRow(item.data!);
+                final items = <_InboxItem>[];
+                if (friendReqs.isNotEmpty) {
+                  items.add(_InboxItem.header('FRIEND REQUESTS'));
+                  for (final fr in friendReqs) items.add(_InboxItem.friendReq(fr));
+                }
+                if (notifs.isNotEmpty) {
+                  items.add(_InboxItem.header('NOTIFICATIONS'));
+                  for (final n in notifs) items.add(_InboxItem.notif(n));
+                }
+                if (requests.isNotEmpty) {
+                  items.add(_InboxItem.header('REQUESTS'));
+                  for (final r in requests) items.add(_InboxItem.request(r));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: items.length,
+                  itemBuilder: (_, i) {
+                    final item = items[i];
+                    if (item.isHeader) {
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+                        child: Text(item.header!,
+                            style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+                      );
+                    }
+                    if (item.isFriendReq) return _friendRequestRow(item.data!);
+                    if (item.isNotif) return _notifRow(item.data!);
+                    return _dmRow(item.data!);
+                  },
+                );
               },
             );
           },
@@ -1308,7 +1318,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                           fontWeight: read ? FontWeight.w500 : FontWeight.w700,
                           color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('Added you as a friend',
+                  Text(_notifLabel(notif),
                       style: TextStyle(
                           fontSize: 12,
                           color: read
@@ -1322,6 +1332,88 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 style: GoogleFonts.spaceMono(fontSize: 9, color: Colors.white.withOpacity(0.28))),
           ]),
         ),
+      ),
+    );
+  }
+
+  String _notifLabel(Map<String, dynamic> notif) {
+    final type = notif['type'] as String? ?? '';
+    final name = notif['fromName'] as String? ?? 'Someone';
+    switch (type) {
+      case 'friend_accepted': return '$name accepted your friend request';
+      default:                return '$name added you as a friend';
+    }
+  }
+
+  Widget _friendRequestRow(Map<String, dynamic> req) {
+    final fromUid  = req['fromUid']  as String? ?? '';
+    final name     = req['name']     as String? ?? 'Anonymous';
+    final field    = req['field']    as String? ?? '';
+    final ts       = (req['ts']      as int?)   ?? 0;
+    final ini      = _initials(name);
+    final timeLabel = _relativeTime(ts);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AcroColors.gold.withOpacity(0.03),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        AcroAvatar(initials: ini, seed: fromUid, size: 44),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(name,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+              if (field.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(field,
+                    style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.40))),
+              ],
+              const SizedBox(height: 8),
+              Row(children: [
+                _smallBtn(
+                  label: 'ACCEPT',
+                  gold: true,
+                  onTap: () => context.read<AppState>().acceptFriendRequest(fromUid, name, field),
+                ),
+                const SizedBox(width: 8),
+                _smallBtn(
+                  label: 'DECLINE',
+                  gold: false,
+                  onTap: () => context.read<AppState>().declineFriendRequest(fromUid),
+                ),
+              ]),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(timeLabel,
+            style: GoogleFonts.spaceMono(fontSize: 9, color: Colors.white.withOpacity(0.28))),
+      ]),
+    );
+  }
+
+  Widget _smallBtn({required String label, required bool gold, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: gold ? AcroColors.gold.withOpacity(0.15) : Colors.transparent,
+          border: Border.all(color: gold ? AcroColors.gold.withOpacity(0.55) : Colors.white.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Text(label,
+            style: GoogleFonts.spaceMono(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: gold ? AcroColors.gold : Colors.white.withOpacity(0.40),
+                letterSpacing: 1)),
       ),
     );
   }
@@ -1635,6 +1727,8 @@ class _UserProfilePopup extends StatefulWidget {
 class _UserProfilePopupState extends State<_UserProfilePopup> {
   bool _loading     = true;
   bool _isFriend    = false;
+  bool _isPending   = false;
+  bool _hasRequest  = false;
   bool _isFollowing = false;
   bool _isBlocked   = false;
 
@@ -1690,6 +1784,8 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
 
     setState(() {
       _isFriend    = rel['isFriend']    ?? false;
+      _isPending   = rel['isPending']   ?? false;
+      _hasRequest  = rel['hasRequest']  ?? false;
       _isFollowing = rel['isFollowing'] ?? false;
       _isBlocked   = rel['isBlocked']   ?? false;
       _name        = (profile['name']      as String?) ?? widget.name;
@@ -1706,13 +1802,19 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
     });
   }
 
-  Future<void> _toggleFriend() async {
-    final was = _isFriend;
-    setState(() => _isFriend = !was);
-    if (was) {
+  Future<void> _handleFriendAction() async {
+    if (_isFriend) {
+      setState(() => _isFriend = false);
       await widget.state.removeFriend(widget.uid);
+    } else if (_isPending) {
+      setState(() => _isPending = false);
+      await widget.state.cancelFriendRequest(widget.uid);
+    } else if (_hasRequest) {
+      setState(() { _hasRequest = false; _isFriend = true; });
+      await widget.state.acceptFriendRequest(widget.uid, _name, _field);
     } else {
-      await widget.state.addFriend(widget.uid, _name, _field);
+      setState(() => _isPending = true);
+      await widget.state.sendFriendRequest(widget.uid, _name, _field);
     }
   }
 
@@ -1803,44 +1905,60 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
               _CloudThought(text: _headspace),
             ],
 
-            // ── Rank stats ───────────────────────────────────────────────
-            const SizedBox(height: 20),
-            Row(children: [
-              Text('RANK', style: GoogleFonts.spaceMono(
-                  fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
-              const SizedBox(width: 10),
-              Expanded(child: Divider(color: Colors.white.withOpacity(0.07), height: 1)),
-            ]),
-            const SizedBox(height: 10),
-            // Score bar
-            Row(children: [
-              Text('SCORE', style: GoogleFonts.spaceMono(
-                  fontSize: 8, color: Colors.white.withOpacity(0.25), letterSpacing: 1.5)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(1),
-                  child: LinearProgressIndicator(
-                    value: _score.clamp(0.0, 1.0),
-                    backgroundColor: Colors.white.withOpacity(0.07),
-                    valueColor: const AlwaysStoppedAnimation(AcroColors.gold),
-                    minHeight: 3,
+            // ── Rank stats (friends only) ────────────────────────────────
+            if (!_loading && _isFriend) ...[
+              const SizedBox(height: 20),
+              Row(children: [
+                Text('RANK', style: GoogleFonts.spaceMono(
+                    fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+                const SizedBox(width: 10),
+                Expanded(child: Divider(color: Colors.white.withOpacity(0.07), height: 1)),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: [
+                Text('SCORE', style: GoogleFonts.spaceMono(
+                    fontSize: 8, color: Colors.white.withOpacity(0.25), letterSpacing: 1.5)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(1),
+                    child: LinearProgressIndicator(
+                      value: _score.clamp(0.0, 1.0),
+                      backgroundColor: Colors.white.withOpacity(0.07),
+                      valueColor: const AlwaysStoppedAnimation(AcroColors.gold),
+                      minHeight: 3,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Text('${(_score * 100).toStringAsFixed(0)}',
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700)),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: [
+                _miniStat('⏱', '${(_minutes / 60).toStringAsFixed(1)}h', 'active'),
+                _miniStat('📜', '$_quotes', 'quotes'),
+                _miniStat('⭐', '$_nomRecv', 'noms'),
+                _miniStat('🗂', '$_topics', 'topics'),
+              ]),
+            ] else if (!_loading) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(children: [
+                  Icon(Icons.lock_outline, size: 14, color: Colors.white.withOpacity(0.25)),
+                  const SizedBox(width: 10),
+                  Text('Rank stats are visible to friends only',
+                      style: GoogleFonts.spaceMono(
+                          fontSize: 9, color: Colors.white.withOpacity(0.30), letterSpacing: 0.5)),
+                ]),
               ),
-              const SizedBox(width: 8),
-              Text('${(_score * 100).toStringAsFixed(0)}',
-                  style: GoogleFonts.spaceMono(
-                      fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700)),
-            ]),
-            const SizedBox(height: 10),
-            // Stat mini-grid
-            Row(children: [
-              _miniStat('⏱', '${(_minutes / 60).toStringAsFixed(1)}h', 'active'),
-              _miniStat('📜', '$_quotes', 'quotes'),
-              _miniStat('⭐', '$_nomRecv', 'noms'),
-              _miniStat('🗂', '$_topics', 'topics'),
-            ]),
+            ],
 
             // ── Interests ────────────────────────────────────────────────
             if (_interests.isNotEmpty) ...[
@@ -1878,10 +1996,21 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
             else
               Row(children: [
                 Expanded(child: _actionBtn(
-                  icon: _isFriend ? Icons.people : Icons.person_add_outlined,
-                  label: _isFriend ? 'FRIENDS' : 'ADD FRIEND',
-                  active: _isFriend,
-                  onTap: _toggleFriend,
+                  icon: _isFriend
+                      ? Icons.people
+                      : _hasRequest
+                          ? Icons.person_add
+                          : Icons.person_add_outlined,
+                  label: _isFriend
+                      ? 'FRIENDS'
+                      : _isPending
+                          ? 'PENDING'
+                          : _hasRequest
+                              ? 'ACCEPT'
+                              : 'ADD FRIEND',
+                  active: _isFriend || _hasRequest,
+                  dimmed: _isPending,
+                  onTap: _handleFriendAction,
                 )),
                 const SizedBox(width: 10),
                 Expanded(child: _actionBtn(
@@ -1928,11 +2057,18 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
     required VoidCallback onTap,
     bool isDestructive = false,
     bool compact = false,
+    bool dimmed = false,
   }) {
     final activeColor = isDestructive ? Colors.redAccent : AcroColors.gold;
-    final borderColor = active ? activeColor.withOpacity(0.60) : Colors.white.withOpacity(0.12);
-    final bgColor     = active ? activeColor.withOpacity(0.12) : Colors.white.withOpacity(0.04);
-    final fgColor     = active ? activeColor : Colors.white.withOpacity(0.55);
+    final borderColor = dimmed
+        ? Colors.white.withOpacity(0.08)
+        : active ? activeColor.withOpacity(0.60) : Colors.white.withOpacity(0.12);
+    final bgColor = dimmed
+        ? Colors.white.withOpacity(0.02)
+        : active ? activeColor.withOpacity(0.12) : Colors.white.withOpacity(0.04);
+    final fgColor = dimmed
+        ? Colors.white.withOpacity(0.28)
+        : active ? activeColor : Colors.white.withOpacity(0.55);
 
     return GestureDetector(
       onTap: onTap,
@@ -2040,12 +2176,14 @@ class _InboxItem {
   final String? header;
   final Map<String, dynamic>? data;
   final bool isNotif;
+  final bool isFriendReq;
 
-  const _InboxItem._({this.header, this.data, this.isNotif = false});
+  const _InboxItem._({this.header, this.data, this.isNotif = false, this.isFriendReq = false});
 
   factory _InboxItem.header(String label) => _InboxItem._(header: label);
   factory _InboxItem.notif(Map<String, dynamic> d) => _InboxItem._(data: d, isNotif: true);
   factory _InboxItem.request(Map<String, dynamic> d) => _InboxItem._(data: d);
+  factory _InboxItem.friendReq(Map<String, dynamic> d) => _InboxItem._(data: d, isFriendReq: true);
 
   bool get isHeader => header != null;
 }

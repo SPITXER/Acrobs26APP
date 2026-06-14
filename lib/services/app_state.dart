@@ -1348,29 +1348,63 @@ class AppState extends ChangeNotifier {
   // Social graph — friends, follow, block
   // ---------------------------------------------------------------------------
 
-  Future<void> addFriend(String uid, String name, String field) async {
+  Future<void> sendFriendRequest(String toUid, String toName, String toField) async {
     if (!isPermanentAccount) return;
-    await _db.ref().update({
-      'friends/${profile.uid}/$uid': {'uid': uid, 'name': name, 'field': field, 'ts': ServerValue.timestamp},
-      'friends/$uid/${profile.uid}': {'uid': profile.uid, 'name': profile.name, 'field': profile.field, 'ts': ServerValue.timestamp},
+    await _db.ref('friend_requests/$toUid/${profile.uid}').set({
+      'uid':   profile.uid,
+      'name':  profile.name,
+      'field': profile.field,
+      'ts':    ServerValue.timestamp,
     });
-    // Notify recipient: in-app + email queue
-    final emailSnap = await _db.ref('users/$uid/email').get();
-    final email = emailSnap.exists ? (emailSnap.value as String? ?? '') : '';
-    await _sendFriendNotification(toUid: uid, toEmail: email, toName: name);
   }
 
-  Future<void> _sendFriendNotification({
+  Future<void> acceptFriendRequest(String fromUid, String fromName, String fromField) async {
+    if (!isPermanentAccount) return;
+    await _db.ref().update({
+      'friend_requests/${profile.uid}/$fromUid':            null,
+      'friends/${profile.uid}/$fromUid': {'uid': fromUid, 'name': fromName, 'field': fromField, 'ts': ServerValue.timestamp},
+      'friends/$fromUid/${profile.uid}': {'uid': profile.uid, 'name': profile.name, 'field': profile.field, 'ts': ServerValue.timestamp},
+    });
+    final emailSnap = await _db.ref('users/$fromUid/email').get();
+    final email = emailSnap.exists ? (emailSnap.value as String? ?? '') : '';
+    await _sendAcceptanceNotification(toUid: fromUid, toEmail: email, toName: fromName);
+  }
+
+  Future<void> declineFriendRequest(String fromUid) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('friend_requests/${profile.uid}/$fromUid').remove();
+  }
+
+  Future<void> cancelFriendRequest(String toUid) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('friend_requests/$toUid/${profile.uid}').remove();
+  }
+
+  Stream<List<Map<String, dynamic>>> friendRequestsStream() {
+    if (!isPermanentAccount) return Stream.value([]);
+    return _db.ref('friend_requests/${profile.uid}').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      return Map<String, dynamic>.from(raw).entries.map((e) {
+        final v = Map<String, dynamic>.from(e.value as Map);
+        v['fromUid'] = e.key;
+        return v;
+      }).toList()
+        ..sort((a, b) => ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int));
+    });
+  }
+
+  Future<void> _sendAcceptanceNotification({
     required String toUid,
     required String toEmail,
     required String toName,
   }) async {
     final notifId = _uuid.v4();
     final updates = <String, dynamic>{
-      // In-app notification (streams to inbox)
       'notifications/$toUid/$notifId': {
         'notifId':   notifId,
-        'type':      'friend_added',
+        'type':      'friend_accepted',
         'fromUid':   profile.uid,
         'fromName':  profile.name,
         'fromField': profile.field,
@@ -1378,21 +1412,20 @@ class AppState extends ChangeNotifier {
         'read':      false,
       },
     };
-    // Email job — processed by the Cloud Function in functions/index.js
     if (toEmail.isNotEmpty) {
       updates['mail_queue/$notifId'] = {
         'to':      toEmail,
-        'subject': '${profile.name} added you as a friend on Acropolis',
+        'subject': '${profile.name} accepted your friend request on Acropolis',
         'html': '''
 <div style="font-family:Georgia,serif;max-width:520px;margin:auto;color:#1a1a2e;padding:32px 24px;">
   <p style="font-size:22px;font-weight:bold;color:#c9a84c;">Acropolis</p>
   <hr style="border:none;border-top:1px solid #e0d4a0;margin:16px 0;">
   <p style="font-size:16px;">Hi $toName,</p>
   <p style="font-size:15px;line-height:1.6;">
-    <strong>${profile.name}</strong> has added you as a friend on <strong>Acropolis</strong>.
+    <strong>${profile.name}</strong> accepted your friend request on <strong>Acropolis</strong>.
   </p>
   <p style="font-size:14px;color:#555;line-height:1.6;">
-    Open the Acropolis Assembly to see their profile, follow back, or start a conversation.
+    You are now connected. Open the Acropolis Assembly to view their profile.
   </p>
   <br>
   <p style="font-size:11px;color:#aaa;">— The Acropolis Assembly</p>
@@ -1466,16 +1499,23 @@ class AppState extends ChangeNotifier {
   }
 
   Future<Map<String, bool>> userRelation(String uid) async {
-    if (!isPermanentAccount) return {'isFriend': false, 'isFollowing': false, 'isBlocked': false};
+    if (!isPermanentAccount) return {
+      'isFriend': false, 'isFollowing': false, 'isBlocked': false,
+      'isPending': false, 'hasRequest': false,
+    };
     final results = await Future.wait([
       _db.ref('friends/${profile.uid}/$uid').get(),
       _db.ref('following/${profile.uid}/$uid').get(),
       _db.ref('blocked/${profile.uid}/$uid').get(),
+      _db.ref('friend_requests/$uid/${profile.uid}').get(), // I sent to them
+      _db.ref('friend_requests/${profile.uid}/$uid').get(), // They sent to me
     ]);
     return {
       'isFriend':    results[0].exists,
       'isFollowing': results[1].exists,
       'isBlocked':   results[2].exists,
+      'isPending':   results[3].exists,
+      'hasRequest':  results[4].exists,
     };
   }
 
