@@ -18,6 +18,11 @@ const _kInterests = [
   'Psychology', 'Art', 'Mathematics', 'Theology',
 ];
 
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  return parts.take(2).map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').join();
+}
+
 enum _AuthMode { createAccount, signIn }
 
 class SymposiumScreen extends StatefulWidget {
@@ -195,10 +200,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     await context.read<AppState>().declineSymposiumRequest(reqId);
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    return parts.take(2).map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').join();
-  }
+  // _initials is a top-level function defined above this class
 
   // ---------------------------------------------------------------------------
   // Build
@@ -999,7 +1001,24 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final medals   = ['🥇', '🥈', '🥉'];
     final posLabel = isMedal ? medals[pos - 1] : '#$pos';
 
-    return Container(
+    void openProfile() {
+      if (isMe) return;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _UserProfilePopup(
+          state: context.read<AppState>(),
+          uid: uid, name: name, field: field, badgeId: badgeId, score: score,
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: openProfile,
+      splashColor: AcroColors.gold.withOpacity(0.06),
+      highlightColor: Colors.transparent,
+      child: Container(
       decoration: BoxDecoration(
         color: isMe
             ? AcroColors.gold.withOpacity(0.07)
@@ -1065,6 +1084,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                 color: isMe ? AcroColors.gold : Colors.white.withOpacity(0.40),
                 fontWeight: FontWeight.w700)),
       ]),
+      ),
     );
   }
 
@@ -1072,43 +1092,123 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
   Widget _buildInboxPanel({required bool showHeader}) {
     final state = context.read<AppState>();
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: state.requestsStream(),
-      builder: (context, snap) {
-        final requests = snap.data ?? [];
-        if (requests.isEmpty) {
-          return Column(
-            children: [
-              if (showHeader) _inboxHeader(),
-              Expanded(child: _emptyState('📬', 'No connections yet.', 'Others in the Symposium can invite you.')),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (showHeader) _inboxHeader(),
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.only(top: showHeader ? 0 : 8, bottom: 24),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showHeader)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+            child: _panelHeader('CONNECTIONS'),
+          ),
+
+        // ── Friends circle ─────────────────────────────────────────────
+        StreamBuilder<List<Map<String, dynamic>>>(
+          stream: state.friendsStream(),
+          builder: (context, snap) {
+            final friends = snap.data ?? [];
+            if (friends.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+                child: Text(
+                  'Add friends from the leaderboard to see them here.',
+                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.25)),
+                ),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 8),
+                  child: Text('YOUR CIRCLE',
+                      style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+                ),
+                SizedBox(
+                  height: 84,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    itemCount: friends.length,
+                    itemBuilder: (_, i) => _friendBubble(friends[i]),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            );
+          },
+        ),
+
+        Divider(height: 1, color: Colors.white.withOpacity(0.07)),
+
+        // ── Incoming requests label ────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
+          child: Text('REQUESTS',
+              style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+        ),
+
+        // ── DM request rows ────────────────────────────────────────────
+        Expanded(
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: state.requestsStream(),
+            builder: (context, snap) {
+              final requests = snap.data ?? [];
+              if (requests.isEmpty) {
+                return _emptyState('📬', 'No requests yet.', 'Others in the Symposium can invite you.');
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.only(bottom: 24),
                 itemCount: requests.length,
                 itemBuilder: (_, i) => _dmRow(requests[i]),
-              ),
-            ),
-          ],
-        );
-      },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _inboxHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
-      child: Row(children: [
-        _panelHeader('CONNECTIONS'),
-        const Spacer(),
-        Text('requests', style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.25), letterSpacing: 1)),
-      ]),
+  Widget _friendBubble(Map<String, dynamic> friend) {
+    final uid   = friend['uid']   as String? ?? '';
+    final name  = friend['name']  as String? ?? 'Anonymous';
+    final field = friend['field'] as String? ?? '';
+    final ini   = _initials(name);
+
+    return GestureDetector(
+      onTap: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _UserProfilePopup(
+          state: context.read<AppState>(),
+          uid: uid, name: name, field: field, badgeId: '', score: 0,
+        ),
+      ),
+      child: Container(
+        width: 64,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AcroColors.gold, width: 2),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: AcroAvatar(initials: ini, seed: uid, size: 46),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(name.split(' ').first,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.70))),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1392,4 +1492,253 @@ class _SymposiumScreenState extends State<SymposiumScreen>
           ),
         ),
       );
+}
+
+// ── User profile popup (leaderboard + friend circle tap) ────────────────────
+
+class _UserProfilePopup extends StatefulWidget {
+  final AppState state;
+  final String uid;
+  final String name;
+  final String field;
+  final String badgeId;
+  final double score;
+
+  const _UserProfilePopup({
+    required this.state,
+    required this.uid,
+    required this.name,
+    required this.field,
+    required this.badgeId,
+    required this.score,
+  });
+
+  @override
+  State<_UserProfilePopup> createState() => _UserProfilePopupState();
+}
+
+class _UserProfilePopupState extends State<_UserProfilePopup> {
+  bool _loading     = true;
+  bool _isFriend    = false;
+  bool _isFollowing = false;
+  bool _isBlocked   = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final rel = await widget.state.userRelation(widget.uid);
+    if (!mounted) return;
+    setState(() {
+      _isFriend    = rel['isFriend']    ?? false;
+      _isFollowing = rel['isFollowing'] ?? false;
+      _isBlocked   = rel['isBlocked']   ?? false;
+      _loading     = false;
+    });
+  }
+
+  Future<void> _toggleFriend() async {
+    final was = _isFriend;
+    setState(() => _isFriend = !was);
+    if (was) {
+      await widget.state.removeFriend(widget.uid);
+    } else {
+      await widget.state.addFriend(widget.uid, widget.name, widget.field);
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    final was = _isFollowing;
+    setState(() => _isFollowing = !was);
+    if (was) {
+      await widget.state.unfollowUser(widget.uid);
+    } else {
+      await widget.state.followUser(widget.uid, widget.name);
+    }
+  }
+
+  Future<void> _toggleBlock() async {
+    final was = _isBlocked;
+    setState(() => _isBlocked = !was);
+    if (was) {
+      await widget.state.unblockUser(widget.uid);
+    } else {
+      await widget.state.blockUser(widget.uid);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ini      = _initials(widget.name);
+    final badge    = BadgeEngine.fromId(widget.badgeId);
+    final badgeInfo = BadgeEngine.infoFor(badge);
+    final hasScore = widget.score > 0;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F1320),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Center(child: Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2)),
+          )),
+          const SizedBox(height: 28),
+
+          // Avatar + name + badge
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AcroColors.gold.withOpacity(0.60), width: 2.5),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: AcroAvatar(initials: ini, seed: widget.uid, size: 58),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.name,
+                      style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                  if (widget.field.isNotEmpty)
+                    Text(widget.field,
+                        style: TextStyle(fontSize: 12, color: AcroColors.stoneLight)),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    Text(badgeInfo.emoji, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 5),
+                    Text(badgeInfo.name,
+                        style: GoogleFonts.spaceMono(fontSize: 9, color: AcroColors.gold.withOpacity(0.75), letterSpacing: 1)),
+                  ]),
+                ],
+              ),
+            ),
+          ]),
+
+          // Score bar (only if we have it)
+          if (hasScore) ...[
+            const SizedBox(height: 20),
+            Row(children: [
+              Text('SCORE', style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(1),
+                  child: LinearProgressIndicator(
+                    value: widget.score.clamp(0.0, 1.0),
+                    backgroundColor: Colors.white.withOpacity(0.08),
+                    valueColor: const AlwaysStoppedAnimation(AcroColors.gold),
+                    minHeight: 4,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text('${(widget.score * 100).toStringAsFixed(0)}',
+                  style: GoogleFonts.spaceMono(fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700)),
+            ]),
+          ],
+
+          const SizedBox(height: 28),
+          const Divider(color: Colors.white10),
+          const SizedBox(height: 16),
+
+          // Action buttons
+          if (_loading)
+            const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(color: AcroColors.gold, strokeWidth: 2)))
+          else
+            Row(children: [
+              // Add Friend / Unfriend
+              Expanded(
+                child: _actionBtn(
+                  icon: _isFriend ? Icons.people : Icons.person_add_outlined,
+                  label: _isFriend ? 'FRIENDS' : 'ADD FRIEND',
+                  active: _isFriend,
+                  onTap: _toggleFriend,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Follow / Following
+              Expanded(
+                child: _actionBtn(
+                  icon: _isFollowing ? Icons.notifications_active : Icons.notifications_none,
+                  label: _isFollowing ? 'FOLLOWING' : 'FOLLOW',
+                  active: _isFollowing,
+                  onTap: _toggleFollow,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Block
+              SizedBox(
+                width: 52,
+                child: _actionBtn(
+                  icon: _isBlocked ? Icons.block : Icons.block_outlined,
+                  label: '',
+                  active: _isBlocked,
+                  onTap: _toggleBlock,
+                  isDestructive: true,
+                  compact: true,
+                ),
+              ),
+            ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionBtn({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+    bool compact = false,
+  }) {
+    final activeColor = isDestructive ? Colors.redAccent : AcroColors.gold;
+    final borderColor = active
+        ? activeColor.withOpacity(0.60)
+        : Colors.white.withOpacity(0.12);
+    final bgColor = active
+        ? activeColor.withOpacity(0.12)
+        : Colors.white.withOpacity(0.04);
+    final fgColor = active
+        ? activeColor
+        : Colors.white.withOpacity(0.55);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: compact ? 0 : 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: compact
+            ? Center(child: Icon(icon, size: 18, color: fgColor))
+            : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, size: 14, color: fgColor),
+                if (label.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Text(label,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 10, fontWeight: FontWeight.w700,
+                          color: fgColor, letterSpacing: 1.5)),
+                ],
+              ]),
+      ),
+    );
+  }
 }

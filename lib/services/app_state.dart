@@ -1326,6 +1326,74 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Social graph — friends, follow, block
+  // ---------------------------------------------------------------------------
+
+  Future<void> addFriend(String uid, String name, String field) async {
+    if (!isPermanentAccount) return;
+    await _db.ref().update({
+      'friends/${profile.uid}/$uid': {'uid': uid, 'name': name, 'field': field, 'ts': ServerValue.timestamp},
+      'friends/$uid/${profile.uid}': {'uid': profile.uid, 'name': profile.name, 'field': profile.field, 'ts': ServerValue.timestamp},
+    });
+  }
+
+  Future<void> removeFriend(String uid) async {
+    if (!isPermanentAccount) return;
+    await _db.ref().update({
+      'friends/${profile.uid}/$uid': null,
+      'friends/$uid/${profile.uid}': null,
+    });
+  }
+
+  Future<void> followUser(String uid, String name) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('following/${profile.uid}/$uid').set({'uid': uid, 'name': name, 'ts': ServerValue.timestamp});
+  }
+
+  Future<void> unfollowUser(String uid) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('following/${profile.uid}/$uid').remove();
+  }
+
+  Future<void> blockUser(String uid) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('blocked/${profile.uid}/$uid').set(true);
+  }
+
+  Future<void> unblockUser(String uid) async {
+    if (!isPermanentAccount) return;
+    await _db.ref('blocked/${profile.uid}/$uid').remove();
+  }
+
+  Stream<List<Map<String, dynamic>>> friendsStream() {
+    if (!isPermanentAccount) return Stream.value([]);
+    return _db.ref('friends/${profile.uid}').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      return Map<String, dynamic>.from(raw)
+          .values
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList()
+        ..sort((a, b) => ((b['ts'] ?? 0) as int).compareTo((a['ts'] ?? 0) as int));
+    });
+  }
+
+  Future<Map<String, bool>> userRelation(String uid) async {
+    if (!isPermanentAccount) return {'isFriend': false, 'isFollowing': false, 'isBlocked': false};
+    final results = await Future.wait([
+      _db.ref('friends/${profile.uid}/$uid').get(),
+      _db.ref('following/${profile.uid}/$uid').get(),
+      _db.ref('blocked/${profile.uid}/$uid').get(),
+    ]);
+    return {
+      'isFriend':    results[0].exists,
+      'isFollowing': results[1].exists,
+      'isBlocked':   results[2].exists,
+    };
+  }
+
   Future<bool> hasNominated(String roomId) async {
     if (!isPermanentAccount) return false;
     final snap =
