@@ -25,6 +25,11 @@ class SideMenu extends StatelessWidget {
             const Divider(color: Colors.white10, height: 1),
             Expanded(
               child: ListView(padding: EdgeInsets.zero, children: [
+                if (state.isPermanentAccount) ...[
+                  _Section(label: 'HEADSPACE'),
+                  _HeadspaceRow(state: state),
+                  const Divider(color: Colors.white10, height: 1),
+                ],
                 _Section(
                   label: 'YOUR ARGUMENTS',
                   liveCount: state.myStoaRoomIds.length,
@@ -243,6 +248,183 @@ class _Section extends StatelessWidget {
       ]),
     );
   }
+}
+
+// ── Headspace row — shows current thought, tap to edit ───────────────────────
+
+class _HeadspaceRow extends StatelessWidget {
+  final AppState state;
+  const _HeadspaceRow({required this.state});
+
+  void _openSheet(BuildContext context) {
+    final ctrl = TextEditingController(text: state.profile.headspace);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0B0F1A),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 20),
+              Text('HEADSPACE',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 10, fontWeight: FontWeight.w700,
+                      color: Colors.white.withOpacity(0.45), letterSpacing: 3)),
+              const SizedBox(height: 4),
+              Text("What's on your mind right now?",
+                  style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.30))),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                maxLines: 3,
+                maxLength: 160,
+                style: GoogleFonts.cormorant(
+                    color: Colors.white, fontSize: 16, fontStyle: FontStyle.italic),
+                decoration: InputDecoration(
+                  hintText: 'A thought, a question, a wonder…',
+                  hintStyle: GoogleFonts.cormorant(
+                      color: Colors.white.withOpacity(0.25),
+                      fontSize: 15, fontStyle: FontStyle.italic),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.04),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(3),
+                      borderSide: BorderSide(color: AcroColors.gold.withOpacity(0.20))),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(3),
+                      borderSide: BorderSide(color: AcroColors.gold.withOpacity(0.20))),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(3),
+                      borderSide: const BorderSide(color: AcroColors.gold)),
+                  counterStyle: TextStyle(color: Colors.white.withOpacity(0.20), fontSize: 10),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await state.setHeadspace(ctrl.text);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AcroColors.gold,
+                    foregroundColor: AcroColors.stone,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+                    textStyle: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 2),
+                  ),
+                  child: const Text('SET HEADSPACE'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final thought = state.profile.headspace;
+    return InkWell(
+      onTap: () => _openSheet(context),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+        child: thought.isEmpty
+            ? Row(children: [
+                Icon(Icons.cloud_outlined, size: 14, color: Colors.white.withOpacity(0.25)),
+                const SizedBox(width: 8),
+                Text("Tap to share what's on your mind",
+                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.25),
+                        fontStyle: FontStyle.italic)),
+              ])
+            : _CloudThought(text: thought, isOwn: true),
+      ),
+    );
+  }
+}
+
+// ── Cloud thought bubble (shared between side menu + profile popup) ───────────
+
+class _CloudThought extends StatelessWidget {
+  final String text;
+  final bool isOwn;
+  const _CloudThought({required this.text, this.isOwn = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _CloudPainter(
+          color: isOwn
+              ? AcroColors.gold.withOpacity(0.12)
+              : Colors.white.withOpacity(0.06),
+          borderColor: isOwn
+              ? AcroColors.gold.withOpacity(0.40)
+              : Colors.white.withOpacity(0.18)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 22),
+        child: Text(
+          '"$text"',
+          style: GoogleFonts.cormorant(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: isOwn ? AcroColors.gold.withOpacity(0.90) : Colors.white.withOpacity(0.72),
+              height: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _CloudPainter extends CustomPainter {
+  final Color color;
+  final Color borderColor;
+  const _CloudPainter({required this.color, required this.borderColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final border = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    final r = size.height * 0.38;
+    final path = Path();
+    // Main rounded rect body
+    final bodyRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height - 10), Radius.circular(r * 0.7));
+    path.addRRect(bodyRect);
+    // Small tail bubbles at bottom-left
+    path.addOval(Rect.fromCircle(center: Offset(20, size.height - 8), radius: 6));
+    path.addOval(Rect.fromCircle(center: Offset(12, size.height - 2), radius: 4));
+    path.addOval(Rect.fromCircle(center: Offset(6, size.height + 2), radius: 2.5));
+
+    canvas.drawPath(path, paint);
+    canvas.drawPath(path, border);
+  }
+
+  @override
+  bool shouldRepaint(_CloudPainter old) =>
+      old.color != color || old.borderColor != borderColor;
 }
 
 class _StoaRooms extends StatelessWidget {

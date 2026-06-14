@@ -6,6 +6,7 @@ class UserProfile {
   String field;
   String location;
   String quote;
+  String headspace;
   List<String> interests;
   AcroMode? mode;
   // -1 = derive from uid hash (original behaviour); 0/1/2 = explicit ghost pick
@@ -17,6 +18,7 @@ class UserProfile {
     this.field = '',
     this.location = '',
     this.quote = '',
+    this.headspace = '',
     this.interests = const [],
     this.mode,
     this.avatarIndex = -1,

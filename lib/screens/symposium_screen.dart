@@ -1607,6 +1607,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 class _UserProfilePopup extends StatefulWidget {
   final AppState state;
   final String uid;
+  // Seed values shown immediately; full data loaded async
   final String name;
   final String field;
   final String badgeId;
@@ -1631,19 +1632,70 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
   bool _isFollowing = false;
   bool _isBlocked   = false;
 
+  // Full profile data fetched from Firebase
+  String       _name       = '';
+  String       _field      = '';
+  String       _badgeId    = '';
+  double       _score      = 0;
+  String       _headspace  = '';
+  List<String> _interests  = [];
+  int          _minutes    = 0;
+  int          _quotes     = 0;
+  int          _nomRecv    = 0;
+  int          _topics     = 0;
+
   @override
   void initState() {
     super.initState();
+    // Seed immediately with what the caller passed
+    _name    = widget.name;
+    _field   = widget.field;
+    _badgeId = widget.badgeId;
+    _score   = widget.score;
     _load();
   }
 
   Future<void> _load() async {
-    final rel = await widget.state.userRelation(widget.uid);
+    final results = await Future.wait([
+      widget.state.userRelation(widget.uid),
+      widget.state.fetchUserProfile(widget.uid),
+    ]);
+
+    final rel     = results[0] as Map<String, bool>;
+    final profile = results[1] as Map<String, dynamic>; // ignore: unnecessary_cast
+
     if (!mounted) return;
+
+    final rawTopics = profile['topicEngagement'];
+    final topics    = rawTopics is Map ? rawTopics.length : 0;
+    final minutes   = (profile['totalMinutesActive'] as int?) ?? 0;
+    final quotes    = (profile['quoteCount']          as int?) ?? 0;
+    final nomRecv   = (profile['nominationsReceived'] as int?) ?? 0;
+    final score = BadgeEngine.computeScore(
+      totalMinutesActive: minutes,
+      quoteCount: quotes,
+      nominationsReceived: nomRecv,
+      distinctTopics: topics,
+    );
+    final rawInterests = profile['interests'];
+    final interests = rawInterests is List
+        ? rawInterests.map((e) => e.toString()).toList()
+        : <String>[];
+
     setState(() {
       _isFriend    = rel['isFriend']    ?? false;
       _isFollowing = rel['isFollowing'] ?? false;
       _isBlocked   = rel['isBlocked']   ?? false;
+      _name        = (profile['name']      as String?) ?? widget.name;
+      _field       = (profile['field']     as String?) ?? widget.field;
+      _badgeId     = BadgeEngine.fromStats(profile).name;
+      _headspace   = (profile['headspace'] as String?) ?? '';
+      _interests   = interests;
+      _minutes     = minutes;
+      _quotes      = quotes;
+      _nomRecv     = nomRecv;
+      _topics      = topics;
+      _score       = score;
       _loading     = false;
     });
   }
@@ -1654,7 +1706,7 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
     if (was) {
       await widget.state.removeFriend(widget.uid);
     } else {
-      await widget.state.addFriend(widget.uid, widget.name, widget.field);
+      await widget.state.addFriend(widget.uid, _name, _field);
     }
   }
 
@@ -1664,7 +1716,7 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
     if (was) {
       await widget.state.unfollowUser(widget.uid);
     } else {
-      await widget.state.followUser(widget.uid, widget.name);
+      await widget.state.followUser(widget.uid, _name);
     }
   }
 
@@ -1680,126 +1732,184 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
 
   @override
   Widget build(BuildContext context) {
-    final ini      = _initials(widget.name);
-    final badge    = BadgeEngine.fromId(widget.badgeId);
+    final ini      = _initials(_name);
+    final badge    = BadgeEngine.fromId(_badgeId);
     final badgeInfo = BadgeEngine.infoFor(badge);
-    final hasScore = widget.score > 0;
 
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0F1320),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Center(child: Container(
-            width: 36, height: 4,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(2)),
-          )),
-          const SizedBox(height: 28),
-
-          // Avatar + name + badge
-          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Container(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(child: Container(
+              width: 36, height: 4,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AcroColors.gold.withOpacity(0.60), width: 2.5),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: AcroAvatar(initials: ini, seed: widget.uid, size: 58),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.name,
-                      style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                  if (widget.field.isNotEmpty)
-                    Text(widget.field,
-                        style: TextStyle(fontSize: 12, color: AcroColors.stoneLight)),
-                  const SizedBox(height: 5),
-                  Row(children: [
-                    Text(badgeInfo.emoji, style: const TextStyle(fontSize: 12)),
-                    const SizedBox(width: 5),
-                    Text(badgeInfo.name,
-                        style: GoogleFonts.spaceMono(fontSize: 9, color: AcroColors.gold.withOpacity(0.75), letterSpacing: 1)),
-                  ]),
-                ],
-              ),
-            ),
-          ]),
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(2)),
+            )),
+            const SizedBox(height: 24),
 
-          // Score bar (only if we have it)
-          if (hasScore) ...[
+            // ── Avatar + name + badge ────────────────────────────────────
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AcroColors.gold.withOpacity(0.60), width: 2.5),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: AcroAvatar(initials: ini, seed: widget.uid, size: 56),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_name,
+                        style: GoogleFonts.playfairDisplay(
+                            fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                    if (_field.isNotEmpty)
+                      Text(_field, style: TextStyle(fontSize: 12, color: AcroColors.stoneLight)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Text(badgeInfo.emoji, style: const TextStyle(fontSize: 11)),
+                      const SizedBox(width: 5),
+                      Text(badgeInfo.name,
+                          style: GoogleFonts.spaceMono(
+                              fontSize: 9, color: AcroColors.gold.withOpacity(0.75), letterSpacing: 1)),
+                    ]),
+                  ],
+                ),
+              ),
+            ]),
+
+            // ── Headspace cloud thought ──────────────────────────────────
+            if (_headspace.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              _CloudThought(text: _headspace),
+            ],
+
+            // ── Rank stats ───────────────────────────────────────────────
             const SizedBox(height: 20),
             Row(children: [
-              Text('SCORE', style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+              Text('RANK', style: GoogleFonts.spaceMono(
+                  fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
               const SizedBox(width: 10),
+              Expanded(child: Divider(color: Colors.white.withOpacity(0.07), height: 1)),
+            ]),
+            const SizedBox(height: 10),
+            // Score bar
+            Row(children: [
+              Text('SCORE', style: GoogleFonts.spaceMono(
+                  fontSize: 8, color: Colors.white.withOpacity(0.25), letterSpacing: 1.5)),
+              const SizedBox(width: 8),
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(1),
                   child: LinearProgressIndicator(
-                    value: widget.score.clamp(0.0, 1.0),
-                    backgroundColor: Colors.white.withOpacity(0.08),
+                    value: _score.clamp(0.0, 1.0),
+                    backgroundColor: Colors.white.withOpacity(0.07),
                     valueColor: const AlwaysStoppedAnimation(AcroColors.gold),
-                    minHeight: 4,
+                    minHeight: 3,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text('${(widget.score * 100).toStringAsFixed(0)}',
-                  style: GoogleFonts.spaceMono(fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 8),
+              Text('${(_score * 100).toStringAsFixed(0)}',
+                  style: GoogleFonts.spaceMono(
+                      fontSize: 10, color: AcroColors.gold, fontWeight: FontWeight.w700)),
             ]),
-          ],
-
-          const SizedBox(height: 28),
-          const Divider(color: Colors.white10),
-          const SizedBox(height: 16),
-
-          // Action buttons
-          if (_loading)
-            const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(color: AcroColors.gold, strokeWidth: 2)))
-          else
+            const SizedBox(height: 10),
+            // Stat mini-grid
             Row(children: [
-              // Add Friend / Unfriend
-              Expanded(
-                child: _actionBtn(
+              _miniStat('⏱', '${(_minutes / 60).toStringAsFixed(1)}h', 'active'),
+              _miniStat('📜', '$_quotes', 'quotes'),
+              _miniStat('⭐', '$_nomRecv', 'noms'),
+              _miniStat('🗂', '$_topics', 'topics'),
+            ]),
+
+            // ── Interests ────────────────────────────────────────────────
+            if (_interests.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(children: [
+                Text('INTERESTS', style: GoogleFonts.spaceMono(
+                    fontSize: 8, color: Colors.white.withOpacity(0.30), letterSpacing: 1.5)),
+                const SizedBox(width: 10),
+                Expanded(child: Divider(color: Colors.white.withOpacity(0.07), height: 1)),
+              ]),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6, runSpacing: 6,
+                children: _interests.map((t) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                      border: Border.all(color: AcroColors.gold.withOpacity(0.22)),
+                      borderRadius: BorderRadius.circular(2)),
+                  child: Text(t,
+                      style: TextStyle(
+                          fontFamily: 'monospace', fontSize: 9,
+                          color: Colors.white.withOpacity(0.55))),
+                )).toList(),
+              ),
+            ],
+
+            const SizedBox(height: 24),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 14),
+
+            // ── Action buttons ───────────────────────────────────────────
+            if (_loading)
+              const SizedBox(height: 48, child: Center(
+                  child: CircularProgressIndicator(color: AcroColors.gold, strokeWidth: 2)))
+            else
+              Row(children: [
+                Expanded(child: _actionBtn(
                   icon: _isFriend ? Icons.people : Icons.person_add_outlined,
                   label: _isFriend ? 'FRIENDS' : 'ADD FRIEND',
                   active: _isFriend,
                   onTap: _toggleFriend,
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Follow / Following
-              Expanded(
-                child: _actionBtn(
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: _actionBtn(
                   icon: _isFollowing ? Icons.notifications_active : Icons.notifications_none,
                   label: _isFollowing ? 'FOLLOWING' : 'FOLLOW',
                   active: _isFollowing,
                   onTap: _toggleFollow,
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Block
-              SizedBox(
-                width: 52,
-                child: _actionBtn(
+                )),
+                const SizedBox(width: 10),
+                SizedBox(width: 52, child: _actionBtn(
                   icon: _isBlocked ? Icons.block : Icons.block_outlined,
                   label: '',
                   active: _isBlocked,
                   onTap: _toggleBlock,
                   isDestructive: true,
                   compact: true,
-                ),
-              ),
-            ]),
+                )),
+              ]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniStat(String icon, String value, String label) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text('$icon $value',
+              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.80),
+                  fontWeight: FontWeight.w700)),
+          Text(label,
+              style: GoogleFonts.spaceMono(
+                  fontSize: 7, color: Colors.white.withOpacity(0.28), letterSpacing: 0.8)),
         ],
       ),
     );
@@ -1814,15 +1924,9 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
     bool compact = false,
   }) {
     final activeColor = isDestructive ? Colors.redAccent : AcroColors.gold;
-    final borderColor = active
-        ? activeColor.withOpacity(0.60)
-        : Colors.white.withOpacity(0.12);
-    final bgColor = active
-        ? activeColor.withOpacity(0.12)
-        : Colors.white.withOpacity(0.04);
-    final fgColor = active
-        ? activeColor
-        : Colors.white.withOpacity(0.55);
+    final borderColor = active ? activeColor.withOpacity(0.60) : Colors.white.withOpacity(0.12);
+    final bgColor     = active ? activeColor.withOpacity(0.12) : Colors.white.withOpacity(0.04);
+    final fgColor     = active ? activeColor : Colors.white.withOpacity(0.55);
 
     return GestureDetector(
       onTap: onTap,
@@ -1830,10 +1934,8 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
         duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.symmetric(vertical: 12, horizontal: compact ? 0 : 8),
         decoration: BoxDecoration(
-          color: bgColor,
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(3),
-        ),
+            color: bgColor, border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(3)),
         child: compact
             ? Center(child: Icon(icon, size: 18, color: fgColor))
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -1841,14 +1943,64 @@ class _UserProfilePopupState extends State<_UserProfilePopup> {
                 if (label.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Text(label,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 10, fontWeight: FontWeight.w700,
+                      style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700,
                           color: fgColor, letterSpacing: 1.5)),
                 ],
               ]),
       ),
     );
   }
+}
+
+// ── Cloud thought bubble (imported from side_menu context) ───────────────────
+// Mirrors the _CloudThought in side_menu.dart — same visual language
+
+class _CloudThought extends StatelessWidget {
+  final String text;
+  const _CloudThought({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _CloudPainter(
+          color: Colors.white.withOpacity(0.06),
+          borderColor: Colors.white.withOpacity(0.18)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: Text(
+          '"$text"',
+          style: GoogleFonts.cormorant(
+              fontSize: 15, fontStyle: FontStyle.italic,
+              color: Colors.white.withOpacity(0.72), height: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _CloudPainter extends CustomPainter {
+  final Color color;
+  final Color borderColor;
+  const _CloudPainter({required this.color, required this.borderColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint  = Paint()..color = color..style = PaintingStyle.fill;
+    final border = Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 1.2;
+    final path   = Path();
+    final r      = size.height * 0.38;
+    path.addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height - 10), Radius.circular(r * 0.7)));
+    path.addOval(Rect.fromCircle(center: Offset(20, size.height - 8), radius: 6));
+    path.addOval(Rect.fromCircle(center: Offset(12, size.height - 2), radius: 4));
+    path.addOval(Rect.fromCircle(center: Offset(6, size.height + 2), radius: 2.5));
+    canvas.drawPath(path, paint);
+    canvas.drawPath(path, border);
+  }
+
+  @override
+  bool shouldRepaint(_CloudPainter old) =>
+      old.color != color || old.borderColor != borderColor;
 }
 
 // ── Inbox list item discriminated union ─────────────────────────────────────

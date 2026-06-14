@@ -341,9 +341,10 @@ class AppState extends ChangeNotifier {
         final data = Map<String, dynamic>.from(snap.value as Map);
         final saved = (data['name'] as String?) ?? '';
         profile.name        = saved.isNotEmpty ? saved : fallback;
-        profile.field       = (data['field'] as String?) ?? '';
-        profile.interests   = (data['interests'] as List?)?.cast<String>() ?? [];
-        profile.quote       = (data['quote'] as String?) ?? '';
+        profile.field       = (data['field']      as String?) ?? '';
+        profile.interests   = (data['interests']  as List?)?.cast<String>() ?? [];
+        profile.quote       = (data['quote']      as String?) ?? '';
+        profile.headspace   = (data['headspace']  as String?) ?? '';
         profile.avatarIndex = (data['avatarIndex'] as int?) ?? -1;
       } else {
         profile.name = fallback;
@@ -1288,6 +1289,23 @@ class AppState extends ChangeNotifier {
       if (!event.snapshot.exists) return <String, dynamic>{};
       return Map<String, dynamic>.from(event.snapshot.value as Map);
     });
+  }
+
+  // One-time fetch of any user's full profile (for profile popup)
+  Future<Map<String, dynamic>> fetchUserProfile(String uid) async {
+    final results = await Future.wait([
+      _db.ref('users/$uid').get(),
+    ]);
+    final snap = results[0];
+    if (!snap.exists || snap.value is! Map) return {};
+    return Map<String, dynamic>.from(snap.value as Map);
+  }
+
+  Future<void> setHeadspace(String text) async {
+    if (!isPermanentAccount) return;
+    profile.headspace = text.trim();
+    await _db.ref('users/${profile.uid}/headspace').set(text.trim());
+    notifyListeners();
   }
 
   Stream<List<Map<String, dynamic>>> globalLeaderboardStream() {
