@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/acro_mode.dart';
@@ -60,11 +61,26 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   // Match listener
   StreamSubscription? _matchSub;
 
+  // Hall horizontal scroll
+  final _hallScrollCtrl = ScrollController();
+  late Ticker _hallTicker;
+  double _hallScrollOffset = 0;
+  bool _hallUserScrolling = false;
+
   @override
   void initState() {
     super.initState();
     _tabs     = TabController(length: 2, vsync: this);
     _assembly = TabController(length: 2, vsync: this);
+
+    _hallTicker = createTicker((_) {
+      if (!mounted || !_hallScrollCtrl.hasClients || _hallUserScrolling) return;
+      final max = _hallScrollCtrl.position.maxScrollExtent;
+      if (max <= 0) return;
+      _hallScrollOffset = (_hallScrollOffset + 0.6) % max;
+      _hallScrollCtrl.jumpTo(_hallScrollOffset);
+    });
+    _hallTicker.start();
 
     final state = context.read<AppState>();
     if (state.isPermanentAccount && state.profile.name.isNotEmpty) {
@@ -88,6 +104,8 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     _tabs.dispose();
     _assembly.dispose();
     _matchSub?.cancel();
+    _hallTicker.dispose();
+    _hallScrollCtrl.dispose();
     if (_onboarded) {
       context.read<AppState>().removeFromSymposiumPool();
     }
@@ -614,60 +632,90 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                   : _emptyPlatform(context),
             ),
 
-            // ── THE HALL heading ────────────────────────────────────────
+            // ── THE HALL heading + horizontal feed over hallback.png ────
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Expanded(child: Divider(color: AcroColors.gold.withOpacity(0.30))),
-                    ]),
-                    const SizedBox(height: 12),
-                    Text(
-                      'THE HALL',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 3,
+              child: Stack(
+                children: [
+                  // hallback.png background
+                  Positioned.fill(
+                    child: Image.asset(
+                      'assets/images/hallback.png',
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                    ),
+                  ),
+                  // Slight dark overlay for text legibility
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.35),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Scrolls of the Assembly — ranked by the Forum',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.35),
-                        fontStyle: FontStyle.italic,
+                  ),
+                  // Content
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // THE HALL heading (divider removed)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'THE HALL',
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Scrolls of the Assembly — ranked by the Forum',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.55),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+
+                      // ── Horizontal scrolling feed ──────────────────────
+                      if (allScrolls.isEmpty)
+                        SizedBox(height: 280, child: _hallEmptyState(context))
+                      else if (hallScrolls.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          child: _emptyState('📜', 'All scrolls are legendary.',
+                              'New nominations from the Stoa will appear here.'),
+                        )
+                      else
+                        GestureDetector(
+                          onPanDown: (_) => setState(() => _hallUserScrolling = true),
+                          onPanEnd: (_) => setState(() => _hallUserScrolling = false),
+                          onPanCancel: () => setState(() => _hallUserScrolling = false),
+                          child: SizedBox(
+                            height: 360,
+                            child: ListView.builder(
+                              controller: _hallScrollCtrl,
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              itemCount: hallScrolls.length,
+                              itemBuilder: (_, i) => _hallScrollCard(hallScrolls[i]),
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ],
               ),
             ),
-
-            // ── Feed — non-legendary HallScroll cards ───────────────────
-            if (allScrolls.isEmpty)
-              SliverFillRemaining(child: _hallEmptyState(context))
-            else if (hallScrolls.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: _emptyState('📜', 'All scrolls are legendary.',
-                      'New nominations from the Stoa will appear here.'),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => _hallScrollCard(hallScrolls[i]),
-                  childCount: hallScrolls.length,
-                ),
-              ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         );
       },
@@ -769,7 +817,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         MaterialPageRoute(builder: (_) => ScrollThreadPage(scroll: nom)),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Center(
           child: SizedBox(
             width: _hCardSz,
