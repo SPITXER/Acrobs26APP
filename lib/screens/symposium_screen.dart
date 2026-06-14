@@ -92,8 +92,17 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
   Future<void> _googleSignIn() async {
     setState(() { _authLoading = true; _authError = null; });
-    // signInWithRedirect navigates away; result is handled on return in AppState._init()
-    await context.read<AppState>().signInWithGoogle();
+    try {
+      await context.read<AppState>().signInWithGoogle();
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      String display = 'Google sign-in failed. Try again.';
+      if (msg.contains('popup-blocked'))   display = 'Pop-up blocked — allow pop-ups for this site and try again.';
+      if (msg.contains('popup-closed') || msg.contains('cancelled')) display = 'Sign-in cancelled.';
+      if (msg.contains('unauthorized-domain')) display = 'Domain not authorised. Contact support.';
+      setState(() { _authLoading = false; _authError = display; });
+    }
   }
 
   Future<void> _emailAuth() async {

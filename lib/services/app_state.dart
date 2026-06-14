@@ -252,11 +252,29 @@ class AppState extends ChangeNotifier {
   // ── Firebase Auth ────────────────────────────────────────────────────────
 
   Future<void> signInWithGoogle() async {
-    // signInWithPopup fails on Flutter web because Dart's async breaks the
-    // browser's "user gesture" requirement. Redirect is reliable across all
-    // browsers. The result is picked up by _handleGoogleRedirectResult() in
-    // _init() after the user returns to the app.
-    await FirebaseAuth.instance.signInWithRedirect(GoogleAuthProvider());
+    final cred = await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+    final user = cred.user;
+    if (user == null) return;
+    firebaseUser = user;
+    await _syncProfileFromFirebase(user);
+    final tempRooms = List<String>.of(_myStoaRoomIds);
+    profile.uid = user.uid;
+    await _saveLocalProfile();
+    for (final roomId in tempRooms) {
+      _db.ref('stoa_rooms/$roomId/hostUid').set(user.uid);
+    }
+    for (final sub in _stoaJoinWatchers.values) sub.cancel();
+    _stoaJoinWatchers.clear();
+    _myStoaRoomIds..clear()..addAll(tempRooms);
+    for (final id in tempRooms) _startStoaRoomWatch(id);
+    await _db.ref('users/${user.uid}').set({
+      'uid':       user.uid,
+      'name':      profile.name,
+      'field':     profile.field,
+      'interests': profile.interests,
+      'ts':        ServerValue.timestamp,
+    });
+    notifyListeners();
   }
 
   // Loads the user's profile from Firebase DB, falling back to their Google
