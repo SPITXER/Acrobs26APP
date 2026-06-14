@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -618,45 +619,62 @@ class _SymposiumScreenState extends State<SymposiumScreen>
 
         return CustomScrollView(
           slivers: [
-            // ── Rotating platform (title baked inside) ──────────────────
-            SliverToBoxAdapter(
-              child: legendary.isNotEmpty
-                  ? LegendaryScrollsSection(
-                      scrolls: legendary,
-                      onScrollTap: (scroll) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => ScrollThreadPage(scroll: scroll)),
-                      ),
-                    )
-                  : _emptyPlatform(context),
-            ),
-
-            // ── THE HALL heading + horizontal feed over hallback.png ────
+            // ── Island + feed merged into one background canvas ──────────
             SliverToBoxAdapter(
               child: Stack(
                 children: [
-                  // hallback.png background
-                  Positioned.fill(
+                  // hallback.png — fitWidth keeps natural aspect ratio
+                  // (appears ~50% smaller than BoxFit.cover which cropped/zoomed)
+                  Positioned(
+                    top: 0, left: 0, right: 0,
                     child: Image.asset(
                       'assets/images/hallback.png',
-                      fit: BoxFit.cover,
+                      fit: BoxFit.fitWidth,
                       alignment: Alignment.topCenter,
+                      width: double.infinity,
                     ),
                   ),
-                  // Slight dark overlay for text legibility
+
+                  // Dark overlay for legibility
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.35),
+                        color: Colors.black.withOpacity(0.28),
                       ),
                     ),
                   ),
-                  // Content
+
+                  // Top fade — blends background into the header (0xFF0B0F1A)
+                  Positioned(
+                    top: 0, left: 0, right: 0, height: 56,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF0B0F1A), Colors.transparent],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Content column — island floats on clouds, feed below
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // THE HALL heading (divider removed)
+                      // ── Legendary island (merged with background clouds) ──
+                      legendary.isNotEmpty
+                          ? LegendaryScrollsSection(
+                              scrolls: legendary,
+                              onScrollTap: (scroll) => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => ScrollThreadPage(scroll: scroll)),
+                              ),
+                            )
+                          : _emptyPlatform(context),
+
+                      // ── THE HALL heading ─────────────────────────────────
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                         child: Column(
@@ -684,7 +702,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                         ),
                       ),
 
-                      // ── Horizontal scrolling feed ──────────────────────
+                      // ── Horizontal scrolling feed ────────────────────────
                       if (allScrolls.isEmpty)
                         SizedBox(height: 280, child: _hallEmptyState(context))
                       else if (hallScrolls.isEmpty)
@@ -700,12 +718,20 @@ class _SymposiumScreenState extends State<SymposiumScreen>
                           onPanCancel: () => setState(() => _hallUserScrolling = false),
                           child: SizedBox(
                             height: 360,
-                            child: ListView.builder(
-                              controller: _hallScrollCtrl,
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              itemCount: hallScrolls.length,
-                              itemBuilder: (_, i) => _hallScrollCard(hallScrolls[i]),
+                            child: ScrollConfiguration(
+                              behavior: ScrollConfiguration.of(context).copyWith(
+                                dragDevices: {
+                                  PointerDeviceKind.mouse,
+                                  PointerDeviceKind.touch,
+                                },
+                              ),
+                              child: ListView.builder(
+                                controller: _hallScrollCtrl,
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                itemCount: hallScrolls.length,
+                                itemBuilder: (_, i) => _hallScrollCard(hallScrolls[i]),
+                              ),
                             ),
                           ),
                         ),
