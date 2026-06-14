@@ -121,6 +121,7 @@ class _Header extends StatelessWidget {
                   initials: state.profile.initials,
                   seed: state.profile.uid,
                   size: 38,
+                  avatarOverride: state.profile.avatarIndex,
                 ),
                 const SizedBox(width: 10),
                 Expanded(

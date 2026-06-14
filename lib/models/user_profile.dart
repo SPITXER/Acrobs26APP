@@ -8,6 +8,8 @@ class UserProfile {
   String quote;
   List<String> interests;
   AcroMode? mode;
+  // -1 = derive from uid hash (original behaviour); 0/1/2 = explicit ghost pick
+  int avatarIndex;
 
   UserProfile({
     this.uid = '',
@@ -17,6 +19,7 @@ class UserProfile {
     this.quote = '',
     this.interests = const [],
     this.mode,
+    this.avatarIndex = -1,
   });
 
   String get initials {

@@ -9,6 +9,15 @@ import '../widgets/avatar.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  void _openEditSheet(BuildContext context, AppState state) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditSheet(state: state),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -29,6 +38,14 @@ class ProfileScreen extends StatelessWidget {
                 color: Colors.white.withOpacity(0.35),
                 letterSpacing: 3.5)),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            tooltip: 'Edit profile',
+            onPressed: () => _openEditSheet(context, state),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: StreamBuilder<Map<String, dynamic>>(
         stream: state.userStatsStream(),
@@ -182,6 +199,7 @@ class _ProfileHeader extends StatelessWidget {
           initials: state.profile.initials,
           seed: state.profile.uid,
           size: 64,
+          avatarOverride: state.profile.avatarIndex,
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -552,6 +570,195 @@ class _ComingSoonCard extends StatelessWidget {
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
                 color: Colors.white.withOpacity(0.20))),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EditSheet extends StatefulWidget {
+  final AppState state;
+  const _EditSheet({required this.state});
+
+  @override
+  State<_EditSheet> createState() => _EditSheetState();
+}
+
+class _EditSheetState extends State<_EditSheet> {
+  static const _ghosts = [
+    'assets/images/ghost_aristotle_copper.png',
+    'assets/images/ghost_plato_silver.png',
+    'assets/images/ghost_socrates_gold.png',
+  ];
+  static const _ghostNames = ['Aristotle', 'Plato', 'Socrates'];
+
+  late final TextEditingController _nameCtrl;
+  late int _selectedAvatar;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.state.profile.name);
+    // If index is -1 (seed-derived), resolve it so the picker highlights correctly
+    final idx = widget.state.profile.avatarIndex;
+    _selectedAvatar = idx >= 0
+        ? idx
+        : widget.state.profile.uid.hashCode.abs() % _ghosts.length;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_nameCtrl.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    await widget.state.updateProfile(
+      name: _nameCtrl.text,
+      avatarIndex: _selectedAvatar,
+    );
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 32 + bottom),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D1120),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Handle
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Title
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text('EDIT PROFILE',
+              style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 9,
+                  letterSpacing: 2.5,
+                  color: Colors.white.withOpacity(0.30))),
+        ),
+        const SizedBox(height: 20),
+
+        // Avatar picker
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(_ghosts.length, (i) {
+            final selected = _selectedAvatar == i;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedAvatar = i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected
+                        ? AcroColors.gold
+                        : Colors.white.withOpacity(0.10),
+                    width: selected ? 2 : 1,
+                  ),
+                  color: selected
+                      ? AcroColors.gold.withOpacity(0.08)
+                      : Colors.transparent,
+                ),
+                child: Column(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      _ghosts[i],
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(_ghostNames[i],
+                      style: TextStyle(
+                          fontSize: 9,
+                          letterSpacing: 0.5,
+                          color: selected
+                              ? AcroColors.gold
+                              : Colors.white.withOpacity(0.35))),
+                ]),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 24),
+
+        // Name field
+        TextField(
+          controller: _nameCtrl,
+          maxLength: 32,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: InputDecoration(
+            labelText: 'Display name',
+            labelStyle:
+                TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 12),
+            counterStyle:
+                TextStyle(color: Colors.white.withOpacity(0.20), fontSize: 10),
+            enabledBorder: OutlineInputBorder(
+              borderSide:
+                  BorderSide(color: Colors.white.withOpacity(0.15)),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: AcroColors.gold),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.04),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Save button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _saving ? null : _save,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AcroColors.gold,
+              foregroundColor: AcroColors.stone,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4)),
+              textStyle: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2),
+            ),
+            child: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AcroColors.stone))
+                : const Text('SAVE'),
+          ),
+        ),
       ]),
     );
   }

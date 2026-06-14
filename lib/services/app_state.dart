@@ -138,6 +138,7 @@ class AppState extends ChangeNotifier {
   static const _kField      = 'acro_field';
   static const _kInterests  = 'acro_interests';
   static const _kQuote      = 'acro_quote';
+  static const _kAvatarIdx  = 'acro_avatar_idx';
   // Persisted active room — survives a page refresh
   static const _kRoomId     = 'acro_room_id';
   static const _kRoomTitle  = 'acro_room_title';
@@ -160,11 +161,12 @@ class AppState extends ChangeNotifier {
 
     final name = prefs.getString(_kName) ?? '';
     if (name.isEmpty) return;
-    profile.uid       = prefs.getString(_kUid) ?? profile.uid;
-    profile.name      = name;
-    profile.field     = prefs.getString(_kField) ?? '';
-    profile.interests = prefs.getStringList(_kInterests) ?? [];
-    profile.quote     = prefs.getString(_kQuote) ?? '';
+    profile.uid         = prefs.getString(_kUid) ?? profile.uid;
+    profile.name        = name;
+    profile.field       = prefs.getString(_kField) ?? '';
+    profile.interests   = prefs.getStringList(_kInterests) ?? [];
+    profile.quote       = prefs.getString(_kQuote) ?? '';
+    profile.avatarIndex = prefs.getInt(_kAvatarIdx) ?? -1;
 
     // Restore room the user was in before the page refresh
     final roomId = prefs.getString(_kRoomId) ?? '';
@@ -199,6 +201,7 @@ class AppState extends ChangeNotifier {
       prefs.setString(_kField, profile.field),
       prefs.setStringList(_kInterests, profile.interests),
       prefs.setString(_kQuote, profile.quote),
+      prefs.setInt(_kAvatarIdx, profile.avatarIndex),
     ]);
   }
 
@@ -300,6 +303,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateProfile({
+    required String name,
+    int avatarIndex = -1,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    profile.name        = trimmed;
+    profile.avatarIndex = avatarIndex;
+    await _saveLocalProfile();
+    if (isPermanentAccount) {
+      await _db.ref('users/${profile.uid}').update({
+        'name':        trimmed,
+        'avatarIndex': avatarIndex,
+      });
+    }
+    notifyListeners();
+  }
+
   // Loads the user's profile from Firebase DB, falling back to their Google
   // display name for brand-new accounts that have no DB record yet.
   Future<void> _syncProfileFromFirebase(User user) async {
@@ -313,10 +334,11 @@ class AppState extends ChangeNotifier {
       if (snap.exists && snap.value is Map) {
         final data = Map<String, dynamic>.from(snap.value as Map);
         final saved = (data['name'] as String?) ?? '';
-        profile.name      = saved.isNotEmpty ? saved : fallback;
-        profile.field     = (data['field'] as String?) ?? '';
-        profile.interests = (data['interests'] as List?)?.cast<String>() ?? [];
-        profile.quote     = (data['quote'] as String?) ?? '';
+        profile.name        = saved.isNotEmpty ? saved : fallback;
+        profile.field       = (data['field'] as String?) ?? '';
+        profile.interests   = (data['interests'] as List?)?.cast<String>() ?? [];
+        profile.quote       = (data['quote'] as String?) ?? '';
+        profile.avatarIndex = (data['avatarIndex'] as int?) ?? -1;
       } else {
         profile.name = fallback;
       }

@@ -16,12 +16,16 @@ class AcroAvatar extends StatelessWidget {
   /// Any unique string works — uid, name, etc.
   final String? seed;
 
+  /// When >= 0 overrides the seed-hash ghost selection (0/1/2).
+  final int avatarOverride;
+
   const AcroAvatar({
     super.key,
     required this.initials,
     this.size = 34,
     this.style = AvatarStyle.gold,
     this.seed,
+    this.avatarOverride = -1,
   });
 
   static const _ghosts = [
@@ -55,14 +59,17 @@ class AcroAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = seed?.trim() ?? '';
-    if (s.isNotEmpty) {
+    if (s.isNotEmpty || avatarOverride >= 0) {
+      final asset = avatarOverride >= 0
+          ? _ghosts[avatarOverride % _ghosts.length]
+          : ghostAssetFor(s);
       return ClipRRect(
         borderRadius: BorderRadius.circular(size * 0.18),
         child: Image.asset(
-          ghostAssetFor(s),
+          asset,
           width: size,
           height: size,
-          fit: BoxFit.contain, // show full ghost: face + tentacles
+          fit: BoxFit.contain,
         ),
       );
     }
