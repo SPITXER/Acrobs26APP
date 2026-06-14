@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../screens/profile_screen.dart';
 import '../screens/room_screen.dart';
 import '../screens/host_wait_screen.dart';
 import '../services/app_state.dart';
@@ -95,7 +96,17 @@ class _Header extends StatelessWidget {
         final minutes     = (stats['totalMinutesActive']  as int?) ?? 0;
         final hours       = minutes ~/ 60;
 
-        return Padding(
+        final canViewProfile = state.isPermanentAccount;
+
+        return InkWell(
+          onTap: canViewProfile
+              ? () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const ProfileScreen()));
+                }
+              : null,
+          child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 8, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,9 +181,10 @@ class _Header extends StatelessWidget {
               ]),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   Widget _stat(String value, String label) => Column(
