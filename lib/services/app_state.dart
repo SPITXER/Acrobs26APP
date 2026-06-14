@@ -306,16 +306,22 @@ class AppState extends ChangeNotifier {
   Future<void> updateProfile({
     required String name,
     int avatarIndex = -1,
+    String? field,
+    List<String>? interests,
   }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
     profile.name        = trimmed;
     profile.avatarIndex = avatarIndex;
+    if (field != null)     profile.field     = field.trim();
+    if (interests != null) profile.interests = interests;
     await _saveLocalProfile();
     if (isPermanentAccount) {
       await _db.ref('users/${profile.uid}').update({
         'name':        trimmed,
         'avatarIndex': avatarIndex,
+        'field':       profile.field,
+        'interests':   profile.interests,
       });
     }
     notifyListeners();
