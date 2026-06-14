@@ -80,6 +80,7 @@ class AppState extends ChangeNotifier {
       firebaseUser = user;
       notifyListeners();
     });
+    await _handleGoogleRedirectResult();
     // Restore in-memory stoa state from Firebase so re-entry and
     // match notifications work correctly after a page refresh.
     if (profile.name.isNotEmpty) {
@@ -240,33 +241,40 @@ class AppState extends ChangeNotifier {
   // ── Firebase Auth ────────────────────────────────────────────────────────
 
   Future<void> signInWithGoogle() async {
-    final cred = await FirebaseAuth.instance
-        .signInWithPopup(GoogleAuthProvider());
-    final user = cred.user;
-    if (user == null) return;
-    if (profile.name.isEmpty && user.displayName != null) {
-      profile.name = user.displayName!;
-    }
-    // Migrate any stoa rooms created under the temp uid to the Firebase uid
-    final tempRooms = List<String>.of(_myStoaRoomIds);
-    profile.uid = user.uid;
-    await _saveLocalProfile();
-    for (final roomId in tempRooms) {
-      _db.ref('stoa_rooms/$roomId/hostUid').set(user.uid);
-    }
-    // Reset and re-subscribe stoa watchers under the new uid
-    for (final sub in _stoaJoinWatchers.values) sub.cancel();
-    _stoaJoinWatchers.clear();
-    _myStoaRoomIds..clear()..addAll(tempRooms);
-    for (final id in tempRooms) _startStoaRoomWatch(id);
-    await _db.ref('users/${user.uid}').set({
-      'uid':       user.uid,
-      'name':      profile.name,
-      'field':     profile.field,
-      'interests': profile.interests,
-      'ts':        ServerValue.timestamp,
-    });
-    notifyListeners();
+    // signInWithPopup fails on Flutter web because Dart's async breaks the
+    // browser's "user gesture" requirement. Redirect is reliable across all
+    // browsers. The result is picked up by _handleGoogleRedirectResult() in
+    // _init() after the user returns to the app.
+    await FirebaseAuth.instance.signInWithRedirect(GoogleAuthProvider());
+  }
+
+  Future<void> _handleGoogleRedirectResult() async {
+    try {
+      final result = await FirebaseAuth.instance.getRedirectResult();
+      final user = result.user;
+      if (user == null) return;
+      if (profile.name.isEmpty && user.displayName != null) {
+        profile.name = user.displayName!;
+      }
+      final tempRooms = List<String>.of(_myStoaRoomIds);
+      profile.uid = user.uid;
+      await _saveLocalProfile();
+      for (final roomId in tempRooms) {
+        _db.ref('stoa_rooms/$roomId/hostUid').set(user.uid);
+      }
+      for (final sub in _stoaJoinWatchers.values) sub.cancel();
+      _stoaJoinWatchers.clear();
+      _myStoaRoomIds..clear()..addAll(tempRooms);
+      for (final id in tempRooms) _startStoaRoomWatch(id);
+      await _db.ref('users/${user.uid}').set({
+        'uid':       user.uid,
+        'name':      profile.name,
+        'field':     profile.field,
+        'interests': profile.interests,
+        'ts':        ServerValue.timestamp,
+      });
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> signUpWithEmail(String email, String password) async {
