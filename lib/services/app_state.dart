@@ -25,6 +25,7 @@ class AppState extends ChangeNotifier {
 
   // Firebase Auth
   User? firebaseUser;
+  String? googleSignInError;
 
   // Room navigation — registered by StoaScreen / any active screen
   VoidCallback? _enterRoomCallback;
@@ -274,7 +275,14 @@ class AppState extends ChangeNotifier {
         'ts':        ServerValue.timestamp,
       });
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      googleSignInError = e.toString();
+      notifyListeners();
+    }
+  }
+
+  void clearGoogleSignInError() {
+    googleSignInError = null;
   }
 
   Future<void> signUpWithEmail(String email, String password) async {
