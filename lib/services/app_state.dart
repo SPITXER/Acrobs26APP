@@ -1290,6 +1290,42 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Stream<List<Map<String, dynamic>>> globalLeaderboardStream() {
+    return _db.ref('users').onValue.map((event) {
+      if (!event.snapshot.exists) return <Map<String, dynamic>>[];
+      final raw = event.snapshot.value;
+      if (raw is! Map) return <Map<String, dynamic>>[];
+      final entries = Map<String, dynamic>.from(raw).entries.map((e) {
+        final uid   = e.key;
+        final stats = Map<String, dynamic>.from(e.value as Map? ?? {});
+        final minutes   = (stats['totalMinutesActive'] as int?) ?? 0;
+        final quotes    = (stats['quoteCount']          as int?) ?? 0;
+        final nomRecv   = (stats['nominationsReceived'] as int?) ?? 0;
+        final rawTopics = stats['topicEngagement'];
+        final topics    = rawTopics is Map ? rawTopics.length : 0;
+        final score = BadgeEngine.computeScore(
+          totalMinutesActive: minutes,
+          quoteCount: quotes,
+          nominationsReceived: nomRecv,
+          distinctTopics: topics,
+        );
+        return {
+          'uid':    uid,
+          'name':   (stats['name']  as String?) ?? 'Anonymous',
+          'field':  (stats['field'] as String?) ?? '',
+          'badgeId': BadgeEngine.fromStats(stats).name,
+          'score':  score,
+          'minutes': minutes,
+          'quotes':  quotes,
+          'nomRecv': nomRecv,
+          'topics':  topics,
+        };
+      }).toList();
+      entries.sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
+      return entries;
+    });
+  }
+
   Future<bool> hasNominated(String roomId) async {
     if (!isPermanentAccount) return false;
     final snap =

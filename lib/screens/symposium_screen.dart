@@ -7,7 +7,6 @@ import '../services/app_state.dart';
 import '../services/badge_engine.dart';
 import '../theme/acro_theme.dart';
 import '../widgets/avatar.dart';
-import '../widgets/cloud_corner_box.dart';
 import '../widgets/legendary_scrolls_section.dart';
 import '../widgets/side_menu.dart';
 import 'room_screen.dart';
@@ -50,11 +49,8 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   // Main tabs: THE HALL | THE ASSEMBLY
   late TabController _tabs;
 
-  // Assembly sub-tabs (mobile only): RANK | FORUM | INBOX
+  // Assembly sub-tabs (mobile only): RANK | INBOX
   late TabController _assembly;
-
-  // Sent requests (local tracking to prevent double-tap)
-  final _sentTo = <String>{};
 
   // Match listener
   StreamSubscription? _matchSub;
@@ -63,7 +59,7 @@ class _SymposiumScreenState extends State<SymposiumScreen>
   void initState() {
     super.initState();
     _tabs     = TabController(length: 2, vsync: this);
-    _assembly = TabController(length: 3, vsync: this);
+    _assembly = TabController(length: 2, vsync: this);
 
     final state = context.read<AppState>();
     if (state.isPermanentAccount && state.profile.name.isNotEmpty) {
@@ -189,11 +185,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const RoomScreen()),
     );
-  }
-
-  Future<void> _sendRequest(String toUid) async {
-    setState(() => _sentTo.add(toUid));
-    await context.read<AppState>().sendSymposiumRequest(toUid);
   }
 
   Future<void> _accept(Map<String, dynamic> req) async {
@@ -917,21 +908,19 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     });
   }
 
-  // Wide (tablet/web): 3 columns side by side
+  // Wide (tablet/web): 2 columns — 30% RANK | 70% INBOX
   Widget _assemblyWide() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(flex: 5, child: _buildRanksPanel(showHeader: true)),
+        Expanded(flex: 3, child: _buildRanksPanel(showHeader: true)),
         VerticalDivider(width: 1, color: AcroColors.gold.withOpacity(0.10)),
-        Expanded(flex: 7, child: _buildForumPanel(showHeader: true)),
-        VerticalDivider(width: 1, color: AcroColors.gold.withOpacity(0.10)),
-        Expanded(flex: 5, child: _buildInboxPanel(showHeader: true)),
+        Expanded(flex: 7, child: _buildInboxPanel(showHeader: true)),
       ],
     );
   }
 
-  // Narrow (mobile): sub-tabs
+  // Narrow (mobile): sub-tabs RANK | INBOX
   Widget _assemblyNarrow() {
     return Column(
       children: [
@@ -944,7 +933,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
           labelStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
           tabs: const [
             Tab(text: 'RANK'),
-            Tab(text: 'FORUM'),
             Tab(text: 'INBOX'),
           ],
         ),
@@ -953,7 +941,6 @@ class _SymposiumScreenState extends State<SymposiumScreen>
             controller: _assembly,
             children: [
               _buildRanksPanel(showHeader: false),
-              _buildForumPanel(showHeader: false),
               _buildInboxPanel(showHeader: false),
             ],
           ),
@@ -962,258 +949,126 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     );
   }
 
-  // ── RANKS panel ─────────────────────────────────────────────────────────────
+  // ── RANKS panel — Global leaderboard ────────────────────────────────────────
 
   Widget _buildRanksPanel({required bool showHeader}) {
-    final state = context.read<AppState>();
-    return StreamBuilder<Map<String, dynamic>>(
-      stream: state.userStatsStream(),
-      builder: (context, snap) {
-        final stats = snap.data ?? {};
-        final badge = BadgeEngine.fromStats(stats);
-        final info  = BadgeEngine.infoFor(badge);
-
-        final minutes  = (stats['totalMinutesActive'] as int?) ?? 0;
-        final quotes   = (stats['quoteCount']          as int?) ?? 0;
-        final nomRecv  = (stats['nominationsReceived'] as int?) ?? 0;
-        final rawTopics = stats['topicEngagement'];
-        final topicMap  = rawTopics is Map
-            ? Map<String, int>.from(rawTopics.map((k, v) => MapEntry(k.toString(), (v as num).toInt())))
-            : <String, int>{};
-        final topics = topicMap.length;
-
-        final score = BadgeEngine.computeScore(
-          totalMinutesActive: minutes,
-          quoteCount: quotes,
-          nominationsReceived: nomRecv,
-          distinctTopics: topics,
-        );
-
-        return ListView(
-          padding: const EdgeInsets.all(18),
-          children: [
-            if (showHeader) ...[
-              _panelHeader('RANK'),
-              const SizedBox(height: 16),
-            ],
-
-            // Badge display
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AcroColors.gold.withOpacity(0.08), Colors.transparent],
-                ),
-                border: Border.all(color: AcroColors.gold.withOpacity(0.28)),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Text(info.emoji, style: const TextStyle(fontSize: 32)),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            info.name,
-                            style: GoogleFonts.playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
-                          Text(
-                            info.epithet,
-                            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4), fontStyle: FontStyle.italic),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 10),
-                  Text(
-                    info.domain,
-                    style: GoogleFonts.spaceMono(fontSize: 9, color: AcroColors.gold.withOpacity(0.7), letterSpacing: 1.5),
-                  ),
-                  const SizedBox(height: 14),
-                  // Score bar
-                  Row(children: [
-                    Text('SCORE', style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.3), letterSpacing: 1.5)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(1),
-                        child: LinearProgressIndicator(
-                          value: score.clamp(0.0, 1.0),
-                          backgroundColor: Colors.white.withOpacity(0.08),
-                          valueColor: const AlwaysStoppedAnimation(AcroColors.gold),
-                          minHeight: 4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text('${(score * 100).toStringAsFixed(0)}', style: GoogleFonts.spaceMono(fontSize: 9, color: AcroColors.gold)),
-                  ]),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // Stats grid
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 2.0,
-              children: [
-                _statCell('⏱', '${(minutes / 60).toStringAsFixed(1)} h', 'TIME ACTIVE'),
-                _statCell('📜', '$quotes', 'QUOTES'),
-                _statCell('⭐', '$nomRecv', 'NOMINATIONS'),
-                _statCell('🗂', '$topics', 'TOPICS'),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _statCell(String icon, String value, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        border: Border.all(color: Colors.white.withOpacity(0.07)),
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('$icon  $value',
-              style: GoogleFonts.playfairDisplay(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.85))),
-          const SizedBox(height: 2),
-          Text(label, style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.28), letterSpacing: 1)),
-        ],
-      ),
-    );
-  }
-
-  // ── FORUM panel (connections / discover) ────────────────────────────────────
-
-  Widget _buildForumPanel({required bool showHeader}) {
-    final state = context.read<AppState>();
+    final myUid = context.read<AppState>().profile.uid;
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: state.symposiumPoolStream(),
+      stream: context.read<AppState>().globalLeaderboardStream(),
       builder: (context, snap) {
-        final profiles = snap.data ?? [];
-        if (profiles.isEmpty) {
+        final board = snap.data ?? [];
+        if (board.isEmpty) {
           return Column(
             children: [
-              if (showHeader) ...[
-                Padding(padding: const EdgeInsets.all(18), child: _panelHeader('FORUM')),
-              ],
-              Expanded(child: _emptyState('🍷', 'The Symposium awaits.', 'Your profile is visible. Others will appear here.')),
+              if (showHeader)
+                Padding(padding: const EdgeInsets.fromLTRB(18, 18, 18, 0), child: _panelHeader('GLOBAL RANK')),
+              Expanded(child: _emptyState('🏛', 'No rankings yet.', 'Participate to earn your place.')),
             ],
           );
         }
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
-          itemCount: profiles.length + (showHeader ? 1 : 0),
+          padding: EdgeInsets.fromLTRB(0, showHeader ? 0 : 8, 0, 24),
+          itemCount: board.length + (showHeader ? 1 : 0),
           itemBuilder: (_, i) {
             if (showHeader && i == 0) {
-              return Padding(padding: const EdgeInsets.only(bottom: 14), child: _panelHeader('FORUM'));
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+                child: _panelHeader('GLOBAL RANK'),
+              );
             }
-            return _profileCard(profiles[showHeader ? i - 1 : i]);
+            final entry = board[showHeader ? i - 1 : i];
+            final pos   = showHeader ? i : i + 1;
+            return _leaderboardRow(entry, pos, entry['uid'] == myUid);
           },
         );
       },
     );
   }
 
-  Widget _profileCard(Map<String, dynamic> card) {
-    final uid       = card['uid']       as String? ?? '';
-    final name      = card['name']      as String? ?? 'Anonymous';
-    final field     = card['field']     as String? ?? '';
-    final quote     = card['quote']     as String? ?? '';
-    final rawInterests = card['interests'];
-    final interests = rawInterests is List ? rawInterests.map((e) => e.toString()).toList() : <String>[];
-    final ini       = _initials(name);
-    final sent      = _sentTo.contains(uid);
+  Widget _leaderboardRow(Map<String, dynamic> entry, int pos, bool isMe) {
+    final uid      = entry['uid']    as String? ?? '';
+    final name     = entry['name']   as String? ?? 'Anonymous';
+    final field    = entry['field']  as String? ?? '';
+    final badgeId  = entry['badgeId'] as String? ?? '';
+    final score    = (entry['score'] as double?) ?? 0.0;
+    final badge    = BadgeEngine.fromId(badgeId);
+    final info     = BadgeEngine.infoFor(badge);
+    final ini      = _initials(name);
 
-    final badgeId   = card['badgeId'] as String? ?? '';
-    final badge     = BadgeEngine.fromId(badgeId);
-    final badgeInfo = BadgeEngine.infoFor(badge);
+    final isMedal  = pos <= 3;
+    final medals   = ['🥇', '🥈', '🥉'];
+    final posLabel = isMedal ? medals[pos - 1] : '#$pos';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: CloudCornerBox(
-        backgroundColor: Colors.white.withOpacity(0.03),
-        borderColor: AcroColors.gold.withOpacity(0.18),
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AcroAvatar(initials: ini, seed: uid, size: 44),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: GoogleFonts.playfairDisplay(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-                  if (field.isNotEmpty)
-                    Text(field, style: TextStyle(fontSize: 11, color: AcroColors.stoneLight)),
-                  const SizedBox(height: 4),
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(badgeInfo.emoji, style: const TextStyle(fontSize: 10)),
-                    const SizedBox(width: 4),
-                    Text(badgeInfo.name, style: GoogleFonts.spaceMono(fontSize: 8, color: AcroColors.gold.withOpacity(0.75), letterSpacing: 1)),
-                  ]),
-                  if (quote.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text('"$quote"', maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4), fontStyle: FontStyle.italic)),
-                  ],
-                  if (interests.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 4, runSpacing: 4,
-                      children: interests.take(4).map((t) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(border: Border.all(color: AcroColors.gold.withOpacity(0.22)), borderRadius: BorderRadius.circular(2)),
-                        child: Text(t, style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: Colors.white.withOpacity(0.45))),
-                      )).toList(),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: sent ? null : () => _sendRequest(uid),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: sent ? AcroColors.stoneLight : AcroColors.gold,
-                        side: BorderSide(color: sent ? AcroColors.gold.withOpacity(0.18) : AcroColors.gold.withOpacity(0.5)),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
-                        textStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
-                      ),
-                      child: Text(sent ? 'REQUEST SENT ✓' : 'SEND REQUEST'),
-                    ),
+    return Container(
+      decoration: BoxDecoration(
+        color: isMe
+            ? AcroColors.gold.withOpacity(0.07)
+            : Colors.transparent,
+        border: isMe
+            ? Border(left: BorderSide(color: AcroColors.gold.withOpacity(0.55), width: 2))
+            : null,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      child: Row(children: [
+        SizedBox(
+          width: 28,
+          child: Text(posLabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: isMedal ? 16 : 11,
+                color: isMedal ? Colors.white : Colors.white.withOpacity(0.35),
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w700,
+              )),
+        ),
+        const SizedBox(width: 10),
+        AcroAvatar(initials: ini, seed: uid, size: 34),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isMe ? AcroColors.gold : Colors.white.withOpacity(0.88),
+                  )),
+              Row(children: [
+                Text(info.emoji, style: const TextStyle(fontSize: 9)),
+                const SizedBox(width: 3),
+                Text(info.name,
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 8,
+                        color: AcroColors.gold.withOpacity(0.60),
+                        letterSpacing: 0.8)),
+                if (field.isNotEmpty) ...[
+                  Text('  ·  ', style: TextStyle(fontSize: 8, color: Colors.white.withOpacity(0.18))),
+                  Expanded(
+                    child: Text(field,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.30))),
                   ),
                 ],
-              ),
-            ),
-          ],
+              ]),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        Text('${(score * 100).toStringAsFixed(0)}',
+            style: GoogleFonts.spaceMono(
+                fontSize: 12,
+                color: isMe ? AcroColors.gold : Colors.white.withOpacity(0.40),
+                fontWeight: FontWeight.w700)),
+      ]),
     );
   }
 
-  // ── INBOX panel ─────────────────────────────────────────────────────────────
+  // ── INBOX panel — Instagram DM style ────────────────────────────────────────
 
   Widget _buildInboxPanel({required bool showHeader}) {
     final state = context.read<AppState>();
@@ -1224,28 +1079,131 @@ class _SymposiumScreenState extends State<SymposiumScreen>
         if (requests.isEmpty) {
           return Column(
             children: [
-              if (showHeader) ...[
-                Padding(padding: const EdgeInsets.all(18), child: _panelHeader('INBOX')),
-              ],
-              Expanded(child: _emptyState('📬', 'No requests yet.', 'Others in the Symposium can send you a request.')),
+              if (showHeader) _inboxHeader(),
+              Expanded(child: _emptyState('📬', 'No connections yet.', 'Others in the Symposium can invite you.')),
             ],
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
-          itemCount: requests.length + (showHeader ? 1 : 0),
-          itemBuilder: (_, i) {
-            if (showHeader && i == 0) {
-              return Padding(padding: const EdgeInsets.only(bottom: 14), child: _panelHeader('INBOX'));
-            }
-            return _requestCard(requests[showHeader ? i - 1 : i]);
-          },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showHeader) _inboxHeader(),
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.only(top: showHeader ? 0 : 8, bottom: 24),
+                itemCount: requests.length,
+                itemBuilder: (_, i) => _dmRow(requests[i]),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _requestCard(Map<String, dynamic> req) {
+  Widget _inboxHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
+      child: Row(children: [
+        _panelHeader('CONNECTIONS'),
+        const Spacer(),
+        Text('requests', style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.white.withOpacity(0.25), letterSpacing: 1)),
+      ]),
+    );
+  }
+
+  Widget _dmRow(Map<String, dynamic> req) {
+    final name      = req['fromName']  as String? ?? 'Anonymous';
+    final field     = req['fromField'] as String? ?? '';
+    final quote     = req['fromQuote'] as String? ?? '';
+    final ini       = _initials(name);
+    final ts        = (req['ts']       as int?)   ?? 0;
+    final timeLabel = _relativeTime(ts);
+
+    return InkWell(
+      onTap: () => _showDmDetail(req),
+      splashColor: AcroColors.gold.withOpacity(0.06),
+      highlightColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          // Avatar with unread ring
+          Stack(clipBehavior: Clip.none, children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AcroColors.gold.withOpacity(0.70), width: 2),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: AcroAvatar(initials: ini, seed: name, size: 44),
+              ),
+            ),
+            Positioned(
+              bottom: 0, right: 0,
+              child: Container(
+                width: 12, height: 12,
+                decoration: BoxDecoration(
+                  color: AcroColors.gold,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF0B0F1A), width: 2),
+                ),
+              ),
+            ),
+          ]),
+
+          const SizedBox(width: 14),
+
+          // Name + preview
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+                const SizedBox(height: 2),
+                Text(
+                  quote.isNotEmpty ? '"$quote"' : field.isNotEmpty ? field : 'Wants to connect',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.45),
+                      fontStyle: quote.isNotEmpty ? FontStyle.italic : FontStyle.normal),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // Time + unread dot
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(timeLabel,
+                  style: GoogleFonts.spaceMono(fontSize: 9, color: Colors.white.withOpacity(0.30))),
+              const SizedBox(height: 4),
+              Container(
+                width: 8, height: 8,
+                decoration: const BoxDecoration(color: AcroColors.gold, shape: BoxShape.circle),
+              ),
+            ],
+          ),
+        ]),
+      ),
+    );
+  }
+
+  void _showDmDetail(Map<String, dynamic> req) {
     final name      = req['fromName']      as String? ?? 'Anonymous';
     final field     = req['fromField']     as String? ?? '';
     final quote     = req['fromQuote']     as String? ?? '';
@@ -1254,79 +1212,126 @@ class _SymposiumScreenState extends State<SymposiumScreen>
     final ini       = _initials(name);
     final reqId     = req['reqId']         as String? ?? '';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: CloudCornerBox(
-        backgroundColor: AcroColors.gold.withOpacity(0.04),
-        borderColor: AcroColors.gold.withOpacity(0.28),
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              AcroAvatar(initials: ini, seed: name, size: 38),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                    if (field.isNotEmpty) Text(field, style: TextStyle(fontSize: 11, color: AcroColors.stoneLight)),
-                  ],
-                ),
-              ),
-              Text('INVITES YOU', style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: AcroColors.gold.withOpacity(0.6), letterSpacing: 1.5)),
-            ]),
-            if (quote.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text('"$quote"', maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.42), fontStyle: FontStyle.italic)),
-            ],
-            if (interests.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 4, runSpacing: 4,
-                children: interests.take(3).map((t) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(border: Border.all(color: AcroColors.gold.withOpacity(0.22)), borderRadius: BorderRadius.circular(2)),
-                  child: Text(t, style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: Colors.white.withOpacity(0.45))),
-                )).toList(),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _decline(reqId),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AcroColors.stoneLight,
-                    side: BorderSide(color: Colors.white.withOpacity(0.12)),
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
-                    textStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0B0F1A),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 24),
+
+              // Profile row
+              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AcroColors.gold.withOpacity(0.55), width: 2),
                   ),
-                  child: const Text('DECLINE'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _accept(req),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AcroColors.gold,
-                    foregroundColor: AcroColors.stone,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
-                    textStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: AcroAvatar(initials: ini, seed: name, size: 52),
                   ),
-                  child: const Text('ACCEPT'),
                 ),
-              ),
-            ]),
-          ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: GoogleFonts.playfairDisplay(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                      if (field.isNotEmpty)
+                        Text(field, style: TextStyle(fontSize: 12, color: AcroColors.stoneLight)),
+                    ],
+                  ),
+                ),
+                Text('INVITES YOU', style: GoogleFonts.spaceMono(fontSize: 8, color: AcroColors.gold.withOpacity(0.6), letterSpacing: 1.5)),
+              ]),
+
+              if (quote.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Text('"$quote"',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.50),
+                        fontStyle: FontStyle.italic,
+                        height: 1.5)),
+              ],
+
+              if (interests.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 6, runSpacing: 6,
+                  children: interests.map((t) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                        border: Border.all(color: AcroColors.gold.withOpacity(0.25)),
+                        borderRadius: BorderRadius.circular(2)),
+                    child: Text(t, style: TextStyle(fontFamily: 'monospace', fontSize: 9, color: Colors.white.withOpacity(0.50))),
+                  )).toList(),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 16),
+
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () { Navigator.pop(context); _decline(reqId); },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AcroColors.stoneLight,
+                      side: BorderSide(color: Colors.white.withOpacity(0.12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                      textStyle: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 2),
+                    ),
+                    child: const Text('DECLINE'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () { Navigator.pop(context); _accept(req); },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AcroColors.gold,
+                      foregroundColor: AcroColors.stone,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                      textStyle: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 2),
+                    ),
+                    child: const Text('ACCEPT'),
+                  ),
+                ),
+              ]),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _relativeTime(int ts) {
+    if (ts == 0) return '';
+    final diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ts));
+    if (diff.inMinutes < 1)  return 'now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours   < 24) return '${diff.inHours}h';
+    if (diff.inDays    < 7)  return '${diff.inDays}d';
+    return '${(diff.inDays / 7).floor()}w';
   }
 
   // ---------------------------------------------------------------------------
